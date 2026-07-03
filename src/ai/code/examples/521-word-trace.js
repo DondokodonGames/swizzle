@@ -1,262 +1,143 @@
 // 521-word-trace.js
-// ワードトレース — 画面に描かれた文字の輪郭を指でなぞる
-// 操作: スワイプで文字の輪郭線をなぞる
-// 成功: 8文字完成  失敗: 5ミス or 90秒
+// ワードトレース — 光る点を順番になぞって、お手本の形をひと筆書きで完成させる
+// 操作: 次に光る点をタップ or スワイプで通過して、形を最後までなぞる
+// 成功: 3形 完成  失敗: 25秒 タイムアップ
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#030308',
-    guide:   '#1e293b',
-    trace:   '#38bdf8',
-    traceHi: '#7dd3fc',
-    correct: '#22c55e',
-    wrong:   '#ef4444',
-    text:    '#f1f5f9',
-    ui:      '#374151',
-    letter:  '#0f172a'
-  };
+  // ── パレット（ネオンアーケード、なぞり書き） ──
+  var C = { bg:'#030308', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  // Simple digit/letter shapes as sequences of points (normalized 0-1)
   var SHAPES = [
-    { name: '○', points: (function() {
-      var pts = [];
-      for (var i = 0; i <= 16; i++) pts.push({ x: 0.5 + 0.4 * Math.cos(i / 16 * Math.PI * 2), y: 0.5 + 0.4 * Math.sin(i / 16 * Math.PI * 2) });
-      return pts;
-    })() },
-    { name: '△', points: [
-      {x:0.5, y:0.1}, {x:0.85, y:0.85}, {x:0.15, y:0.85}, {x:0.5, y:0.1}
-    ]},
-    { name: '□', points: [
-      {x:0.15, y:0.15}, {x:0.85, y:0.15}, {x:0.85, y:0.85}, {x:0.15, y:0.85}, {x:0.15, y:0.15}
-    ]},
-    { name: '★', points: (function() {
-      var pts = [];
-      for (var i = 0; i <= 10; i++) {
-        var a = i / 10 * Math.PI * 2 - Math.PI / 2;
-        var r = (i % 2 === 0) ? 0.4 : 0.18;
-        pts.push({ x: 0.5 + r * Math.cos(a), y: 0.5 + r * Math.sin(a) });
-      }
-      return pts;
-    })() },
-    { name: '♡', points: (function() {
-      var pts = [];
-      for (var i = 0; i <= 20; i++) {
-        var t = i / 20 * Math.PI * 2;
-        var x = 0.5 + 0.35 * (16 * Math.pow(Math.sin(t), 3)) / 16;
-        var y = 0.5 - 0.35 * (13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t)) / 13 * 0.7;
-        pts.push({ x: x, y: y });
-      }
-      return pts;
-    })() },
-    { name: '↑', points: [
-      {x:0.5, y:0.1}, {x:0.2, y:0.5}, {x:0.4, y:0.5}, {x:0.4, y:0.9}, {x:0.6, y:0.9}, {x:0.6, y:0.5}, {x:0.8, y:0.5}, {x:0.5, y:0.1}
-    ]},
-    { name: 'Z', points: [
-      {x:0.15, y:0.15}, {x:0.85, y:0.15}, {x:0.15, y:0.85}, {x:0.85, y:0.85}
-    ]},
-    { name: 'S', points: (function() {
-      var pts = [];
-      for (var i = 0; i <= 20; i++) {
-        var t = i / 20 * Math.PI * 2;
-        pts.push({ x: 0.5 + 0.35 * Math.cos(t + Math.PI), y: 0.35 + 0.22 * Math.sin(t) });
-      }
-      for (var j = 0; j <= 20; j++) {
-        var t2 = j / 20 * Math.PI * 2;
-        pts.push({ x: 0.5 + 0.35 * Math.cos(t2), y: 0.65 + 0.22 * Math.sin(t2) });
-      }
-      return pts;
-    })() }
+    { name: 'CIRCLE', points: (function() { var p = []; for (var i = 0; i <= 12; i++) p.push({ x: 0.5 + 0.4 * Math.cos(i / 12 * Math.PI * 2), y: 0.5 + 0.4 * Math.sin(i / 12 * Math.PI * 2) }); return p; })() },
+    { name: 'TRIANGLE', points: [{ x: 0.5, y: 0.1 }, { x: 0.85, y: 0.85 }, { x: 0.15, y: 0.85 }, { x: 0.5, y: 0.1 }] },
+    { name: 'SQUARE', points: [{ x: 0.15, y: 0.15 }, { x: 0.85, y: 0.15 }, { x: 0.85, y: 0.85 }, { x: 0.15, y: 0.85 }, { x: 0.15, y: 0.15 }] },
+    { name: 'STAR', points: (function() { var p = []; for (var i = 0; i <= 10; i++) { var a = i / 10 * Math.PI * 2 - Math.PI / 2, r = i % 2 === 0 ? 0.4 : 0.18; p.push({ x: 0.5 + r * Math.cos(a), y: 0.5 + r * Math.sin(a) }); } return p; })() },
+    { name: 'ARROW', points: [{ x: 0.5, y: 0.1 }, { x: 0.2, y: 0.5 }, { x: 0.4, y: 0.5 }, { x: 0.4, y: 0.9 }, { x: 0.6, y: 0.9 }, { x: 0.6, y: 0.5 }, { x: 0.8, y: 0.5 }, { x: 0.5, y: 0.1 }] },
+    { name: 'ZED', points: [{ x: 0.15, y: 0.15 }, { x: 0.85, y: 0.15 }, { x: 0.15, y: 0.85 }, { x: 0.85, y: 0.85 }] }
   ];
 
-  var AREA_X = 140, AREA_Y = H * 0.22;
-  var AREA_W = W - 280, AREA_H = W - 280;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'WORD TRACE';
+  var HOW_TO_PLAY = 'TOUCH EACH GLOWING DOT IN ORDER TO DRAW THE SHAPE';
+  var MAX_TIME = 25;
+  var NEEDED   = 3;          // 修正2: 8 → 3
+  var AX = 140, AY = snap(H * 0.24), AW = W - 280, AH = W - 280;
 
-  var currentShapeIdx = 0;
-  var shapeOrder = [];
-  var tracePoints = [];
-  var score = 0;
-  var NEEDED = 8;
-  var misses = 0;
-  var MAX_MISS = 5;
-  var done = false;
-  var timeLeft = 90;
-  var elapsed = 0;
-  var particles = [];
-  var flashAnim = 0;
-  var flashCol = C.correct;
-  var isTracing = false;
-  var currentCheckPt = 0;
-  var matchCount = 0;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  function pickNextShape() {
-    if (shapeOrder.length === 0) {
-      shapeOrder = SHAPES.map(function(_, i) { return i; }).sort(function() { return Math.random() - 0.5; });
+  // ── ゲーム変数 ──
+  var shapeIdx, shapeOrder, score, timeLeft, done, particles, checkPt, flash;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function pline(x1, y1, x2, y2, color, alpha, w) { var dx = x2 - x1, dy = y2 - y1, n = Math.max(1, Math.ceil(Math.hypot(dx, dy) / 8)); w = w || 8; for (var i = 0; i <= n; i++) game.draw.rect(snap(x1 + dx * i / n) - w / 2, snap(y1 + dy * i / n) - w / 2, w, w, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#1e293b');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function pickNext() { if (shapeOrder.length === 0) shapeOrder = SHAPES.map(function(_, i) { return i; }).sort(function() { return Math.random() - 0.5; }); shapeIdx = shapeOrder.shift(); checkPt = 0; }
+
+  function initGame() { shapeOrder = []; score = 0; timeLeft = MAX_TIME; done = false; particles = []; flash = 0; pickNext(); }
+
+  function sp(i) { var pt = SHAPES[shapeIdx].points[i]; return { x: AX + pt.x * AW, y: AY + pt.y * AH }; }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (score * 800 + Math.ceil(timeLeft) * 100) : score * 300;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function hitPoint(x, y) {
+    var pts = SHAPES[shapeIdx].points; if (checkPt >= pts.length) return;
+    var np = sp(checkPt);
+    if (Math.hypot(x - np.x, y - np.y) < 80) {
+      checkPt++; game.audio.play('se_tap', 0.2); particles.push({ x: np.x, y: np.y, vx: 0, vy: -40, life: 0.5, col: C.e });
+      if (checkPt >= pts.length) { score++; flash = 0.5; game.audio.play('se_success', 0.8); for (var pi = 0; pi < 12; pi++) { var a = Math.random() * Math.PI * 2; particles.push({ x: AX + AW / 2, y: AY + AH / 2, vx: Math.cos(a) * 200, vy: Math.sin(a) * 200, life: 0.5, col: C.b }); } if (score >= NEEDED) { finish(true); return; } setTimeout(function() { if (!done) pickNext(); }, 700); }
     }
-    currentShapeIdx = shapeOrder.shift();
-    tracePoints = [];
-    isTracing = false;
-    currentCheckPt = 0;
-    matchCount = 0;
   }
 
-  function shapePoint(ptIdx) {
-    var shape = SHAPES[currentShapeIdx];
-    var pt = shape.points[ptIdx];
-    return { x: AREA_X + pt.x * AREA_W, y: AREA_Y + pt.y * AREA_H };
+  function drawShape() {
+    game.draw.rect(AX - 8, AY - 8, AW + 16, AH + 16, '#1e293b', 0.3);
+    var pts = SHAPES[shapeIdx].points;
+    for (var i = 0; i < pts.length - 1; i++) { var p1 = sp(i), p2 = sp(i + 1); pline(p1.x, p1.y, p2.x, p2.y, i < checkPt ? C.b : '#1e293b', i < checkPt ? 0.9 : 0.5, 8); }
+    for (var ci = 0; ci < pts.length; ci++) { var cp = sp(ci); var col = ci < checkPt ? C.b : ci === checkPt ? C.c : '#374151'; pc(cp.x, cp.y, ci === checkPt ? 22 : 12, col, ci === checkPt ? 0.9 : 0.6); if (ci === checkPt && Math.floor(game.time.elapsed * 6) % 2 === 0) for (var a = 0; a < Math.PI * 2; a += 0.3) game.draw.rect(snap(cp.x + Math.cos(a) * 34) - 3, snap(cp.y + Math.sin(a) * 34) - 3, 6, 6, C.c, 0.6); }
   }
 
+  // ── 入力 ──
   game.onTap(function(tx, ty) {
-    if (done) return;
-    // Tap counts as a trace point check at the tapped location
-    var shape = SHAPES[currentShapeIdx];
-    var pts = shape.points;
-    var nextPt = currentCheckPt < pts.length ? shapePoint(currentCheckPt) : null;
-    if (nextPt) {
-      var dx = tx - nextPt.x, dy = ty - nextPt.y;
-      if (Math.sqrt(dx*dx+dy*dy) < 80) {
-        currentCheckPt++;
-        matchCount++;
-        game.audio.play('se_tap', 0.2);
-        particles.push({ x: nextPt.x, y: nextPt.y, vx: 0, vy: -40, life: 0.5, col: C.traceHi });
-        if (currentCheckPt >= pts.length) {
-          score++;
-          flashCol = C.correct;
-          flashAnim = 0.5;
-          game.audio.play('se_success', 0.8);
-          if (score >= NEEDED && !done) {
-            done = true;
-            game.audio.play('se_success', 0.9);
-            setTimeout(function() { game.end.success(score * 600 + Math.ceil(timeLeft) * 100); }, 700);
-          } else {
-            setTimeout(function() { if (!done) pickNextShape(); }, 700);
-          }
-        }
-      }
-    }
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return; hitPoint(tx, ty);
   });
 
-  game.onSwipe(function(dir, x1, y1, x2, y2) {
-    if (done) return;
-    // Track trace path via swipe start/end
-    tracePoints.push({ x: x1, y: y1 });
-    tracePoints.push({ x: x2, y: y2 });
-    if (tracePoints.length > 60) tracePoints.shift();
+  game.onSwipe(function(dir, x1, y1, x2, y2) { if (state === S.PLAYING && !done) hitPoint(x2, y2); });
 
-    // Check proximity to shape points
-    var shape = SHAPES[currentShapeIdx];
-    var pts = shape.points;
-    var nextPt = currentCheckPt < pts.length ? shapePoint(currentCheckPt) : null;
-    if (nextPt) {
-      var dx = x2 - nextPt.x, dy = y2 - nextPt.y;
-      if (Math.sqrt(dx*dx+dy*dy) < 80) {
-        currentCheckPt++;
-        matchCount++;
-        game.audio.play('se_tap', 0.2);
-        particles.push({ x: nextPt.x, y: nextPt.y, vx: 0, vy: -40, life: 0.5, col: C.traceHi });
-        if (currentCheckPt >= pts.length) {
-          // Shape complete!
-          score++;
-          flashCol = C.correct;
-          flashAnim = 0.5;
-          game.audio.play('se_success', 0.8);
-          for (var pi = 0; pi < 12; pi++) {
-            var ang = Math.random() * Math.PI * 2;
-            var cx = AREA_X + AREA_W / 2, cy = AREA_Y + AREA_H / 2;
-            particles.push({ x: cx, y: cy, vx: Math.cos(ang) * 200, vy: Math.sin(ang) * 200, life: 0.5, col: C.correct });
-          }
-          if (score >= NEEDED && !done) {
-            done = true;
-            game.audio.play('se_success', 0.9);
-            setTimeout(function() { game.end.success(score * 600 + Math.ceil(timeLeft) * 100); }, 700);
-          } else {
-            setTimeout(function() { if (!done) pickNextShape(); }, 700);
-          }
-        }
-      }
-    }
-  });
-
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (shapeIdx === undefined) initGame(); background(); drawShape();
+      txt(GAME_TITLE, W / 2, H * 0.86, 78, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.91, 22, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) txt('► 100円 投入 ◄ TAP TO START', W / 2, H * 0.96, 40, C.a);
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'PERFECT TRACE!' : 'TIME UP', W / 2, H * 0.35, 62, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
-      }
-    }
-    if (flashAnim > 0) flashAnim -= dt * 3;
-
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt * 2;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
+      if (timeLeft <= 0) { finish(false); return; }
+      if (flash > 0) flash -= dt * 3;
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt * 2; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    // Draw
-    game.draw.rect(0, 0, W, H, C.bg);
+    // ---- 描画 ----
+    background(); drawShape();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 6, snap(particles[pp2].y) - 6, 12, 12, particles[pp2].col, particles[pp2].life * 1.5);
+    txt(SHAPES[shapeIdx].name, W / 2, snap(AY + AH + 80), 60, C.c);
+    if (flash > 0) game.draw.rect(0, 0, W, H, C.b, flash * 0.1);
 
-    // Shape area
-    game.draw.rect(AREA_X - 8, AREA_Y - 8, AREA_W + 16, AREA_H + 16, C.guide, 0.3);
-
-    // Draw guide shape
-    var shape = SHAPES[currentShapeIdx];
-    var pts = shape.points;
-    for (var i = 0; i < pts.length - 1; i++) {
-      var p1 = shapePoint(i), p2 = shapePoint(i + 1);
-      var alpha = i < currentCheckPt ? 0.15 : 0.4;
-      game.draw.line(p1.x, p1.y, p2.x, p2.y, C.guide, 8);
-      if (i < currentCheckPt) game.draw.line(p1.x, p1.y, p2.x, p2.y, C.correct, 6);
-    }
-
-    // Checkpoint dots
-    for (var ci = 0; ci < pts.length; ci++) {
-      var cp = shapePoint(ci);
-      var dotCol = ci < currentCheckPt ? C.correct : (ci === currentCheckPt ? C.traceHi : C.ui);
-      game.draw.circle(cp.x, cp.y, ci === currentCheckPt ? 24 : 14, dotCol, ci === currentCheckPt ? 0.9 : 0.6);
-      if (ci === currentCheckPt) {
-        game.draw.circle(cp.x, cp.y, 32 + Math.sin(elapsed * 4) * 8, C.traceHi, 0.3);
-      }
-    }
-
-    // Player trace
-    for (var ti = 1; ti < tracePoints.length; ti++) {
-      var tp1 = tracePoints[ti - 1], tp2 = tracePoints[ti];
-      var a = (ti / tracePoints.length) * 0.8;
-      game.draw.line(tp1.x, tp1.y, tp2.x, tp2.y, C.trace, 6);
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 12 * p.life, p.col, p.life * 0.9);
-    }
-
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, flashCol, flashAnim * 0.1);
-
-    // Shape name
-    game.draw.text(shape.name, W / 2, AREA_Y + AREA_H + 60, { size: 80, color: C.text, bold: true });
-    game.draw.text('なぞってください', W / 2, AREA_Y + AREA_H + 140, { size: 36, color: C.ui });
-
-    for (var mi = 0; mi < MAX_MISS; mi++) {
-      game.draw.circle(W / 2 - (MAX_MISS - 1) * 56 + mi * 112, H * 0.955, 20, mi < misses ? C.wrong : C.ui, 0.9);
-    }
-
-    game.draw.text(score + ' / ' + NEEDED, W / 2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft / 90);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.trace : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(score + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.07);
-    pickNextShape();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);

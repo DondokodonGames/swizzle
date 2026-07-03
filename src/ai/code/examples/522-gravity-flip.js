@@ -1,239 +1,141 @@
 // 522-gravity-flip.js
-// グラビティフリップ — タップで重力反転、天井と床を行き来してコインを集める
-// 操作: タップで重力逆転
-// 成功: 20コイン収集  失敗: 壁に3回衝突 or 40秒
+// グラビティフリップ — タップで重力を反転し、天井と床を行き来してコインを集めトゲを避ける
+// 操作: タップで重力を上下反転（壁の内側に激突 or トゲに触れるとダメージ）
+// 成功: 8コイン 収集  失敗: 3回 衝突 or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#020816',
-    ceiling: '#0c1a3a',
-    floor:   '#0c1a3a',
-    player:  '#38bdf8',
-    playerHi:'#7dd3fc',
-    coin:    '#f59e0b',
-    coinHi:  '#fde68a',
-    spike:   '#ef4444',
-    spikeHi: '#fca5a5',
-    correct: '#22c55e',
-    wrong:   '#ef4444',
-    text:    '#f1f5f9',
-    ui:      '#374151'
-  };
+  // ── パレット（アイスブルー、反重力トンネル） ──
+  var C = { bg:'#020816', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#3355ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var PLAYER_X = W * 0.2;
-  var PLAYER_R = 36;
-  var GRAVITY = 2400;
-  var WALL_THICKNESS = 80;
-
-  var player = { y: H / 2, vy: 0, gravDir: 1 };
-  var coins = [];
-  var spikes = [];
-  var collected = 0;
-  var NEEDED = 20;
-  var hits = 0;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'GRAVITY FLIP';
+  var HOW_TO_PLAY = 'TAP TO FLIP GRAVITY · GRAB COINS · DODGE SPIKES';
+  var MAX_TIME = 15;
+  var NEEDED   = 8;          // 修正2: 20 → 8
   var MAX_HITS = 3;
-  var done = false;
-  var timeLeft = 40;
-  var elapsed = 0;
-  var particles = [];
-  var flashAnim = 0;
-  var flipAnim = 0;
-  var invincible = 0;
-  var speed = 320;
+  var PX = snap(W * 0.22), PR = 36, GRAVITY = 2400, WALL = 88;
 
-  function spawnObjects() {
-    // Coins at various y positions
-    for (var i = 0; i < 3; i++) {
-      var y = WALL_THICKNESS + PLAYER_R + Math.random() * (H - 2 * WALL_THICKNESS - 2 * PLAYER_R);
-      coins.push({ x: W + 80 + i * 280, y: y, r: 28, angle: Math.random() * Math.PI * 2, collected: false });
-    }
-    // Spike pair (top and bottom, leave gap in middle)
-    if (Math.random() < 0.4) {
-      var gapY = WALL_THICKNESS + 80 + Math.random() * (H - 2 * WALL_THICKNESS - 160 - PLAYER_R * 2);
-      var gapH = 200 + PLAYER_R * 2;
-      spikes.push({ x: W + 200, topH: gapY - WALL_THICKNESS, bottomY: gapY + gapH, bottomH: H - WALL_THICKNESS - (gapY + gapH) });
-    }
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  // ── ゲーム変数 ──
+  var player, coins, spikes, collected, hits, timeLeft, done, particles, flash, invincible, speed;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  game.onTap(function(tx, ty) {
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.e : '#0c1a3a');
+  }
+
+  function background() { game.draw.clear(C.bg); game.draw.rect(0, 0, W, WALL, '#0c1a3a', 0.9); game.draw.rect(0, H - WALL, W, WALL, '#0c1a3a', 0.9); }
+
+  function spawnObjects() {
+    for (var i = 0; i < 3; i++) coins.push({ x: W + 80 + i * 300, y: snap(WALL + PR + Math.random() * (H - 2 * WALL - 2 * PR)), r: 26, angle: Math.random() * Math.PI * 2 });
+    if (Math.random() < 0.4) { var gapY = WALL + 100 + Math.random() * (H - 2 * WALL - 200 - PR * 2), gapH = 220 + PR * 2; spikes.push({ x: W + 220, topH: gapY - WALL, bottomY: gapY + gapH, bottomH: H - WALL - (gapY + gapH) }); }
+  }
+
+  function initGame() { player = { y: H / 2, vy: 0, gravDir: 1 }; coins = []; spikes = []; collected = 0; hits = 0; timeLeft = MAX_TIME; done = false; particles = []; flash = 0; invincible = 0; speed = 320; spawnObjects(); }
+
+  function finish(success) {
     if (done) return;
-    player.gravDir = -player.gravDir;
-    player.vy *= 0.3;
-    flipAnim = 0.3;
-    game.audio.play('se_tap', 0.4);
-    for (var pi = 0; pi < 5; pi++) {
-      var ang = Math.random() * Math.PI * 2;
-      particles.push({ x: PLAYER_X, y: player.y, vx: Math.cos(ang) * 100, vy: Math.sin(ang) * 100, life: 0.3, col: C.playerHi });
-    }
+    done = true; resultSuccess = success;
+    finalScore = success ? (collected * 500 + Math.ceil(timeLeft) * 100) : collected * 200;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawScene() {
+    for (var si = 0; si < spikes.length; si++) { var sk = spikes[si]; game.draw.rect(snap(sk.x) - 20, WALL, 40, sk.topH, C.a, 0.8); game.draw.rect(snap(sk.x) - 20, snap(sk.bottomY), 40, sk.bottomH, C.a, 0.8); }
+    for (var ci = 0; ci < coins.length; ci++) { var cn = coins[ci], cw = Math.abs(Math.cos(cn.angle)) * cn.r; game.draw.rect(snap(cn.x) - cw, snap(cn.y) - cn.r, cw * 2 + 8, cn.r * 2, C.c, 0.9); pc(cn.x, cn.y, 8, C.g, 0.7); }
+    var blink = invincible > 0 ? (Math.floor(game.time.elapsed * 12) % 2) : 1;
+    if (blink) { pc(PX, player.y, PR, C.e, 0.9); pc(PX - 10, player.y - 10, 10, C.g, 0.4); game.draw.rect(PX - 3, snap(player.y) + (player.gravDir === 1 ? PR : -PR - 24), 6, 24, C.g, 0.8); }
+  }
+
+  // ── 入力 ──
+  game.onTap(function() {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    player.gravDir = -player.gravDir; player.vy *= 0.3; game.audio.play('se_tap', 0.4);
+    for (var pi = 0; pi < 5; pi++) { var a = Math.random() * Math.PI * 2; particles.push({ x: PX, y: player.y, vx: Math.cos(a) * 100, vy: Math.sin(a) * 100, life: 0.3, col: C.g }); }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!player) initGame(); background(); drawScene();
+      txt(GAME_TITLE, W / 2, H * 0.30, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.36, 22, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.58, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.64, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'COINS GET!' : 'SMASHED', W / 2, H * 0.35, 68, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
-      timeLeft -= dt;
-      elapsed += dt;
-      speed = 320 + collected * 8;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
+      timeLeft -= dt; speed = 320 + collected * 12;
+      if (timeLeft <= 0) { finish(false); return; }
+      if (flash > 0) flash -= dt * 3; if (invincible > 0) invincible -= dt;
+      player.vy += GRAVITY * player.gravDir * dt; player.y += player.vy * dt;
+      var ceilY = WALL + PR, floorY = H - WALL - PR;
+      if (player.y < ceilY) { player.y = ceilY; player.vy = Math.abs(player.vy) * 0.3; if (invincible <= 0) { hits++; invincible = 1.0; flash = 0.4; game.audio.play('se_failure', 0.4); if (hits >= MAX_HITS) { finish(false); return; } } }
+      if (player.y > floorY) { player.y = floorY; player.vy = -Math.abs(player.vy) * 0.3; if (invincible <= 0) { hits++; invincible = 1.0; flash = 0.4; game.audio.play('se_failure', 0.4); if (hits >= MAX_HITS) { finish(false); return; } } }
+      for (var ci = coins.length - 1; ci >= 0; ci--) {
+        coins[ci].x -= speed * dt; coins[ci].angle += dt * 3; if (coins[ci].x < -60) { coins.splice(ci, 1); continue; }
+        if (Math.hypot(PX - coins[ci].x, player.y - coins[ci].y) < PR + coins[ci].r) { collected++; flash = 0.2; game.audio.play('se_tap', 0.5); for (var pi2 = 0; pi2 < 6; pi2++) { var a2 = Math.random() * Math.PI * 2; particles.push({ x: coins[ci].x, y: coins[ci].y, vx: Math.cos(a2) * 160, vy: Math.sin(a2) * 160, life: 0.4, col: C.c }); } coins.splice(ci, 1); if (collected >= NEEDED) { finish(true); return; } }
       }
-    }
-
-    if (flashAnim > 0) flashAnim -= dt * 3;
-    if (flipAnim > 0) flipAnim -= dt * 4;
-    if (invincible > 0) invincible -= dt;
-
-    // Player physics
-    player.vy += GRAVITY * player.gravDir * dt;
-    player.y += player.vy * dt;
-
-    // Ceiling/floor collision
-    var ceilY = WALL_THICKNESS + PLAYER_R;
-    var floorY = H - WALL_THICKNESS - PLAYER_R;
-    if (player.y < ceilY) {
-      player.y = ceilY;
-      player.vy = Math.abs(player.vy) * 0.3;
-      if (invincible <= 0) {
-        hits++;
-        invincible = 1.0;
-        flashAnim = 0.4;
-        game.audio.play('se_failure', 0.4);
-        if (hits >= MAX_HITS && !done) { done = true; setTimeout(function() { game.end.failure(); }, 500); }
+      for (var si = spikes.length - 1; si >= 0; si--) {
+        spikes[si].x -= speed * dt; if (spikes[si].x < -80) { spikes.splice(si, 1); continue; }
+        if (invincible <= 0) { var sk = spikes[si]; if (Math.abs(PX - sk.x) < PR + 20 && (player.y - PR < WALL + sk.topH || player.y + PR > sk.bottomY)) { hits++; invincible = 1.0; flash = 0.5; game.audio.play('se_failure', 0.5); if (hits >= MAX_HITS) { finish(false); return; } } }
       }
-    }
-    if (player.y > floorY) {
-      player.y = floorY;
-      player.vy = -Math.abs(player.vy) * 0.3;
-      if (invincible <= 0) {
-        hits++;
-        invincible = 1.0;
-        flashAnim = 0.4;
-        game.audio.play('se_failure', 0.4);
-        if (hits >= MAX_HITS && !done) { done = true; setTimeout(function() { game.end.failure(); }, 500); }
-      }
+      if (coins.length === 0 || coins[coins.length - 1].x < W - 200) spawnObjects();
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt * 2; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    // Move coins
-    for (var ci = coins.length - 1; ci >= 0; ci--) {
-      coins[ci].x -= speed * dt;
-      coins[ci].angle += dt * 3;
-      if (coins[ci].x < -60) { coins.splice(ci, 1); continue; }
-      // Collect
-      var dx = PLAYER_X - coins[ci].x, dy = player.y - coins[ci].y;
-      if (Math.sqrt(dx*dx+dy*dy) < PLAYER_R + coins[ci].r) {
-        collected++;
-        game.audio.play('se_tap', 0.5);
-        for (var pi2 = 0; pi2 < 6; pi2++) {
-          var ang2 = Math.random() * Math.PI * 2;
-          particles.push({ x: coins[ci].x, y: coins[ci].y, vx: Math.cos(ang2) * 160, vy: Math.sin(ang2) * 160, life: 0.4, col: C.coin });
-        }
-        coins.splice(ci, 1);
-        if (collected >= NEEDED && !done) {
-          done = true;
-          game.audio.play('se_success', 0.9);
-          setTimeout(function() { game.end.success(collected * 400 + Math.ceil(timeLeft) * 100); }, 700);
-        }
-      }
-    }
+    // ---- 描画 ----
+    background(); drawScene();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 6, snap(particles[pp2].y) - 6, 12, 12, particles[pp2].col, particles[pp2].life * 1.5);
+    if (flash > 0) game.draw.rect(0, 0, W, H, C.a, flash * 0.15);
 
-    // Move spikes
-    for (var si = spikes.length - 1; si >= 0; si--) {
-      spikes[si].x -= speed * dt;
-      if (spikes[si].x < -80) { spikes.splice(si, 1); continue; }
-      // Spike collision
-      if (invincible <= 0) {
-        var sk = spikes[si];
-        if (Math.abs(PLAYER_X - sk.x) < PLAYER_R + 20) {
-          var inTop = player.y - PLAYER_R < WALL_THICKNESS + sk.topH;
-          var inBot = player.y + PLAYER_R > sk.bottomY;
-          if (inTop || inBot) {
-            hits++;
-            invincible = 1.0;
-            flashAnim = 0.5;
-            game.audio.play('se_failure', 0.5);
-            if (hits >= MAX_HITS && !done) { done = true; setTimeout(function() { game.end.failure(); }, 500); }
-          }
-        }
-      }
-    }
-
-    // Spawn more
-    if ((coins.length === 0 || (coins.length > 0 && coins[coins.length - 1].x < W - 200)) && !done) {
-      spawnObjects();
-    }
-
-    // Particles
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt * 2;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
-
-    // Draw
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Ceiling and floor
-    game.draw.rect(0, 0, W, WALL_THICKNESS, C.ceiling, 0.9);
-    game.draw.rect(0, H - WALL_THICKNESS, W, WALL_THICKNESS, C.floor, 0.9);
-    // Stripe pattern
-    for (var ti = 0; ti < W; ti += 80) {
-      game.draw.rect((ti + elapsed * speed * 0.5) % W, 0, 40, WALL_THICKNESS, '#0a2040', 0.5);
-      game.draw.rect((ti + elapsed * speed * 0.5) % W, H - WALL_THICKNESS, 40, WALL_THICKNESS, '#0a2040', 0.5);
-    }
-
-    // Spikes
-    for (var si2 = 0; si2 < spikes.length; si2++) {
-      var sk2 = spikes[si2];
-      game.draw.rect(sk2.x - 20, WALL_THICKNESS, 40, sk2.topH, C.spike, 0.8);
-      game.draw.rect(sk2.x - 20, sk2.bottomY, 40, sk2.bottomH, C.spike, 0.8);
-    }
-
-    // Coins
-    for (var ci2 = 0; ci2 < coins.length; ci2++) {
-      var cn = coins[ci2];
-      var scaleX = Math.cos(cn.angle);
-      var cw = Math.abs(scaleX) * cn.r;
-      game.draw.circle(cn.x, cn.y, cn.r + 4, C.coinHi, 0.2);
-      game.draw.rect(cn.x - cw, cn.y - cn.r, cw * 2, cn.r * 2, C.coin, 0.9);
-      game.draw.circle(cn.x, cn.y, 10, C.coinHi, 0.8);
-    }
-
-    // Player
-    var invBlink = invincible > 0 ? Math.sin(elapsed * 20) > 0 ? 0.4 : 0.9 : 0.9;
-    var playerScale = 1 + flipAnim * 0.3;
-    game.draw.circle(PLAYER_X, player.y, PLAYER_R * playerScale + 8, C.playerHi, invBlink * 0.3);
-    game.draw.circle(PLAYER_X, player.y, PLAYER_R * playerScale, C.player, invBlink);
-    // Gravity arrow
-    var arrowDir = player.gravDir;
-    game.draw.line(PLAYER_X, player.y, PLAYER_X, player.y + arrowDir * 28, '#fff', 4);
-    game.draw.circle(PLAYER_X, player.y + arrowDir * 30, 8, '#fff', 0.9);
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 12 * p.life, p.col, p.life * 0.8);
-    }
-
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, C.wrong, flashAnim * 0.15);
-
-    for (var hi = 0; hi < MAX_HITS; hi++) {
-      game.draw.circle(W / 2 - (MAX_HITS - 1) * 56 + hi * 112, H * 0.955, 20, hi < hits ? C.wrong : C.ui, 0.9);
-    }
-
-    game.draw.text(collected + ' / ' + NEEDED, W / 2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft / 40);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.player : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(collected + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var hi = 0; hi < MAX_HITS; hi++) game.draw.rect(snap(W / 2 + (hi - (MAX_HITS - 1) / 2) * 56) - 10, 224, 20, 20, hi < hits ? C.a : '#0c1a3a');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.08);
-    spawnObjects();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
