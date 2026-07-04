@@ -1,233 +1,158 @@
 // 678-piano.js
-// ピアノ演奏 — 光る鍵盤の順番を覚えて正確に叩け
-// 操作: タップで光った順番通りに鍵盤を叩く
-// 成功: 10フレーズ演奏  失敗: 5回ミス or 90秒
+// ピアノメモリー — 光る鍵盤の順番を覚え、同じ順にタップしてフレーズを再現する
+// 操作: 提示フェーズで点灯順を記憶 → タップフェーズで同じ順に鍵盤を叩く
+// 成功: 5フレーズ 再現  失敗: 3ミス or 25秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var NUM_KEYS = 6;
-  var KEY_W = 140;
-  var KEY_H = 400;
-  var KEY_GAP = 8;
-  var KEY_Y = H * 0.45;
-  var KEYS_TOTAL = NUM_KEYS * KEY_W + (NUM_KEYS - 1) * KEY_GAP;
-  var KEY_X0 = (W - KEYS_TOTAL) / 2;
+  // ── パレット（ネオンアーケード、鍵盤／鍵色は保持） ──
+  var C = { bg:'#050106', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
+  var KEY_COLORS = ['#ff2079', '#ff6600', '#ffe600', '#00ff41', '#00cfff', '#7700ff'];
+  var KEY_LABELS = ['DO', 'RE', 'MI', 'FA', 'SO', 'LA'];
 
-  var KEY_COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#a855f7'];
-  var KEY_HI =    ['#fca5a5', '#fdba74', '#fde047', '#86efac', '#93c5fd', '#d8b4fe'];
-  var KEY_LABELS = ['ド', 'レ', 'ミ', 'ファ', 'ソ', 'ラ'];
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'PIANO MEMORY';
+  var HOW_TO_PLAY = 'WATCH THE KEYS LIGHT UP · THEN TAP THEM IN THE SAME ORDER';
+  var MAX_TIME = 25;
+  var NEEDED   = 5;          // 修正2: 10 → 5
+  var MAX_ERR  = 3;          // 修正2: 5 → 3
+  var NUM_KEYS = 6, KEY_W = 140, KEY_H = 400, KEY_GAP = 8, SHOW_DUR = 0.45;
+  var KEY_Y = snap(H * 0.44), KEYS_TOTAL = NUM_KEYS * KEY_W + (NUM_KEYS - 1) * KEY_GAP, KEY_X0 = snap((W - KEYS_TOTAL) / 2);
 
-  var C = {
-    bg:     '#050106',
-    panel:  '#0d0215',
-    keyBg:  '#1a0330',
-    correct:'#22c55e',
-    wrong:  '#ef4444',
-    text:   '#f1f5f9',
-    ui:     '#0a0112'
-  };
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  // ── ゲーム変数 ──
+  var sequence, showIdx, showTimer, seqPhase, inputIdx, litKey, tapFlash, phrases, errors, timeLeft, done, particles, flash, flashCol, resultText, resultTimer;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
 
   function keyX(i) { return KEY_X0 + i * (KEY_W + KEY_GAP); }
 
-  var sequence = [];
-  var seqLen = 3;
-  var showIdx = 0;
-  var showTimer = 0;
-  var SHOW_DUR = 0.45;
-  var phase = 'show'; // 'show' | 'input' | 'wait'
-  var inputIdx = 0;
-  var litKey = -1;
-  var tapFlash = [0, 0, 0, 0, 0, 0];
-
-  var phrases = 0;
-  var NEEDED = 10;
-  var errors = 0;
-  var MAX_ERR = 5;
-  var done = false;
-  var timeLeft = 90;
-  var elapsed = 0;
-  var particles = [];
-  var flashAnim = 0, flashCol = C.correct;
-  var resultTimer = 0, resultText = '';
-
-  function newSequence() {
-    seqLen = Math.min(3 + Math.floor(phrases / 2), 7);
-    sequence = [];
-    for (var i = 0; i < seqLen; i++) {
-      sequence.push(Math.floor(Math.random() * NUM_KEYS));
-    }
-    showIdx = 0;
-    showTimer = 0.55;
-    litKey = -1;
-    inputIdx = 0;
-    phase = 'show';
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  game.onTap(function(tx, ty) {
-    if (done || phase !== 'input') return;
-    var tappedKey = -1;
-    for (var i = 0; i < NUM_KEYS; i++) {
-      var kx = keyX(i);
-      if (tx >= kx && tx < kx + KEY_W && ty >= KEY_Y && ty < KEY_Y + KEY_H) {
-        tappedKey = i;
-        break;
-      }
-    }
-    if (tappedKey < 0) return;
-    tapFlash[tappedKey] = 0.28;
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
 
-    if (tappedKey === sequence[inputIdx]) {
-      inputIdx++;
-      game.audio.play('se_tap', 0.12);
-      if (inputIdx >= sequence.length) {
-        phrases++;
-        flashCol = C.correct;
-        flashAnim = 0.3;
-        resultText = '完璧！';
-        resultTimer = 0.55;
-        game.audio.play('se_success', 0.65);
-        for (var p = 0; p < 8; p++) {
-          var pa = Math.random() * Math.PI * 2;
-          particles.push({ x: W / 2, y: KEY_Y + KEY_H / 2, vx: Math.cos(pa) * 200, vy: Math.sin(pa) * 200, life: 0.5, col: KEY_COLORS[sequence[sequence.length - 1]] });
-        }
-        if (phrases >= NEEDED && !done) {
-          done = true;
-          game.audio.play('se_success', 0.9);
-          setTimeout(function() { game.end.success(phrases * 400 + Math.ceil(timeLeft) * 60); }, 700);
-        } else {
-          phase = 'wait';
-          setTimeout(newSequence, 800);
-        }
-      }
-    } else {
-      errors++;
-      flashCol = C.wrong;
-      flashAnim = 0.4;
-      resultText = 'ミス！';
-      resultTimer = 0.55;
-      game.audio.play('se_failure', 0.4);
-      if (errors >= MAX_ERR && !done) {
-        done = true;
-        setTimeout(function() { game.end.failure(); }, 500);
-      } else {
-        phase = 'wait';
-        setTimeout(newSequence, 800);
-      }
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.d : '#0a0112');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function newSequence() {
+    var seqLen = Math.min(3 + Math.floor(phrases / 2), 6); sequence = [];
+    for (var i = 0; i < seqLen; i++) sequence.push(Math.floor(Math.random() * NUM_KEYS));
+    showIdx = 0; showTimer = 0.55; litKey = -1; inputIdx = 0; seqPhase = 'show';
+  }
+
+  function initGame() { phrases = 0; errors = 0; timeLeft = MAX_TIME; done = false; particles = []; flash = 0; flashCol = C.b; resultText = ''; resultTimer = 0; tapFlash = [0, 0, 0, 0, 0, 0]; newSequence(); }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (phrases * 600 + Math.ceil(timeLeft) * 80) : phrases * 200;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawScene() {
+    game.draw.rect(W * 0.04, KEY_Y - 50, W * 0.92, KEY_H + 100, '#0d0215', 0.9);
+    var pl = seqPhase === 'show' ? 'WATCH' : (seqPhase === 'input' ? 'YOUR TURN' : '...');
+    txt(pl, W / 2, KEY_Y - 110, 44, seqPhase === 'input' ? C.b : '#ffffff55');
+    for (var si = 0; si < sequence.length; si++) {
+      var played = seqPhase === 'input' && si < inputIdx, showing = seqPhase === 'show' && si < showIdx;
+      var dr = showing && si === showIdx - 1 ? 22 : 14, dcol = played ? '#334155' : KEY_COLORS[sequence[si]], dx = W / 2 - (sequence.length - 1) * 36 + si * 72;
+      pc(dx, KEY_Y - 160, dr, dcol, played ? 0.4 : 0.8);
     }
+    for (var ki = 0; ki < NUM_KEYS; ki++) {
+      var kx = keyX(ki), isLit = ki === litKey, isTap = tapFlash[ki] > 0, kAlpha = isLit ? 1.0 : (isTap ? 0.85 : 0.3);
+      game.draw.rect(kx, KEY_Y, KEY_W, KEY_H, KEY_COLORS[ki], kAlpha);
+      if (isLit) game.draw.rect(kx - 6, KEY_Y - 6, KEY_W + 12, KEY_H + 12, KEY_COLORS[ki], 0.15);
+      txt(KEY_LABELS[ki], kx + KEY_W / 2, KEY_Y + KEY_H * 0.84, 36, isLit ? C.g : '#ffffff44');
+    }
+  }
+
+  // ── 入力 ──
+  game.onTap(function(tx, ty) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done || seqPhase !== 'input') return;
+    var tk = -1;
+    for (var i = 0; i < NUM_KEYS; i++) { var kx = keyX(i); if (tx >= kx && tx < kx + KEY_W && ty >= KEY_Y && ty < KEY_Y + KEY_H) { tk = i; break; } }
+    if (tk < 0) return;
+    tapFlash[tk] = 0.28;
+    if (tk === sequence[inputIdx]) {
+      inputIdx++; game.audio.play('se_tap', 0.12);
+      if (inputIdx >= sequence.length) {
+        phrases++; flash = 0.3; flashCol = C.b; resultText = 'PERFECT!'; resultTimer = 0.55; game.audio.play('se_success', 0.65);
+        for (var p = 0; p < 8; p++) { var pa = Math.random() * Math.PI * 2; particles.push({ x: W / 2, y: KEY_Y + KEY_H / 2, vx: Math.cos(pa) * 200, vy: Math.sin(pa) * 200, life: 0.5, col: KEY_COLORS[sequence[sequence.length - 1]] }); }
+        if (phrases >= NEEDED) { finish(true); return; } seqPhase = 'wait'; setTimeout(newSequence, 800);
+      }
+    } else { errors++; flash = 0.4; flashCol = C.a; resultText = 'WRONG!'; resultTimer = 0.55; game.audio.play('se_failure', 0.4); if (errors >= MAX_ERR) { finish(false); return; } seqPhase = 'wait'; setTimeout(newSequence, 800); }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!sequence) initGame(); background(); drawScene();
+      txt(GAME_TITLE, W / 2, H * 0.08, 78, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.115, 20, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) txt('► 100円 投入 ◄ TAP TO START', W / 2, H * 0.955, 40, C.a);
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'VIRTUOSO!' : 'OFF KEY', W / 2, H * 0.35, 64, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
+      if (timeLeft <= 0) { finish(false); return; }
+      if (flash > 0) flash -= dt * 3; if (resultTimer > 0) resultTimer -= dt;
+      for (var ti = 0; ti < NUM_KEYS; ti++) if (tapFlash[ti] > 0) tapFlash[ti] -= dt * 4;
+      if (seqPhase === 'show') {
+        showTimer -= dt;
+        if (showTimer <= 0) { if (showIdx < sequence.length) { litKey = sequence[showIdx]; showIdx++; showTimer = SHOW_DUR; } else { litKey = -1; seqPhase = 'input'; } }
+        else if (showTimer < 0.12 && showIdx > 0) litKey = -1;
       }
-    }
-    if (flashAnim > 0) flashAnim -= dt * 3;
-    if (resultTimer > 0) resultTimer -= dt;
-    for (var ti = 0; ti < NUM_KEYS; ti++) {
-      if (tapFlash[ti] > 0) tapFlash[ti] -= dt * 4;
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt * 2.5; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    if (phase === 'show') {
-      showTimer -= dt;
-      if (showTimer <= 0) {
-        if (showIdx < sequence.length) {
-          litKey = sequence[showIdx];
-          showIdx++;
-          showTimer = SHOW_DUR;
-        } else {
-          litKey = -1;
-          phase = 'input';
-        }
-      } else if (showTimer < 0.12 && showIdx > 0) {
-        litKey = -1;
-      }
-    }
+    // ---- 描画 ----
+    background(); drawScene();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
+    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.08);
+    if (resultTimer > 0) txt(resultText, W / 2, snap(H * 0.90), 64, flashCol);
 
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt * 2.5;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
-
-    // Draw
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Piano panel
-    game.draw.rect(W * 0.04, KEY_Y - 50, W * 0.92, KEY_H + 100, C.panel, 0.9);
-    game.draw.rect(W * 0.04, KEY_Y - 50, W * 0.92, 6, '#ffffff18', 0.8);
-
-    // Phase label
-    var phaseLabel = phase === 'show' ? '記憶中...' : (phase === 'input' ? 'タップ！' : '...');
-    var phaseColor = phase === 'input' ? C.correct : '#ffffff55';
-    game.draw.text(phaseLabel, W / 2, KEY_Y - 110, { size: 44, color: phaseColor, bold: true });
-
-    // Sequence progress dots
-    for (var si = 0; si < sequence.length; si++) {
-      var isPlayed = phase === 'input' && si < inputIdx;
-      var isShowing = phase === 'show' && si < showIdx;
-      var dotAlpha = isPlayed ? 0.4 : (isShowing && si === showIdx - 1 ? 1.0 : 0.3);
-      var dotR = isShowing && si === showIdx - 1 ? 22 : 14;
-      var dotCol = isPlayed ? '#334155' : KEY_COLORS[sequence[si]];
-      var dotX = W / 2 - (sequence.length - 1) * 36 + si * 72;
-      game.draw.circle(dotX, KEY_Y - 160, dotR, dotCol, dotAlpha);
-      if (phase === 'input' && si === inputIdx) {
-        game.draw.circle(dotX, KEY_Y - 160, 28, '#fff', 0.25);
-      }
-    }
-
-    // Keys
-    for (var ki = 0; ki < NUM_KEYS; ki++) {
-      var kx2 = keyX(ki);
-      var isLit = ki === litKey;
-      var isTap = tapFlash[ki] > 0;
-      var kCol = isLit ? KEY_HI[ki] : (isTap ? KEY_HI[ki] : KEY_COLORS[ki]);
-      var kAlpha = isLit ? 1.0 : (isTap ? 0.85 : 0.3);
-
-      game.draw.rect(kx2 + 4, KEY_Y + 4, KEY_W, KEY_H, '#000', 0.3);
-      game.draw.rect(kx2, KEY_Y, KEY_W, KEY_H, kCol, kAlpha);
-      game.draw.rect(kx2, KEY_Y, KEY_W, 12, '#ffffff22', isLit ? 0.6 : 0.3);
-
-      if (isLit) {
-        game.draw.rect(kx2 - 6, KEY_Y - 6, KEY_W + 12, KEY_H + 12, kCol, 0.15);
-      }
-
-      game.draw.text(KEY_LABELS[ki], kx2 + KEY_W / 2, KEY_Y + KEY_H * 0.84, { size: 38, color: isLit ? '#fff' : '#ffffff44', bold: true });
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p2 = particles[pp2];
-      game.draw.circle(p2.x, p2.y, 9 * p2.life, p2.col, p2.life);
-    }
-
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, flashCol, flashAnim * 0.08);
-
-    if (resultTimer > 0) {
-      game.draw.text(resultText, W / 2, H * 0.88, { size: 64, color: flashCol, bold: true });
-    }
-
-    for (var ei = 0; ei < MAX_ERR; ei++) {
-      game.draw.circle(W / 2 - (MAX_ERR - 1) * 60 + ei * 120, H * 0.955, 22, ei < errors ? C.wrong : C.ui, 0.9);
-    }
-
-    game.draw.text(phrases + ' / ' + NEEDED, W / 2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft / 90);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 12, ratio > 0.3 ? C.correct : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(phrases + ' / ' + NEEDED, W / 2, 158, 44, C.b);
+    for (var ei = 0; ei < MAX_ERR; ei++) game.draw.rect(snap(W / 2 + (ei - (MAX_ERR - 1) / 2) * 56) - 10, 210, 20, 20, ei < errors ? C.a : '#0a0112');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.04);
-    newSequence();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
