@@ -1,255 +1,167 @@
 // 635-chain-bomb.js
-// チェーンボム — 爆弾が連鎖するよう配置し、最大の爆発を起こせ
-// 操作: タップで爆弾を配置、スワイプで起爆
-// 成功: チェーン10以上の爆発  失敗: 5回失敗 or 60秒
+// チェーンボム — 盤上に爆弾を追加配置し、上スワイプで起爆して大連鎖を狙う
+// 操作: タップで爆弾を置く/取り除く（持ち弾5個） → 上スワイプで起爆。連鎖数を稼ぐ
+// 成功: 連鎖 8以上  失敗: 3回 失敗 or 25秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#0a0500',
-    bomb:    '#1f2937',
-    bombHi:  '#374151',
-    fuse:    '#fbbf24',
-    explode: '#f97316',
-    explodeHi:'#fed7aa',
-    chain:   '#ef4444',
-    text:    '#f1f5f9',
-    ui:      '#1c0a00',
-    safe:    '#22c55e',
-    grid:    '#1a1000'
-  };
+  // ── パレット（ネオンアーケード、爆破解体） ──
+  var C = { bg:'#0a0500', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var COLS = 7, ROWS = 10;
-  var CELL_W = W / COLS;
-  var CELL_H = (H * 0.78) / ROWS;
-  var GRID_Y = H * 0.14;
-  var CHAIN_R = CELL_W * 1.8; // explosion chain radius
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'CHAIN BOMB';
+  var HOW_TO_PLAY = 'TAP TO ADD BOMBS (5 LEFT) · SWIPE UP TO DETONATE · CHAIN THE BLASTS';
+  var MAX_TIME = 25;
+  var NEEDED_CHAIN = 8;      // 修正2: 10 → 8
+  var MAX_ATTEMPTS = 3;      // 修正2: 5 → 3
+  var COLS = 7, ROWS = 10, CELL_W = W / COLS, CELL_H = snap(H * 0.56 / 10), GRID_Y = snap(H * 0.26), CHAIN_R = CELL_W * 1.8;
 
-  var grid = []; // null or {type: 'bomb', exploding: false, explodeTimer: 0}
-  for (var r = 0; r < ROWS; r++) {
-    grid.push([]);
-    for (var c = 0; c < COLS; c++) {
-      grid[r].push(null);
-    }
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  // ── ゲーム変数 ──
+  var grid, playerBombs, bombPhase, explosions, chainCount, maxChain, attempts, timeLeft, done, explodeQueue;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  // Pre-place some fixed bombs on the field
-  function placedBombs() {
-    var count = 0;
-    for (var r = 0; r < ROWS; r++) for (var c = 0; c < COLS; c++) if (grid[r][c]) count++;
-    return count;
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.f : '#1c0a00');
   }
 
-  var playerBombs = 5; // bombs player can place
-  var phase = 'place'; // 'place' or 'exploding'
-  var explosions = []; // {x,y,r,life,chain}
-  var chainCount = 0;
-  var maxChain = 0;
-  var attempts = 0;
-  var NEEDED_CHAIN = 10;
-  var MAX_ATTEMPTS = 5;
-  var done = false;
-  var timeLeft = 60;
-  var elapsed = 0;
-  var explodeQueue = []; // [{r,c,delay}]
-  var explodeTimer = 0;
+  function background() { game.draw.clear(C.bg); }
 
   function resetRound() {
-    // Clear grid
-    for (var r = 0; r < ROWS; r++) for (var c = 0; c < COLS; c++) grid[r][c] = null;
-    explosions = [];
-    explodeQueue = [];
-    chainCount = 0;
-    phase = 'place';
-    playerBombs = 5;
-
-    // Place 20 fixed bombs randomly
+    grid = []; for (var r = 0; r < ROWS; r++) { grid.push([]); for (var c = 0; c < COLS; c++) grid[r].push(null); }
+    explosions = []; explodeQueue = []; chainCount = 0; bombPhase = 'place'; playerBombs = 5;
     var placed = 0;
-    while (placed < 20) {
-      var r2 = Math.floor(Math.random() * ROWS);
-      var c2 = Math.floor(Math.random() * COLS);
-      if (!grid[r2][c2]) {
-        grid[r2][c2] = { type: 'bomb', exploding: false, explodeTimer: 0 };
-        placed++;
-      }
-    }
+    while (placed < 20) { var r2 = Math.floor(Math.random() * ROWS), c2 = Math.floor(Math.random() * COLS); if (!grid[r2][c2]) { grid[r2][c2] = { exploding: false }; placed++; } }
   }
 
-  function triggerExplosion(row, col, chainDepth) {
+  function initGame() { attempts = 0; maxChain = 0; timeLeft = MAX_TIME; done = false; resetRound(); }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (chainCount * 300 + Math.ceil(timeLeft) * 100) : maxChain * 100;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function triggerExplosion(row, col, depth) {
     if (row < 0 || row >= ROWS || col < 0 || col >= COLS) return;
     if (!grid[row][col] || grid[row][col].exploding) return;
-    grid[row][col].exploding = true;
-    chainCount++;
-    if (chainCount > maxChain) maxChain = chainCount;
-
-    var cx = col * CELL_W + CELL_W / 2;
-    var cy = GRID_Y + row * CELL_H + CELL_H / 2;
-    explosions.push({ x: cx, y: cy, r: 0, maxR: CHAIN_R, life: 1, chainDepth: chainDepth });
-
-    // Queue adjacent bombs for chain explosion with delay
+    grid[row][col].exploding = true; chainCount++; if (chainCount > maxChain) maxChain = chainCount;
+    var cx = col * CELL_W + CELL_W / 2, cy = GRID_Y + row * CELL_H + CELL_H / 2;
+    explosions.push({ x: cx, y: cy, r: 0, maxR: CHAIN_R, life: 1 });
     var delay = 0.12;
-    [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]].forEach(function(d) {
+    [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(function(d) {
       var nr = row + d[0], nc = col + d[1];
       if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS && grid[nr][nc] && !grid[nr][nc].exploding) {
-        var nCx = nc * CELL_W + CELL_W / 2;
-        var nCy = GRID_Y + nr * CELL_H + CELL_H / 2;
-        var dx = nCx - cx, dy2 = nCy - cy;
-        var dist = Math.sqrt(dx * dx + dy2 * dy2);
-        if (dist <= CHAIN_R) {
-          explodeQueue.push({ r: nr, c: nc, delay: delay, chainDepth: chainDepth + 1 });
-          delay += 0.06;
-        }
+        var nCx = nc * CELL_W + CELL_W / 2, nCy = GRID_Y + nr * CELL_H + CELL_H / 2, dx = nCx - cx, dy = nCy - cy;
+        if (Math.sqrt(dx * dx + dy * dy) <= CHAIN_R) { explodeQueue.push({ r: nr, c: nc, delay: delay }); delay += 0.06; }
       }
     });
   }
 
-  game.onTap(function(tx, ty) {
-    if (done) return;
-    if (phase === 'place') {
-      if (ty < GRID_Y || ty > GRID_Y + ROWS * CELL_H) return;
-      var col = Math.floor(tx / CELL_W);
-      var row = Math.floor((ty - GRID_Y) / CELL_H);
-      if (row < 0 || row >= ROWS || col < 0 || col >= COLS) return;
-      if (grid[row][col]) {
-        // Remove bomb
-        grid[row][col] = null;
-        playerBombs++;
-      } else if (playerBombs > 0) {
-        // Place bomb
-        grid[row][col] = { type: 'bomb', exploding: false, explodeTimer: 0 };
-        playerBombs--;
-        game.audio.play('se_tap', 0.15);
-      }
+  function drawScene() {
+    for (var r2 = 0; r2 < ROWS; r2++) for (var c2 = 0; c2 < COLS; c2++) {
+      var gx = c2 * CELL_W, gy = GRID_Y + r2 * CELL_H;
+      game.draw.rect(gx + 2, gy + 2, CELL_W - 4, CELL_H - 4, '#1a1000', 0.4);
+      var cell = grid[r2][c2];
+      if (cell && !cell.exploding) { var bx = gx + CELL_W / 2, by = gy + CELL_H / 2; pc(bx, by, CELL_W * 0.3, '#374151', 0.95); game.draw.rect(snap(bx) - 2, snap(by - CELL_H * 0.36), 4, 12, C.c, 0.9); }
     }
+    for (var ei = 0; ei < explosions.length; ei++) { var ex = explosions[ei]; pc(ex.x, ex.y, ex.r, C.f, ex.life * 0.5); pc(ex.x, ex.y, ex.r * 0.5, C.c, ex.life * 0.7); }
+  }
+
+  // ── 入力 ──
+  game.onTap(function(tx, ty) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done || bombPhase !== 'place') return;
+    if (ty < GRID_Y || ty > GRID_Y + ROWS * CELL_H) return;
+    var col = Math.floor(tx / CELL_W), row = Math.floor((ty - GRID_Y) / CELL_H);
+    if (row < 0 || row >= ROWS || col < 0 || col >= COLS) return;
+    if (grid[row][col]) { grid[row][col] = null; playerBombs++; }
+    else if (playerBombs > 0) { grid[row][col] = { exploding: false }; playerBombs--; game.audio.play('se_tap', 0.15); }
   });
 
   game.onSwipe(function(dir) {
-    if (done) return;
-    if (phase === 'place' && dir === 'up') {
-      // Detonate!
-      phase = 'exploding';
-      chainCount = 0;
-      // Find first player-placed bomb or just pick first bomb
-      var fired = false;
-      outer: for (var r = ROWS - 1; r >= 0; r--) {
-        for (var c = 0; c < COLS; c++) {
-          if (grid[r][c] && !grid[r][c].exploding) {
-            triggerExplosion(r, c, 0);
-            fired = true;
-            break outer;
-          }
-        }
-      }
-      if (!fired) {
-        phase = 'place';
-      }
-      game.audio.play('se_success', 0.3);
-    }
+    if (state !== S.PLAYING || done || bombPhase !== 'place' || dir !== 'up') return;
+    bombPhase = 'exploding'; chainCount = 0;
+    var fired = false;
+    outer: for (var r = ROWS - 1; r >= 0; r--) for (var c = 0; c < COLS; c++) if (grid[r][c] && !grid[r][c].exploding) { triggerExplosion(r, c, 0); fired = true; break outer; }
+    if (!fired) bombPhase = 'place'; else game.audio.play('se_success', 0.3);
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!grid) initGame(); background(); drawScene();
+      txt(GAME_TITLE, W / 2, H * 0.12, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.165, 20, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.90, 56, C.a);
+        txt('TAP TO START', W / 2, H * 0.94, 42, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'MEGA CHAIN!' : 'FIZZLED OUT', W / 2, H * 0.35, 60, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
-      }
-    }
-
-    // Process explosion queue
-    if (phase === 'exploding') {
-      explodeTimer += dt;
-      for (var qi = explodeQueue.length - 1; qi >= 0; qi--) {
-        var q = explodeQueue[qi];
-        q.delay -= dt;
-        if (q.delay <= 0) {
-          triggerExplosion(q.r, q.c, q.chainDepth);
-          explodeQueue.splice(qi, 1);
-        }
-      }
-
-      // Update explosions
-      for (var ei = explosions.length - 1; ei >= 0; ei--) {
-        var ex = explosions[ei];
-        ex.r += ex.maxR * dt * 4;
-        ex.life -= dt * 2;
-        if (ex.life <= 0) explosions.splice(ei, 1);
-      }
-
-      // Check if all done
-      if (explodeQueue.length === 0 && explosions.length === 0) {
-        // Result
-        if (chainCount >= NEEDED_CHAIN) {
-          done = true;
-          game.audio.play('se_success', 0.9);
-          setTimeout(function() { game.end.success(chainCount * 150 + Math.ceil(timeLeft) * 100); }, 700);
-        } else {
-          attempts++;
-          game.audio.play('se_failure', 0.3);
-          if (attempts >= MAX_ATTEMPTS) {
-            done = true;
-            setTimeout(function() { game.end.failure(); }, 500);
-          } else {
-            setTimeout(resetRound, 800);
-          }
+      if (timeLeft <= 0) { finish(false); return; }
+      if (bombPhase === 'exploding') {
+        for (var qi = explodeQueue.length - 1; qi >= 0; qi--) { var q = explodeQueue[qi]; q.delay -= dt; if (q.delay <= 0) { triggerExplosion(q.r, q.c, 0); explodeQueue.splice(qi, 1); } }
+        for (var ei = explosions.length - 1; ei >= 0; ei--) { var ex = explosions[ei]; ex.r += ex.maxR * dt * 4; ex.life -= dt * 2; if (ex.life <= 0) explosions.splice(ei, 1); }
+        if (explodeQueue.length === 0 && explosions.length === 0) {
+          if (chainCount >= NEEDED_CHAIN) { finish(true); return; }
+          attempts++; game.audio.play('se_failure', 0.3);
+          if (attempts >= MAX_ATTEMPTS) { finish(false); return; }
+          setTimeout(function() { if (!done) resetRound(); }, 700);
         }
       }
     }
 
-    // Draw
-    game.draw.rect(0, 0, W, H, C.bg);
+    // ---- 描画 ----
+    background(); drawScene();
 
-    // Grid
-    for (var r2 = 0; r2 < ROWS; r2++) {
-      for (var c2 = 0; c2 < COLS; c2++) {
-        var gx = c2 * CELL_W, gy = GRID_Y + r2 * CELL_H;
-        game.draw.rect(gx + 2, gy + 2, CELL_W - 4, CELL_H - 4, C.grid, 0.4);
-        var cell = grid[r2][c2];
-        if (cell && !cell.exploding) {
-          var bx = gx + CELL_W / 2, by = gy + CELL_H / 2;
-          game.draw.circle(bx + 3, by + 3, CELL_W * 0.3, '#000', 0.3);
-          game.draw.circle(bx, by, CELL_W * 0.3, C.bomb, 0.95);
-          game.draw.circle(bx - 4, by - 4, CELL_W * 0.1, C.bombHi, 0.5);
-          // Fuse
-          game.draw.line(bx, by - CELL_H * 0.3, bx + 8, by - CELL_H * 0.42, C.fuse, 3);
-        }
-      }
-    }
-
-    // Explosions
-    for (var ei2 = 0; ei2 < explosions.length; ei2++) {
-      var ex2 = explosions[ei2];
-      game.draw.circle(ex2.x, ex2.y, ex2.r, C.explode, ex2.life * 0.5);
-      game.draw.circle(ex2.x, ex2.y, ex2.r * 0.5, C.explodeHi, ex2.life * 0.7);
-    }
-
-    // UI
-    if (phase === 'place') {
-      game.draw.text('爆弾: ' + playerBombs + '  タップで配置', W / 2, H * 0.88, { size: 36, color: C.fuse });
-      game.draw.text('↑スワイプで起爆', W / 2, H * 0.93, { size: 36, color: C.explode, bold: true });
-    } else {
-      game.draw.text('チェーン: ' + chainCount, W / 2, H * 0.88, { size: 52, color: C.chain, bold: true });
-      game.draw.text('目標: ' + NEEDED_CHAIN + '以上', W / 2, H * 0.93, { size: 36, color: C.explodeHi });
-    }
-
-    // Attempts dots
-    for (var ai = 0; ai < MAX_ATTEMPTS; ai++) {
-      game.draw.circle(W / 2 - (MAX_ATTEMPTS - 1) * 44 + ai * 88, H * 0.965, 18, ai < attempts ? C.chain : C.ui, 0.9);
-    }
-
-    var ratio = Math.max(0, timeLeft / 60);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 12, ratio > 0.3 ? C.fuse : C.chain);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    if (bombPhase === 'place') { txt('BOMBS ' + playerBombs, W / 2, 168, 44, C.c); txt('SWIPE UP TO DETONATE', W / 2, snap(H * 0.86), 34, C.f); }
+    else { txt('CHAIN ' + chainCount + ' / ' + NEEDED_CHAIN, W / 2, 168, 48, C.f); }
+    for (var ai = 0; ai < MAX_ATTEMPTS; ai++) game.draw.rect(snap(W / 2 + (ai - (MAX_ATTEMPTS - 1) / 2) * 56) - 10, 224, 20, 20, ai < attempts ? C.a : '#1c0a00');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.05);
-    resetRound();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
