@@ -1,230 +1,146 @@
 // 704-laser-aim.js
-// レーザー狙撃 — 回転する照準を合わせてターゲットを撃ち抜け
-// 操作: タップで発射（照準がターゲット上にある瞬間に）
-// 成功: 20体撃破  失敗: 10発外す or 60秒
+// レーザーエイム — 中心を周回する照準がターゲットに重なった瞬間に発射する
+// 操作: タップでレーザー発射。照準の向きにビームが飛び、ターゲットを撃つ
+// 成功: 8体 撃破  失敗: 3発 外す or 22秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#020810',
-    reticle: '#ef4444',
-    retHi:   '#fca5a5',
-    target:  '#22c55e',
-    tarHi:   '#86efac',
-    laser:   '#ef4444',
-    correct: '#22c55e',
-    wrong:   '#ef4444',
-    text:    '#f1f5f9',
-    ui:      '#04060f'
-  };
+  // ── パレット（ネオンアーケード、射撃場） ──
+  var C = { bg:'#020810', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var CX = W / 2;
-  var CY = H * 0.45;
-  var ORBIT_R = 280; // reticle orbits this radius around center
-  var RETICLE_R = 60;
-  var TARGET_R = 52;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'LASER AIM';
+  var HOW_TO_PLAY = 'THE RETICLE ORBITS THE CORE · TAP TO FIRE WHEN IT LINES UP WITH THE TARGET';
+  var MAX_TIME = 22;
+  var NEEDED   = 8;          // 修正2: 20 → 8
+  var MAX_MISS = 3;          // 修正2: 10 → 3
+  var CX = W / 2, CY = snap(H * 0.45), ORBIT_R = 280, RETICLE_R = 60, TARGET_R = 52;
 
-  var reticleAngle = 0;
-  var reticleSpeed = 1.8; // radians per second
-  var reticleX = CX;
-  var reticleY = CY;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var target = { x: CX, y: CY, angle: 0, orbitR: 0 };
-  var laserBeam = null; // { x1,y1,x2,y2, life }
+  // ── ゲーム変数 ──
+  var reticleAngle, reticleSpeed, reticleX, reticleY, target, laserBeam, hits, misses, timeLeft, done, elapsed, particles, flash, flashCol, resultText, resultTimer, targetFlash;
 
-  var hits = 0;
-  var NEEDED = 20;
-  var misses = 0;
-  var MAX_MISS = 10;
-  var done = false;
-  var timeLeft = 60;
-  var elapsed = 0;
-  var particles = [];
-  var flashAnim = 0, flashCol = C.correct;
-  var resultTimer = 0, resultText = '';
-  var targetFlash = 0;
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
 
-  function placeTarget() {
-    // Place target at random position within inner circle
-    var angle = Math.random() * Math.PI * 2;
-    var r = 80 + Math.random() * 180;
-    target.x = CX + Math.cos(angle) * r;
-    target.y = CY + Math.sin(angle) * r;
-    targetFlash = 0;
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function ring(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) { var d = qx * qx + qy * qy; if (d <= r * r && d >= (r - 12) * (r - 12)) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); } }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  game.onTap(function(tx, ty) {
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.a : '#04060f');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function placeTarget() { var angle = Math.random() * Math.PI * 2, r = 80 + Math.random() * 180; target.x = CX + Math.cos(angle) * r; target.y = CY + Math.sin(angle) * r; targetFlash = 0; }
+
+  function initGame() { reticleAngle = 0; reticleSpeed = 1.8; reticleX = CX; reticleY = CY; target = { x: CX, y: CY }; laserBeam = null; hits = 0; misses = 0; timeLeft = MAX_TIME; done = false; elapsed = 0; particles = []; flash = 0; flashCol = C.b; resultText = ''; resultTimer = 0; targetFlash = 0; placeTarget(); }
+
+  function finish(success) {
     if (done) return;
-    // Shoot laser from center toward reticle position
-    var dx = reticleX - CX;
-    var dy = reticleY - CY;
-    var dist = Math.sqrt(dx * dx + dy * dy);
-    var dirX = dist > 0 ? dx / dist : 1;
-    var dirY = dist > 0 ? dy / dist : 0;
+    done = true; resultSuccess = success;
+    finalScore = success ? (hits * 500 + Math.ceil(timeLeft) * 100) : hits * 150;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
 
-    // Extend laser to edge of screen
-    var laserEndX = CX + dirX * 1200;
-    var laserEndY = CY + dirY * 1200;
+  function drawScene() {
+    ring(CX, CY, ORBIT_R, '#ffffff10', 1);
+    game.draw.line(0, CY, W, CY, '#ffffff05', 2); game.draw.line(CX, 0, CX, H, '#ffffff05', 2);
+    // Target
+    pc(target.x, target.y, TARGET_R, C.b, 0.85 + targetFlash * 0.15);
+    game.draw.line(target.x - TARGET_R, target.y, target.x + TARGET_R, target.y, C.g, 3); game.draw.line(target.x, target.y - TARGET_R, target.x, target.y + TARGET_R, C.g, 3);
+    if (targetFlash > 0) ring(target.x, target.y, TARGET_R + 20, C.b, targetFlash * 0.35);
+    if (laserBeam) { game.draw.line(laserBeam.x1, laserBeam.y1, laserBeam.x2, laserBeam.y2, C.a, 4); game.draw.line(laserBeam.x1, laserBeam.y1, laserBeam.x2, laserBeam.y2, C.c, 2); }
+    pc(CX, CY, 24, '#334155', 0.9); pc(CX, CY, 12, '#94a3b8', 0.9);
+    game.draw.line(CX, CY, reticleX, reticleY, '#ff207922', 2);
+    ring(reticleX, reticleY, RETICLE_R, C.a, 0.6);
+    game.draw.line(reticleX - RETICLE_R, reticleY, reticleX + RETICLE_R, reticleY, C.a, 4); game.draw.line(reticleX, reticleY - RETICLE_R, reticleX, reticleY + RETICLE_R, C.a, 4);
+    pc(reticleX, reticleY, 10, C.c, 0.9);
+  }
 
-    laserBeam = { x1: CX, y1: CY, x2: laserEndX, y2: laserEndY, life: 0.25 };
-    game.audio.play('se_tap', 0.15);
-
-    // Check hit: does laser pass near target?
-    // Line-point distance
-    var tdx = target.x - CX;
-    var tdy = target.y - CY;
-    var t = tdx * dirX + tdy * dirY;
-    var closestX = CX + dirX * t;
-    var closestY = CY + dirY * t;
+  // ── 入力 ──
+  game.onTap(function() {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    var dx = reticleX - CX, dy = reticleY - CY, dist = Math.sqrt(dx * dx + dy * dy), dirX = dist > 0 ? dx / dist : 1, dirY = dist > 0 ? dy / dist : 0;
+    laserBeam = { x1: CX, y1: CY, x2: CX + dirX * 1200, y2: CY + dirY * 1200, life: 0.25 }; game.audio.play('se_tap', 0.15);
+    var tdx = target.x - CX, tdy = target.y - CY, t = tdx * dirX + tdy * dirY, closestX = CX + dirX * t, closestY = CY + dirY * t;
     var perpDist = Math.sqrt((target.x - closestX) * (target.x - closestX) + (target.y - closestY) * (target.y - closestY));
-
     if (perpDist < TARGET_R + 15 && t > 0) {
-      // Hit!
-      hits++;
-      targetFlash = 0.8;
-      flashCol = C.correct;
-      flashAnim = 0.3;
-      resultText = '命中！';
-      resultTimer = 0.5;
-      game.audio.play('se_success', 0.5);
-      for (var p = 0; p < 7; p++) {
-        var pa = Math.random() * Math.PI * 2;
-        particles.push({ x: target.x, y: target.y, vx: Math.cos(pa) * 220, vy: Math.sin(pa) * 220, life: 0.5, col: C.tarHi });
-      }
-      placeTarget();
-      // Speed up slightly
-      reticleSpeed = Math.min(3.8, 1.8 + hits * 0.08);
-      if (hits >= NEEDED && !done) {
-        done = true;
-        game.audio.play('se_success', 0.9);
-        setTimeout(function() { game.end.success(hits * 400 + Math.ceil(timeLeft) * 100); }, 700);
-      }
+      hits++; targetFlash = 0.8; flash = 0.3; flashCol = C.b; resultText = 'HIT!'; resultTimer = 0.5; game.audio.play('se_success', 0.5);
+      for (var p = 0; p < 7; p++) { var pa = Math.random() * Math.PI * 2; particles.push({ x: target.x, y: target.y, vx: Math.cos(pa) * 220, vy: Math.sin(pa) * 220, life: 0.5, col: C.b }); }
+      placeTarget(); reticleSpeed = Math.min(3.8, 1.8 + hits * 0.12);
+      if (hits >= NEEDED) { finish(true); return; }
     } else {
-      // Miss
-      misses++;
-      flashCol = C.wrong;
-      flashAnim = 0.3;
-      resultText = 'ミス！';
-      resultTimer = 0.5;
-      game.audio.play('se_failure', 0.3);
-      if (misses >= MAX_MISS && !done) {
-        done = true;
-        setTimeout(function() { game.end.failure(); }, 500);
-      }
+      misses++; flash = 0.3; flashCol = C.a; resultText = 'MISS!'; resultTimer = 0.5; game.audio.play('se_failure', 0.3);
+      if (misses >= MAX_MISS) { finish(false); return; }
     }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!target) initGame(); background(); drawScene();
+      txt(GAME_TITLE, W / 2, H * 0.08, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.115, 20, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) txt('► 100円 投入 ◄ TAP TO START', W / 2, H * 0.92, 40, C.a);
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'SHARPSHOOTER!' : 'OUT OF AMMO', W / 2, H * 0.35, 56, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
-      timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
-      }
-    }
-    if (flashAnim > 0) flashAnim -= dt * 3;
-    if (resultTimer > 0) resultTimer -= dt;
-    if (targetFlash > 0) targetFlash -= dt * 3;
-
-    // Reticle orbits center
-    reticleAngle += reticleSpeed * dt;
-    reticleX = CX + Math.cos(reticleAngle) * ORBIT_R;
-    reticleY = CY + Math.sin(reticleAngle) * ORBIT_R;
-
-    if (laserBeam) {
-      laserBeam.life -= dt * 4;
-      if (laserBeam.life <= 0) laserBeam = null;
+      timeLeft -= dt; elapsed += dt;
+      if (timeLeft <= 0) { finish(false); return; }
+      if (flash > 0) flash -= dt * 3; if (resultTimer > 0) resultTimer -= dt; if (targetFlash > 0) targetFlash -= dt * 3;
+      reticleAngle += reticleSpeed * dt; reticleX = CX + Math.cos(reticleAngle) * ORBIT_R; reticleY = CY + Math.sin(reticleAngle) * ORBIT_R;
+      if (laserBeam) { laserBeam.life -= dt * 4; if (laserBeam.life <= 0) laserBeam = null; }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt * 2.5; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt * 2.5;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
+    // ---- 描画 ----
+    background(); drawScene();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 4, snap(particles[pp2].y) - 4, 8, 8, particles[pp2].col, particles[pp2].life * 1.6);
+    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.08);
+    if (resultTimer > 0) txt(resultText, W / 2, snap(H * 0.87), 64, flashCol);
 
-    // Draw
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Orbit ring (faint)
-    for (var seg = 0; seg < 36; seg++) {
-      var a1 = seg * Math.PI * 2 / 36;
-      var ox = CX + Math.cos(a1) * ORBIT_R;
-      var oy = CY + Math.sin(a1) * ORBIT_R;
-      game.draw.circle(ox, oy, 4, '#ffffff08', 1);
-    }
-
-    // Grid lines (faint crosshair background)
-    game.draw.line(0, CY, W, CY, '#ffffff05', 2);
-    game.draw.line(CX, 0, CX, H, '#ffffff05', 2);
-
-    // Target
-    var tAlpha = 0.85 + targetFlash * 0.15;
-    game.draw.circle(target.x + 4, target.y + 4, TARGET_R, '#000', 0.3);
-    game.draw.circle(target.x, target.y, TARGET_R, C.target, tAlpha);
-    game.draw.circle(target.x, target.y, TARGET_R * 0.55, C.tarHi, tAlpha * 0.3);
-    // Crosshair on target
-    game.draw.line(target.x - TARGET_R, target.y, target.x + TARGET_R, target.y, C.tarHi, 3);
-    game.draw.line(target.x, target.y - TARGET_R, target.x, target.y + TARGET_R, C.tarHi, 3);
-    if (targetFlash > 0) {
-      game.draw.circle(target.x, target.y, TARGET_R + 20, C.correct, targetFlash * 0.35);
-    }
-
-    // Laser beam
-    if (laserBeam) {
-      game.draw.line(laserBeam.x1, laserBeam.y1, laserBeam.x2, laserBeam.y2, C.laser, 4);
-      game.draw.line(laserBeam.x1, laserBeam.y1, laserBeam.x2, laserBeam.y2, '#fca5a5', 2);
-    }
-
-    // Gun (center circle)
-    game.draw.circle(CX + 3, CY + 3, 24, '#000', 0.4);
-    game.draw.circle(CX, CY, 24, '#334155', 0.9);
-    game.draw.circle(CX, CY, 12, '#94a3b8', 0.9);
-
-    // Line from gun to reticle
-    game.draw.line(CX, CY, reticleX, reticleY, '#ef444422', 2);
-
-    // Reticle
-    game.draw.circle(reticleX + 3, reticleY + 3, RETICLE_R, '#000', 0.3);
-    game.draw.circle(reticleX, reticleY, RETICLE_R, C.reticle, 0.15);
-    game.draw.circle(reticleX, reticleY, RETICLE_R, C.reticle, 0);
-    // Reticle crosshair
-    game.draw.line(reticleX - RETICLE_R, reticleY, reticleX + RETICLE_R, reticleY, C.reticle, 4);
-    game.draw.line(reticleX, reticleY - RETICLE_R, reticleX, reticleY + RETICLE_R, C.reticle, 4);
-    game.draw.circle(reticleX, reticleY, 10, C.retHi, 0.9);
-    game.draw.circle(reticleX, reticleY, RETICLE_R, C.reticle, 0.5);
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p2 = particles[pp2];
-      game.draw.circle(p2.x, p2.y, 9 * p2.life, p2.col, p2.life);
-    }
-
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, flashCol, flashAnim * 0.08);
-
-    if (resultTimer > 0) {
-      game.draw.text(resultText, W / 2, H * 0.87, { size: 64, color: flashCol, bold: true });
-    }
-
-    // Miss indicators
-    for (var mi = 0; mi < MAX_MISS; mi += 2) {
-      game.draw.circle(W / 2 - (MAX_MISS / 2 - 1) * 52 + (mi / 2) * 104, H * 0.955, 20, mi < misses ? C.wrong : C.ui, 0.9);
-    }
-
-    game.draw.text(hits + ' / ' + NEEDED, W / 2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft / 60);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 12, ratio > 0.3 ? C.correct : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(hits + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var mi = 0; mi < MAX_MISS; mi++) game.draw.rect(snap(W / 2 + (mi - (MAX_MISS - 1) / 2) * 56) - 10, 224, 20, 20, mi < misses ? C.a : '#04060f');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.04);
-    placeTarget();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
