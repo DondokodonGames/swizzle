@@ -1,193 +1,141 @@
 // 643-spark-catcher.js
-// スパークキャッチャー — 飛び散る火花を導線でキャッチしろ
-// 操作: タップで導線の位置を変える
-// 成功: 40個キャッチ  失敗: 20個逃す or 60秒
+// スパークキャッチャー — 発生源から飛び散る火花を、下段の導線バーで受け止める
+// 操作: タップした位置へ導線バーが移動。落ちてくる火花をバーで受ける
+// 成功: 12個 キャッチ  失敗: 5個 逃走 or 18秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#020105',
-    spark:   '#fbbf24',
-    sparkHi: '#fef3c7',
-    wire:    '#3b82f6',
-    wireHi:  '#93c5fd',
-    source:  '#f97316',
-    sourceHi:'#fed7aa',
-    caught:  '#22c55e',
-    miss:    '#ef4444',
-    text:    '#f1f5f9',
-    ui:      '#08050f'
-  };
+  // ── パレット（ネオンアーケード、放電室） ──
+  var C = { bg:'#020105', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var SOURCE_X = W / 2;
-  var SOURCE_Y = H * 0.42;
-  var WIRE_Y = H * 0.78;
-  var WIRE_W = 400;
-  var wireX = W / 2;
-  var targetWireX = W / 2;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'SPARK CATCHER';
+  var HOW_TO_PLAY = 'TAP TO MOVE THE WIRE BAR · CATCH THE FLYING SPARKS BEFORE THEY DROP';
+  var MAX_TIME = 18;
+  var NEEDED   = 12;         // 修正2: 40 → 12
+  var MAX_MISS = 5;          // 修正2: 20 → 5
+  var SOURCE_X = W / 2, SOURCE_Y = snap(H * 0.40), WIRE_Y = snap(H * 0.78), WIRE_W = 420;
 
-  var sparks = [];
-  var caught = 0;
-  var NEEDED = 40;
-  var missed = 0;
-  var MAX_MISS = 20;
-  var done = false;
-  var timeLeft = 60;
-  var elapsed = 0;
-  var spawnTimer = 0;
-  var particles = [];
-  var flashAnim = 0, flashCol = C.caught;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  function spawnSpark() {
-    var angle = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI * 1.2;
-    var speed = 400 + Math.random() * 200 + elapsed * 4;
-    sparks.push({
-      x: SOURCE_X,
-      y: SOURCE_Y,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed,
-      r: 12 + Math.random() * 8,
-      life: 1,
-      trail: []
-    });
+  // ── ゲーム変数 ──
+  var wireX, targetWireX, sparks, caught, missed, timeLeft, done, spawnTimer, particles, flash, flashCol;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  game.onTap(function(tx, ty) {
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.e : '#08050f');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function spawnSpark() { var angle = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI * 1.2, speed = 380 + Math.random() * 180 + (MAX_TIME - timeLeft) * 6; sparks.push({ x: SOURCE_X, y: SOURCE_Y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, r: 14 + Math.random() * 8, life: 1, trail: [] }); }
+
+  function initGame() { wireX = W / 2; targetWireX = W / 2; sparks = []; caught = 0; missed = 0; timeLeft = MAX_TIME; done = false; spawnTimer = 0; particles = []; flash = 0; flashCol = C.b; for (var i = 0; i < 3; i++) spawnSpark(); }
+
+  function finish(success) {
     if (done) return;
-    targetWireX = Math.max(WIRE_W / 2 + 20, Math.min(W - WIRE_W / 2 - 20, tx));
-    game.audio.play('se_tap', 0.08);
+    done = true; resultSuccess = success;
+    finalScore = success ? (caught * 400 + Math.ceil(timeLeft) * 100) : caught * 120;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawScene() {
+    pc(SOURCE_X, SOURCE_Y, 200, C.f, 0.06 + Math.sin(game.time.elapsed * 4) * 0.03);
+    pc(SOURCE_X, SOURCE_Y, 48, C.f, 0.9); pc(SOURCE_X, SOURCE_Y, 34, C.c, 0.7); pc(SOURCE_X - 14, SOURCE_Y - 14, 16, C.g, 0.4);
+    for (var si = 0; si < sparks.length; si++) {
+      var s = sparks[si];
+      for (var ti = 0; ti < s.trail.length; ti++) { var t = s.trail[ti]; pc(t.x, t.y, s.r * (ti / s.trail.length) * 0.6, C.c, (ti / s.trail.length) * 0.4 * s.life); }
+      pc(s.x, s.y, s.r, C.c, s.life * 0.9); pc(s.x, s.y, s.r * 0.5, C.g, s.life * 0.7);
+    }
+    var wx = wireX - WIRE_W / 2;
+    game.draw.rect(snap(wx) - 8, WIRE_Y - 8, WIRE_W + 16, 32, C.e, 0.08);
+    game.draw.rect(snap(wx), WIRE_Y, WIRE_W, 14, C.d, 0.9); game.draw.rect(snap(wx), WIRE_Y, WIRE_W, 6, C.e, 0.5);
+    pc(wx, WIRE_Y + 7, 16, C.e, 0.7); pc(wx + WIRE_W, WIRE_Y + 7, 16, C.e, 0.7);
+  }
+
+  // ── 入力 ──
+  game.onTap(function(tx) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    targetWireX = Math.max(WIRE_W / 2 + 20, Math.min(W - WIRE_W / 2 - 20, tx)); game.audio.play('se_tap', 0.08);
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!sparks) initGame(); background(); drawScene();
+      txt(GAME_TITLE, W / 2, H * 0.10, 80, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.145, 20, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) txt('► 100円 投入 ◄ TAP TO START', W / 2, H * 0.955, 40, C.a);
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'FULLY CHARGED!' : 'SHORT CIRCUIT', W / 2, H * 0.35, 54, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
-      }
-    }
-    if (flashAnim > 0) flashAnim -= dt * 4;
-
-    wireX += (targetWireX - wireX) * Math.min(1, dt * 11);
-
-    spawnTimer += dt;
-    var rate = Math.max(0.06, 0.18 - elapsed * 0.001);
-    if (spawnTimer >= rate) {
-      spawnTimer = 0;
-      spawnSpark();
-    }
-
-    // Update sparks
-    for (var si = sparks.length - 1; si >= 0; si--) {
-      var s = sparks[si];
-      s.trail.push({ x: s.x, y: s.y });
-      if (s.trail.length > 6) s.trail.shift();
-
-      s.vy += 700 * dt; // gravity
-      s.x += s.vx * dt;
-      s.y += s.vy * dt;
-      s.life -= dt * 1.2;
-
-      // Check wire catch
-      if (s.y + s.r >= WIRE_Y - 10 && s.y - s.r <= WIRE_Y + 20) {
-        if (s.x >= wireX - WIRE_W / 2 && s.x <= wireX + WIRE_W / 2) {
-          caught++;
-          flashCol = C.caught;
-          flashAnim = 0.1;
-          game.audio.play('se_success', 0.35);
-          for (var p = 0; p < 4; p++) {
-            var pa = Math.random() * Math.PI;
-            particles.push({ x: s.x, y: WIRE_Y, vx: Math.cos(pa) * 120, vy: -Math.abs(Math.sin(pa)) * 150, life: 0.35, col: C.sparkHi });
-          }
-          sparks.splice(si, 1);
-          if (caught >= NEEDED && !done) {
-            done = true;
-            game.audio.play('se_success', 0.9);
-            setTimeout(function() { game.end.success(caught * 150 + Math.ceil(timeLeft) * 100); }, 700);
-          }
-          continue;
+      if (timeLeft <= 0) { finish(false); return; }
+      if (flash > 0) flash -= dt * 4;
+      wireX += (targetWireX - wireX) * Math.min(1, dt * 11);
+      spawnTimer += dt; var rate = Math.max(0.1, 0.24 - (MAX_TIME - timeLeft) * 0.005);
+      if (spawnTimer >= rate) { spawnTimer = 0; spawnSpark(); }
+      for (var si = sparks.length - 1; si >= 0; si--) {
+        var s = sparks[si]; s.trail.push({ x: s.x, y: s.y }); if (s.trail.length > 6) s.trail.shift();
+        s.vy += 700 * dt; s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt * 1.2;
+        if (s.y + s.r >= WIRE_Y - 10 && s.y - s.r <= WIRE_Y + 20 && s.x >= wireX - WIRE_W / 2 && s.x <= wireX + WIRE_W / 2) {
+          caught++; flash = 0.1; flashCol = C.b; game.audio.play('se_success', 0.35);
+          for (var p = 0; p < 4; p++) { var pa = Math.random() * Math.PI; particles.push({ x: s.x, y: WIRE_Y, vx: Math.cos(pa) * 120, vy: -Math.abs(Math.sin(pa)) * 150, life: 0.35, col: C.c }); }
+          sparks.splice(si, 1); if (caught >= NEEDED) { finish(true); return; } continue;
         }
+        if (s.y > H + 60 || s.x < -100 || s.x > W + 100 || s.life <= 0) { missed++; sparks.splice(si, 1); flash = 0.15; flashCol = C.a; if (missed >= MAX_MISS) { finish(false); return; } }
       }
-
-      if (s.y > H + 60 || s.x < -100 || s.x > W + 100 || s.life <= 0) {
-        if (!done) missed++;
-        sparks.splice(si, 1);
-        if (missed >= MAX_MISS && !done) {
-          done = true;
-          flashCol = C.miss;
-          flashAnim = 0.4;
-          setTimeout(function() { game.end.failure(); }, 500);
-        }
-      }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p2 = particles[pp]; p2.x += p2.vx * dt; p2.y += p2.vy * dt; p2.life -= dt * 3; if (p2.life <= 0) particles.splice(pp, 1); }
     }
 
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt * 3;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
+    // ---- 描画 ----
+    background(); drawScene();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 4, snap(particles[pp2].y) - 4, 8, 8, particles[pp2].col, particles[pp2].life * 1.6);
+    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.08);
 
-    // Draw
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Background glow from source
-    var glow = 0.08 + Math.sin(elapsed * 4) * 0.03;
-    game.draw.circle(SOURCE_X, SOURCE_Y, 200, C.source, glow);
-
-    // Source
-    game.draw.circle(SOURCE_X + 6, SOURCE_Y + 6, 48, '#000', 0.4);
-    game.draw.circle(SOURCE_X, SOURCE_Y, 48, C.source, 0.9);
-    game.draw.circle(SOURCE_X, SOURCE_Y, 36, C.sourceHi, 0.7);
-    game.draw.circle(SOURCE_X - 14, SOURCE_Y - 14, 18, '#fff', 0.4);
-
-    // Sparks
-    for (var si2 = 0; si2 < sparks.length; si2++) {
-      var s2 = sparks[si2];
-      for (var ti = 0; ti < s2.trail.length; ti++) {
-        var t = s2.trail[ti];
-        game.draw.circle(t.x, t.y, s2.r * (ti / s2.trail.length) * 0.6, C.spark, (ti / s2.trail.length) * 0.4 * s2.life);
-      }
-      game.draw.circle(s2.x, s2.y, s2.r, C.spark, s2.life * 0.9);
-      game.draw.circle(s2.x, s2.y, s2.r * 0.5, C.sparkHi, s2.life * 0.7);
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p2 = particles[pp2];
-      game.draw.circle(p2.x, p2.y, 8 * p2.life, p2.col, p2.life);
-    }
-
-    // Wire
-    var wx = wireX - WIRE_W / 2;
-    // Wire glow
-    game.draw.rect(wx - 8, WIRE_Y - 8, WIRE_W + 16, 32, C.wireHi, 0.08);
-    game.draw.rect(wx, WIRE_Y, WIRE_W, 14, C.wire, 0.9);
-    game.draw.rect(wx, WIRE_Y, WIRE_W, 6, C.wireHi, 0.5);
-    game.draw.circle(wx, WIRE_Y + 7, 16, C.wireHi, 0.7);
-    game.draw.circle(wx + WIRE_W, WIRE_Y + 7, 16, C.wireHi, 0.7);
-
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, flashCol, flashAnim * 0.08);
-
-    // Count display
-    var missRatio = missed / MAX_MISS;
-    game.draw.rect(0, H * 0.93, W * missRatio, 16, C.miss, 0.5);
-    game.draw.text(caught + ' / ' + NEEDED, W / 2, 148, { size: 60, color: C.text, bold: true });
-    game.draw.text('逃: ' + missed + '/' + MAX_MISS, W / 2, H * 0.96, { size: 36, color: missRatio > 0.6 ? C.miss : '#ffffff55' });
-
-    var ratio = Math.max(0, timeLeft / 60);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 12, ratio > 0.3 ? C.wireHi : C.miss);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(caught + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var mi = 0; mi < MAX_MISS; mi++) game.draw.rect(snap(W / 2 + (mi - (MAX_MISS - 1) / 2) * 56) - 10, 224, 20, 20, mi < missed ? C.a : '#08050f');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.05);
-    for (var i = 0; i < 3; i++) spawnSpark();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
