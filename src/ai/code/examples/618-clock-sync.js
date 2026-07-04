@@ -1,224 +1,162 @@
 // 618-clock-sync.js
-// クロックシンク — 時計の針をぴったり合わせろ
-// 操作: タップで針を止める、指示された時刻に一致させる
-// 成功: 10回正確に一致  失敗: 8回外れ or 75秒
+// クロックシンク — 回転する時針と分針を、指定の目印にぴったり止める反射神経ゲーム
+// 操作: タップで時針を止める → もう一度タップで分針を止める。両方の目印に合わせる
+// 成功: 5回 正確に一致  失敗: 3回 外れ or 22秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#04040c',
-    face:    '#0d0d20',
-    faceHi:  '#1a1a35',
-    rim:     '#334488',
-    rimHi:   '#5566aa',
-    hour:    '#ff6b2b',
-    hourHi:  '#ffaa88',
-    minute:  '#22d3ee',
-    minuteHi:'#a5f3fc',
-    tick:    '#334466',
-    correct: '#22c55e',
-    wrong:   '#ef4444',
-    target:  '#fbbf24',
-    text:    '#f1f5f9',
-    ui:      '#0a0a1a'
-  };
+  // ── パレット（アイスブルー、時計塔） ──
+  var C = { bg:'#04040c', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#3355ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var CX = W / 2, CY = H * 0.42;
-  var CLOCK_R = 280;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'CLOCK SYNC';
+  var HOW_TO_PLAY = 'TAP TO STOP THE HOUR HAND · TAP AGAIN FOR THE MINUTE HAND · HIT BOTH MARKS';
+  var MAX_TIME = 22;
+  var NEEDED   = 5;          // 修正2: 10 → 5
+  var MAX_MISS = 3;          // 修正2: 8 → 3
+  var CX = W / 2, CY = snap(H * 0.44), CLOCK_R = 300;
 
-  var hourAngle = 0;    // current spinning angle (radians, 0=12)
-  var minuteAngle = 0;
-  var hourSpeed = 0.8;  // rad/s
-  var minuteSpeed = 2.4;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var targetHour = 0;   // target angle
-  var targetMinute = 0;
-  var hourStopped = false;
-  var minuteStopped = false;
-  var phase = 'hour';   // 'hour' | 'minute' | 'check'
+  // ── ゲーム変数 ──
+  var hourAngle, minuteAngle, hourSpeed, minuteSpeed, targetHour, targetMinute, hourStopped, minuteStopped, handPhase, successes, misses, timeLeft, done, particles, flash, flashCol, resultText, resultTimer;
 
-  var successes = 0;
-  var NEEDED = 10;
-  var misses = 0;
-  var MAX_MISS = 8;
-  var done = false;
-  var timeLeft = 75;
-  var elapsed = 0;
-  var particles = [];
-  var flashAnim = 0, flashCol = C.correct;
-  var resultText = '';
-  var resultTimer = 0;
-  var checkTimer = 0;
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function ring(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) { var d = qx * qx + qy * qy; if (d <= r * r && d >= (r - 12) * (r - 12)) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); } }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.d : '#0a0a1a');
+  }
+
+  function background() { game.draw.clear(C.bg); }
 
   function nextRound() {
-    // Random target time
-    var h = Math.floor(Math.random() * 12);
-    var m = Math.floor(Math.random() * 12) * 5; // 0,5,10,...55
-    targetHour = (h / 12) * Math.PI * 2 - Math.PI / 2;
-    targetMinute = (m / 60) * Math.PI * 2 - Math.PI / 2;
-    // Randomize starting angles
-    hourAngle = Math.random() * Math.PI * 2;
-    minuteAngle = Math.random() * Math.PI * 2;
-    hourStopped = false;
-    minuteStopped = false;
-    phase = 'hour';
-    // Vary speeds
-    hourSpeed = 0.6 + Math.random() * 0.5 + successes * 0.04;
-    minuteSpeed = 1.8 + Math.random() * 1.2 + successes * 0.08;
+    var h = Math.floor(Math.random() * 12), m = Math.floor(Math.random() * 12) * 5;
+    targetHour = (h / 12) * Math.PI * 2 - Math.PI / 2; targetMinute = (m / 60) * Math.PI * 2 - Math.PI / 2;
+    hourAngle = Math.random() * Math.PI * 2; minuteAngle = Math.random() * Math.PI * 2;
+    hourStopped = false; minuteStopped = false; handPhase = 'hour';
+    hourSpeed = 0.6 + Math.random() * 0.5 + successes * 0.05; minuteSpeed = 1.8 + Math.random() * 1.2 + successes * 0.1;
   }
 
-  function angleDiff(a, b) {
-    var d = ((a - b) + Math.PI * 2) % (Math.PI * 2);
-    if (d > Math.PI) d = Math.PI * 2 - d;
-    return d;
-  }
+  function initGame() { successes = 0; misses = 0; timeLeft = MAX_TIME; done = false; particles = []; flash = 0; flashCol = C.b; resultText = ''; resultTimer = 0; nextRound(); }
 
-  game.onTap(function(tx, ty) {
+  function angleDiff(a, b) { var d = ((a - b) + Math.PI * 2) % (Math.PI * 2); if (d > Math.PI) d = Math.PI * 2 - d; return d; }
+
+  function finish(success) {
     if (done) return;
-    if (phase === 'hour' && !hourStopped) {
-      hourStopped = true;
-      phase = 'minute';
-      game.audio.play('se_tap', 0.25);
-    } else if (phase === 'minute' && !minuteStopped) {
-      minuteStopped = true;
-      phase = 'check';
-      // Evaluate
-      var hDiff = angleDiff(hourAngle, targetHour);
-      var mDiff = angleDiff(minuteAngle, targetMinute);
-      var threshold = 0.25; // ~14 degrees
-      var success = hDiff < threshold && mDiff < threshold;
-      if (success) {
-        successes++;
-        flashCol = C.correct;
-        flashAnim = 0.35;
-        resultText = '正確!';
-        resultTimer = 0.8;
-        game.audio.play('se_success', 0.7);
-        for (var p = 0; p < 10; p++) {
-          var ang = Math.random() * Math.PI * 2;
-          particles.push({ x: CX, y: CY, vx: Math.cos(ang) * 220, vy: Math.sin(ang) * 220, life: 0.5, col: C.correct });
-        }
-        if (successes >= NEEDED && !done) {
-          done = true;
-          game.audio.play('se_success', 0.9);
-          setTimeout(function() { game.end.success(successes * 500 + Math.ceil(timeLeft) * 100); }, 800);
-        }
+    done = true; resultSuccess = success;
+    finalScore = success ? (successes * 700 + Math.ceil(timeLeft) * 100) : successes * 200;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawHand(angle, length, width, col) {
+    var x2 = CX + Math.cos(angle) * length, y2 = CY + Math.sin(angle) * length;
+    game.draw.line(CX, CY, x2, y2, '#000000', width + 4); game.draw.line(CX, CY, x2, y2, col, width);
+    game.draw.line(CX, CY, CX - Math.cos(angle) * length * 0.2, CY - Math.sin(angle) * length * 0.2, col, width * 0.6);
+  }
+
+  function drawScene() {
+    ring(CX, CY, CLOCK_R, C.d, 0.8); pc(CX, CY, CLOCK_R - 12, '#0d0d20', 1);
+    for (var hi = 0; hi < 12; hi++) { var a = (hi / 12) * Math.PI * 2 - Math.PI / 2, r1 = CLOCK_R - 34, r2 = CLOCK_R - 14; game.draw.line(CX + Math.cos(a) * r1, CY + Math.sin(a) * r1, CX + Math.cos(a) * r2, CY + Math.sin(a) * r2, C.e, hi % 3 === 0 ? 7 : 3); }
+    var thx = CX + Math.cos(targetHour) * (CLOCK_R - 54), thy = CY + Math.sin(targetHour) * (CLOCK_R - 54);
+    pc(thx, thy, 16, C.f, 0.5 + Math.sin(game.time.elapsed * 6) * 0.2);
+    var tmx = CX + Math.cos(targetMinute) * (CLOCK_R - 20), tmy = CY + Math.sin(targetMinute) * (CLOCK_R - 20);
+    pc(tmx, tmy, 12, C.e, 0.5 + Math.sin(game.time.elapsed * 6 + 1) * 0.2);
+    drawHand(hourAngle, CLOCK_R * 0.52, 14, C.f);
+    drawHand(minuteAngle, CLOCK_R * 0.78, 8, C.e);
+    pc(CX, CY, 18, C.g, 0.9);
+  }
+
+  // ── 入力 ──
+  game.onTap(function() {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    if (handPhase === 'hour' && !hourStopped) { hourStopped = true; handPhase = 'minute'; game.audio.play('se_tap', 0.25); }
+    else if (handPhase === 'minute' && !minuteStopped) {
+      minuteStopped = true; handPhase = 'check';
+      var hDiff = angleDiff(hourAngle, targetHour), mDiff = angleDiff(minuteAngle, targetMinute), ok = hDiff < 0.28 && mDiff < 0.28;
+      if (ok) {
+        successes++; flash = 0.35; flashCol = C.b; resultText = 'PERFECT!'; resultTimer = 0.8; game.audio.play('se_success', 0.7);
+        for (var p = 0; p < 10; p++) { var a = Math.random() * Math.PI * 2; particles.push({ x: CX, y: CY, vx: Math.cos(a) * 220, vy: Math.sin(a) * 220, life: 0.5, col: C.b }); }
+        if (successes >= NEEDED) { finish(true); return; }
       } else {
-        misses++;
-        flashCol = C.wrong;
-        flashAnim = 0.3;
-        var miss = Math.max(hDiff, mDiff);
-        resultText = Math.round(miss * 180 / Math.PI) + '°ずれ';
-        resultTimer = 0.8;
-        game.audio.play('se_failure', 0.3);
-        if (misses >= MAX_MISS && !done) {
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 500);
-        }
+        misses++; flash = 0.3; flashCol = C.a; resultText = Math.round(Math.max(hDiff, mDiff) * 180 / Math.PI) + ' OFF'; resultTimer = 0.8; game.audio.play('se_failure', 0.3);
+        if (misses >= MAX_MISS) { finish(false); return; }
       }
-      setTimeout(function() { if (!done) nextRound(); }, 1200);
+      setTimeout(function() { if (!done) nextRound(); }, 1100);
     }
   });
 
-  function drawHand(angle, length, width, col, colHi) {
-    var x2 = CX + Math.cos(angle) * length;
-    var y2 = CY + Math.sin(angle) * length;
-    game.draw.line(CX, CY, x2, y2, colHi, width + 4);
-    game.draw.line(CX, CY, x2, y2, col, width);
-    // Back tip
-    var bx = CX - Math.cos(angle) * length * 0.2;
-    var by = CY - Math.sin(angle) * length * 0.2;
-    game.draw.line(CX, CY, bx, by, col, width * 0.6);
-  }
-
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (targetHour === undefined) initGame(); background(); drawScene();
+      txt(GAME_TITLE, W / 2, H * 0.06, 78, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.10, 19, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.90, 56, C.a);
+        txt('TAP TO START', W / 2, H * 0.94, 42, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'IN SYNC!' : 'OUT OF TIME', W / 2, H * 0.35, 64, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
-      }
-    }
-    if (flashAnim > 0) flashAnim -= dt * 3;
-    if (resultTimer > 0) resultTimer -= dt;
-
-    if (!hourStopped) hourAngle += hourSpeed * dt;
-    if (!minuteStopped) minuteAngle += minuteSpeed * dt;
-
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt * 2;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
+      if (timeLeft <= 0) { finish(false); return; }
+      if (flash > 0) flash -= dt * 3; if (resultTimer > 0) resultTimer -= dt;
+      if (!hourStopped) hourAngle += hourSpeed * dt; if (!minuteStopped) minuteAngle += minuteSpeed * dt;
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt * 2; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    // Draw
-    game.draw.rect(0, 0, W, H, C.bg);
+    // ---- 描画 ----
+    background(); drawScene();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
+    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.1);
+    var inst = handPhase === 'hour' ? 'STOP THE HOUR HAND' : (handPhase === 'minute' ? 'STOP THE MINUTE HAND' : '');
+    if (resultTimer > 0) txt(resultText, W / 2, snap(CY + CLOCK_R + 90), 56, flashCol);
+    else if (inst) txt(inst, W / 2, snap(CY + CLOCK_R + 90), 42, handPhase === 'hour' ? C.f : C.e);
 
-    // Clock face
-    game.draw.circle(CX, CY, CLOCK_R + 16, C.rim, 0.8);
-    game.draw.circle(CX, CY, CLOCK_R + 8, C.rimHi, 0.5);
-    game.draw.circle(CX, CY, CLOCK_R, C.face, 1);
-
-    // Hour markers
-    for (var hi = 0; hi < 12; hi++) {
-      var a = (hi / 12) * Math.PI * 2 - Math.PI / 2;
-      var r1 = CLOCK_R - 30, r2 = CLOCK_R - 10;
-      var mx1 = CX + Math.cos(a) * r1, my1 = CY + Math.sin(a) * r1;
-      var mx2 = CX + Math.cos(a) * r2, my2 = CY + Math.sin(a) * r2;
-      game.draw.line(mx1, my1, mx2, my2, C.rimHi, hi % 3 === 0 ? 6 : 3);
-    }
-
-    // Target hour indicator (dashed arc/dot)
-    var thx = CX + Math.cos(targetHour) * (CLOCK_R - 50);
-    var thy = CY + Math.sin(targetHour) * (CLOCK_R - 50);
-    game.draw.circle(thx, thy, 14, C.target, 0.5 + Math.sin(elapsed * 6) * 0.2);
-    // Target minute indicator
-    var tmx = CX + Math.cos(targetMinute) * (CLOCK_R - 20);
-    var tmy = CY + Math.sin(targetMinute) * (CLOCK_R - 20);
-    game.draw.circle(tmx, tmy, 10, C.minute, 0.5 + Math.sin(elapsed * 6 + 1) * 0.2);
-
-    // Hour hand
-    drawHand(hourAngle, CLOCK_R * 0.52, 12, C.hour, C.hourHi);
-    // Minute hand
-    drawHand(minuteAngle, CLOCK_R * 0.78, 8, C.minute, C.minuteHi);
-
-    // Center cap
-    game.draw.circle(CX, CY, 18, C.rimHi, 0.9);
-    game.draw.circle(CX, CY, 10, C.faceHi, 0.8);
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 10 * p.life, p.col, p.life);
-    }
-
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, flashCol, flashAnim * 0.1);
-
-    // Phase instruction
-    var inst = phase === 'hour' ? '時針を止めろ!' : (phase === 'minute' ? '分針を止めろ!' : '');
-    if (inst) game.draw.text(inst, W / 2, CY + CLOCK_R + 80, { size: 48, color: phase === 'hour' ? C.hour : C.minute, bold: true });
-    if (resultTimer > 0) game.draw.text(resultText, W / 2, CY + CLOCK_R + 80, { size: 56, color: flashCol, bold: true });
-
-    // Miss dots
-    for (var mi = 0; mi < MAX_MISS; mi++) {
-      game.draw.circle(W / 2 - (MAX_MISS - 1) * 44 + mi * 88, H * 0.955, 18, mi < misses ? C.wrong : C.ui, 0.9);
-    }
-
-    game.draw.text(successes + ' / ' + NEEDED, W / 2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft / 75);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 12, ratio > 0.3 ? C.rimHi : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(successes + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var mi = 0; mi < MAX_MISS; mi++) game.draw.rect(snap(W / 2 + (mi - (MAX_MISS - 1) / 2) * 56) - 10, 224, 20, 20, mi < misses ? C.a : '#0a0a1a');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.05);
-    nextRound();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);

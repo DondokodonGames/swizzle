@@ -1,232 +1,155 @@
 // 617-splash-dodge.js
-// スプラッシュドッジ — 水しぶきが飛び散る方向を予測して避けろ
-// 操作: スワイプで4方向に緊急回避
-// 成功: 20秒生存  失敗: 3回被弾 or 20秒
+// スプラッシュドッジ — 予告円が弾ける瞬間に飛び散る水しぶきを、移動して避ける
+// 操作: タップした位置へ移動（上下左右スワイプでも緊急回避）。予告円の外へ逃げる
+// 成功: 15秒 生き残る  失敗: 3回 被弾 or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#000814',
-    water:   '#0ea5e9',
-    waterHi: '#7dd3fc',
-    player:  '#f59e0b',
-    playerHi:'#fde68a',
-    danger:  '#ef4444',
-    safe:    '#22c55e',
-    ripple:  '#0369a1',
-    text:    '#f1f5f9',
-    ui:      '#0a1020',
-    hit:     '#ef4444'
-  };
+  // ── パレット（アイスブルー、水景） ──
+  var C = { bg:'#000814', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#3355ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var PLAYER_R = 36;
-  var playerX = W / 2;
-  var playerY = H * 0.6;
-  var targetX = W / 2;
-  var targetY = H * 0.6;
-
-  var splashes = [];
-  var warnings = [];
-  var hits = 0;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'SPLASH DODGE';
+  var HOW_TO_PLAY = 'TAP TO MOVE OR SWIPE TO DASH · ESCAPE THE MARKED CIRCLES BEFORE THEY BURST';
+  var MAX_TIME = 15;         // 修正2: 20 → 15
   var MAX_HITS = 3;
-  var done = false;
-  var timeLeft = 20;
-  var elapsed = 0;
-  var particles = [];
-  var flashAnim = 0;
-  var invincible = 0;
-  var spawnTimer = 0;
-  var ripples = [];
+  var PLAYER_R = 38;
 
-  function spawnWarning() {
-    var x = 80 + Math.random() * (W - 160);
-    var y = 80 + Math.random() * (H * 0.8);
-    var delay = 1.2 + Math.random() * 0.5;
-    warnings.push({ x: x, y: y, delay: delay, timer: delay, radius: 0 });
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  // ── ゲーム変数 ──
+  var playerX, playerY, targetX, targetY, splashes, warnings, ripples, hits, timeLeft, done, particles, flash, invincible, spawnTimer;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function ring(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) { var d = qx * qx + qy * qy; if (d <= r * r && d >= (r - 10) * (r - 10)) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); } }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.e : '#0a1020');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function spawnWarning() { var x = 100 + Math.random() * (W - 200), y = 200 + Math.random() * (H * 0.7), delay = 1.2 + Math.random() * 0.5; warnings.push({ x: x, y: y, delay: delay, timer: delay }); }
 
   function triggerSplash(x, y) {
-    // 8-direction splash droplets
-    var count = 12 + Math.floor(Math.random() * 8);
-    for (var i = 0; i < count; i++) {
-      var ang = (Math.PI * 2 * i / count) + (Math.random() - 0.5) * 0.3;
-      var speed = 200 + Math.random() * 300;
-      splashes.push({
-        x: x, y: y,
-        vx: Math.cos(ang) * speed,
-        vy: Math.sin(ang) * speed,
-        r: 8 + Math.random() * 12,
-        life: 0.5 + Math.random() * 0.3
-      });
-    }
-    ripples.push({ x: x, y: y, r: 20, maxR: 120, life: 0.6, maxLife: 0.6 });
-    game.audio.play('se_success', 0.3);
+    var count = 12 + Math.floor(Math.random() * 6);
+    for (var i = 0; i < count; i++) { var ang = (Math.PI * 2 * i / count) + (Math.random() - 0.5) * 0.3, sp = 200 + Math.random() * 260; splashes.push({ x: x, y: y, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, r: 10 + Math.random() * 10, life: 0.6 + Math.random() * 0.3 }); }
+    ripples.push({ x: x, y: y, r: 20, maxR: 120, life: 0.6, maxLife: 0.6 }); game.audio.play('se_tap', 0.2);
   }
 
-  game.onSwipe(function(dir) {
+  function initGame() { playerX = W / 2; playerY = H * 0.6; targetX = W / 2; targetY = H * 0.6; splashes = []; warnings = []; ripples = []; hits = 0; timeLeft = MAX_TIME; done = false; particles = []; flash = 0; invincible = 0; spawnTimer = 0; spawnWarning(); }
+
+  function finish(success) {
     if (done) return;
-    var step = 220;
-    if (dir === 'left') targetX -= step;
-    else if (dir === 'right') targetX += step;
-    else if (dir === 'up') targetY -= step;
-    else if (dir === 'down') targetY += step;
-    targetX = Math.max(PLAYER_R, Math.min(W - PLAYER_R, targetX));
-    targetY = Math.max(PLAYER_R, Math.min(H * 0.9, targetY));
-    game.audio.play('se_tap', 0.15);
+    done = true; resultSuccess = success;
+    finalScore = success ? (MAX_TIME * 200 + (MAX_HITS - hits) * 600) : Math.round((MAX_TIME - timeLeft) * 200);
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawScene() {
+    game.draw.rect(0, snap(H * 0.9), W, H * 0.1, C.d, 0.15);
+    for (var ri = 0; ri < ripples.length; ri++) { var rp = ripples[ri], al = rp.life / rp.maxLife; ring(rp.x, rp.y, rp.r, C.e, al * 0.3); }
+    for (var wi = 0; wi < warnings.length; wi++) {
+      var w = warnings[wi], urg = 1 - w.timer / w.delay, wc = urg > 0.7 ? C.a : C.e;
+      ring(w.x, w.y, urg * 90, wc, 0.5 * urg + 0.2); pc(w.x, w.y, 8, wc, 0.8);
+    }
+    for (var si = 0; si < splashes.length; si++) { var s = splashes[si]; pc(s.x, s.y, s.r, C.e, s.life * 0.9); }
+    var pa = (invincible > 0 && Math.floor(game.time.elapsed * 10) % 2 === 0) ? 0.3 : 0.9;
+    pc(playerX, playerY, PLAYER_R, C.f, pa); pc(playerX - 10, playerY - 10, PLAYER_R * 0.3, C.c, pa * 0.7);
+  }
+
+  // ── 入力 ──
+  game.onSwipe(function(dir) {
+    if (state !== S.PLAYING || done) return;
+    if (dir === 'left') targetX -= 220; else if (dir === 'right') targetX += 220; else if (dir === 'up') targetY -= 220; else if (dir === 'down') targetY += 220;
+    targetX = Math.max(PLAYER_R, Math.min(W - PLAYER_R, targetX)); targetY = Math.max(PLAYER_R, Math.min(H * 0.9, targetY)); game.audio.play('se_tap', 0.15);
   });
 
   game.onTap(function(tx, ty) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
     if (done) return;
-    targetX = Math.max(PLAYER_R, Math.min(W - PLAYER_R, tx));
-    targetY = Math.max(PLAYER_R, Math.min(H * 0.9, ty));
-    game.audio.play('se_tap', 0.1);
+    targetX = Math.max(PLAYER_R, Math.min(W - PLAYER_R, tx)); targetY = Math.max(PLAYER_R, Math.min(H * 0.9, ty)); game.audio.play('se_tap', 0.1);
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!splashes) initGame(); background(); drawScene();
+      txt(GAME_TITLE, W / 2, H * 0.12, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.165, 19, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.90, 56, C.a);
+        txt('TAP TO START', W / 2, H * 0.94, 42, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'STAYED DRY!' : 'SOAKED', W / 2, H * 0.35, 66, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_success', 0.9);
-        setTimeout(function() { game.end.success(20 * 200 + (MAX_HITS - hits) * 500); }, 700);
-        return;
+      if (timeLeft <= 0) { finish(true); return; }
+      if (flash > 0) flash -= dt * 4; if (invincible > 0) invincible -= dt;
+      playerX += (targetX - playerX) * Math.min(1, dt * 8); playerY += (targetY - playerY) * Math.min(1, dt * 8);
+      spawnTimer += dt; var rate = Math.max(0.8, 2.2 - (MAX_TIME - timeLeft) * 0.08);
+      if (spawnTimer > rate) { spawnTimer = 0; spawnWarning(); if (timeLeft < MAX_TIME - 6) spawnWarning(); }
+      for (var wi = warnings.length - 1; wi >= 0; wi--) { warnings[wi].timer -= dt; if (warnings[wi].timer <= 0) { triggerSplash(warnings[wi].x, warnings[wi].y); warnings.splice(wi, 1); } }
+      for (var ri = ripples.length - 1; ri >= 0; ri--) { var rp = ripples[ri]; rp.r += (rp.maxR - rp.r) * dt * 4; rp.life -= dt; if (rp.life <= 0) ripples.splice(ri, 1); }
+      for (var si = splashes.length - 1; si >= 0; si--) {
+        var s = splashes[si]; s.x += s.vx * dt; s.y += s.vy * dt; s.vy += 600 * dt; s.life -= dt * 1.5;
+        if (invincible <= 0) { var dx = s.x - playerX, dy = s.y - playerY; if (dx * dx + dy * dy < (PLAYER_R + s.r) * (PLAYER_R + s.r)) {
+          hits++; invincible = 0.8; flash = 0.4; game.audio.play('se_failure', 0.5);
+          for (var p = 0; p < 8; p++) { var a = Math.random() * Math.PI * 2; particles.push({ x: playerX, y: playerY, vx: Math.cos(a) * 180, vy: Math.sin(a) * 180, life: 0.4, col: C.f }); }
+          splashes.splice(si, 1); if (hits >= MAX_HITS) { finish(false); return; } continue;
+        } }
+        if (s.life <= 0 || s.y > H + 50) splashes.splice(si, 1);
       }
-    }
-    if (flashAnim > 0) flashAnim -= dt * 4;
-    if (invincible > 0) invincible -= dt;
-
-    playerX += (targetX - playerX) * Math.min(1, dt * 8);
-    playerY += (targetY - playerY) * Math.min(1, dt * 8);
-
-    // Spawn warnings
-    spawnTimer += dt;
-    var rate = Math.max(0.8, 2.5 - elapsed * 0.08);
-    if (spawnTimer > rate) {
-      spawnTimer = 0;
-      spawnWarning();
-      if (elapsed > 8) spawnWarning();
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p2 = particles[pp]; p2.x += p2.vx * dt; p2.y += p2.vy * dt; p2.life -= dt * 2; if (p2.life <= 0) particles.splice(pp, 1); }
     }
 
-    // Update warnings
-    for (var wi = warnings.length - 1; wi >= 0; wi--) {
-      var w = warnings[wi];
-      w.timer -= dt;
-      w.radius = (1 - w.timer / w.delay) * 80;
-      if (w.timer <= 0) {
-        triggerSplash(w.x, w.y);
-        warnings.splice(wi, 1);
-      }
-    }
+    // ---- 描画 ----
+    background(); drawScene();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
+    if (flash > 0) game.draw.rect(0, 0, W, H, C.a, flash * 0.1);
 
-    // Update ripples
-    for (var ri = ripples.length - 1; ri >= 0; ri--) {
-      var rip = ripples[ri];
-      rip.r += (rip.maxR - rip.r) * dt * 4;
-      rip.life -= dt;
-      if (rip.life <= 0) ripples.splice(ri, 1);
-    }
-
-    // Update splashes and check hits
-    for (var si = splashes.length - 1; si >= 0; si--) {
-      var s = splashes[si];
-      s.x += s.vx * dt;
-      s.y += s.vy * dt;
-      s.vy += 600 * dt; // gravity
-      s.life -= dt * 1.5;
-
-      // Hit check
-      if (invincible <= 0) {
-        var dx = s.x - playerX, dy = s.y - playerY;
-        if (dx * dx + dy * dy < (PLAYER_R + s.r) * (PLAYER_R + s.r)) {
-          hits++;
-          invincible = 0.8;
-          flashAnim = 0.4;
-          game.audio.play('se_failure', 0.5);
-          for (var p = 0; p < 8; p++) {
-            var ang = Math.random() * Math.PI * 2;
-            particles.push({ x: playerX, y: playerY, vx: Math.cos(ang) * 180, vy: Math.sin(ang) * 180, life: 0.4, col: C.playerHi });
-          }
-          if (hits >= MAX_HITS && !done) {
-            done = true;
-            setTimeout(function() { game.end.failure(); }, 500);
-          }
-          splashes.splice(si, 1);
-          continue;
-        }
-      }
-
-      if (s.life <= 0 || s.y > H + 50) splashes.splice(si, 1);
-    }
-
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt * 2;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
-
-    // Draw
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Water floor suggestion
-    game.draw.rect(0, H * 0.9, W, H * 0.1, C.ripple, 0.15);
-
-    // Ripples
-    for (var ri2 = 0; ri2 < ripples.length; ri2++) {
-      var rip2 = ripples[ri2];
-      var a = rip2.life / rip2.maxLife;
-      game.draw.circle(rip2.x, rip2.y, rip2.r, C.water, a * 0.25);
-      game.draw.circle(rip2.x, rip2.y, rip2.r * 0.6, C.waterHi, a * 0.15);
-    }
-
-    // Warnings (growing circle indicators)
-    for (var wi2 = 0; wi2 < warnings.length; wi2++) {
-      var w2 = warnings[wi2];
-      var urgency = 1 - w2.timer / w2.delay;
-      var wCol = urgency > 0.7 ? C.danger : C.water;
-      game.draw.circle(w2.x, w2.y, w2.radius, wCol, 0.3 * urgency);
-      game.draw.circle(w2.x, w2.y, w2.radius, wCol, 0.5 * urgency);
-      game.draw.circle(w2.x, w2.y, 8, wCol, 0.8);
-    }
-
-    // Splashes
-    for (var si2 = 0; si2 < splashes.length; si2++) {
-      var s2 = splashes[si2];
-      game.draw.circle(s2.x, s2.y, s2.r, C.water, s2.life * 0.8);
-      game.draw.circle(s2.x, s2.y, s2.r * 0.4, C.waterHi, s2.life * 0.6);
-    }
-
-    // Player
-    var pAlpha = (invincible > 0 && Math.floor(elapsed * 10) % 2 === 0) ? 0.3 : 0.9;
-    game.draw.circle(playerX + 4, playerY + 4, PLAYER_R, '#000', 0.3);
-    game.draw.circle(playerX, playerY, PLAYER_R, C.player, pAlpha);
-    game.draw.circle(playerX - 10, playerY - 10, PLAYER_R * 0.3, C.playerHi, pAlpha * 0.7);
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p2 = particles[pp2];
-      game.draw.circle(p2.x, p2.y, 10 * p2.life, p2.col, p2.life);
-    }
-
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, C.hit, flashAnim * 0.1);
-
-    // Hit dots
-    for (var hi2 = 0; hi2 < MAX_HITS; hi2++) {
-      game.draw.circle(W / 2 - (MAX_HITS - 1) * 80 + hi2 * 160, H * 0.955, 28, hi2 < hits ? C.hit : C.ui, 0.9);
-    }
-
-    var ratio = Math.max(0, timeLeft / 20);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 12, ratio > 0.3 ? C.water : C.hit);
-    game.draw.text(Math.ceil(timeLeft) + '秒', W / 2, 36, { size: 44, color: '#fff', bold: true });
-    game.draw.text('水しぶきを避けろ!', W / 2, 80, { size: 36, color: C.ui });
+    timeBar();
+    txt(Math.ceil(timeLeft) + 's', W / 2, 96, 44, C.g);
+    for (var hi = 0; hi < MAX_HITS; hi++) game.draw.rect(snap(W / 2 + (hi - (MAX_HITS - 1) / 2) * 56) - 10, 168, 20, 20, hi < hits ? C.a : C.b);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.06);
-    spawnWarning();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
