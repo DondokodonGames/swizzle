@@ -1,207 +1,145 @@
 // 747-planet-align.js
-// 惑星直列 — 3つの惑星が一直線に並んだ瞬間タップせよ
-// 操作: タップ — 全惑星が同一ライン上に並んだとき成功
-// 成功: 20回直列  失敗: 8回ミス or 90秒
+// プラネットアライン — 3つの惑星が一直線に並んだ瞬間にタップする
+// 操作: 全惑星が太陽をはさんで同一直線上に並んだ瞬間タップ。ズレているとミス
+// 成功: 8回 直列  失敗: 3回 ミス or 24秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#01020e',
-    star:    '#fde68a',
-    p1:      '#ef4444',
-    p2:      '#3b82f6',
-    p3:      '#22c55e',
-    sun:     '#fbbf24',
-    sunHi:   '#fef3c7',
-    align:   '#f97316',
-    correct: '#22c55e',
-    wrong:   '#ef4444',
-    text:    '#f1f5f9',
-    ui:      '#030310'
-  };
+  // ── パレット（アイスブルー、太陽系／惑星色は保持） ──
+  var C = { bg:'#01020e', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#3355ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
+  var SUN = '#ffe600', SUN_HI = '#fef3c7', ALIGN = '#ff6600';
+  var PCOLS = ['#ff2079', '#00cfff', '#00ff41'];
 
-  var CX = W / 2;
-  var CY = H * 0.44;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'PLANET ALIGN';
+  var HOW_TO_PLAY = 'TAP THE MOMENT ALL THREE PLANETS FORM A STRAIGHT LINE';
+  var MAX_TIME = 24;
+  var NEEDED   = 8;          // 修正2: 20 → 8
+  var MAX_ERR  = 3;          // 修正2: 8 → 3
+  var CX = W / 2, CY = snap(H * 0.44), ALIGN_TOL = 0.18;
 
-  var planets = [
-    { r: 130, speed: 1.1, angle: 0, size: 22, col: C.p1 },
-    { r: 220, speed: 0.65, angle: Math.PI * 0.7, size: 28, col: C.p2 },
-    { r: 320, speed: 0.38, angle: Math.PI * 1.4, size: 34, col: C.p3 }
-  ];
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var bgStars = [];
-  for (var bsi = 0; bsi < 60; bsi++) {
-    bgStars.push({ x: Math.random() * W, y: Math.random() * H, r: Math.random() * 1.5 + 0.5 });
+  // ── ゲーム変数 ──
+  var planets, bgStars, score, errors, timeLeft, done, elapsed, particles, flash, flashCol, resultText, resultTimer, alignPulse, lastTapCooldown;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  var ALIGN_TOL = 0.18; // radians
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
 
-  var score = 0;
-  var NEEDED = 20;
-  var errors = 0;
-  var MAX_ERR = 8;
-  var done = false;
-  var timeLeft = 90;
-  var elapsed = 0;
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.e : '#030310');
+  }
 
-  var particles = [];
-  var flashAnim = 0, flashCol = C.correct;
-  var resultTimer = 0, resultText = '';
-  var alignPulse = 0;
-  var lastTapCooldown = 0;
+  function background() { game.draw.clear(C.bg); for (var bsi2 = 0; bsi2 < bgStars.length; bsi2++) game.draw.rect(snap(bgStars[bsi2].x), snap(bgStars[bsi2].y), bgStars[bsi2].r, bgStars[bsi2].r, C.c, 0.3); }
 
   function getAlignScore() {
-    var a1 = planets[0].angle % (Math.PI * 2);
-    var a2 = planets[1].angle % (Math.PI * 2);
-    var a3 = planets[2].angle % (Math.PI * 2);
-    // Normalize to -PI..PI relative to p1
-    var d12 = ((a2 - a1 + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
-    var d13 = ((a3 - a1 + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
-    // Aligned = d12 and d13 both near 0 or both near PI
+    var a1 = planets[0].angle % (Math.PI * 2), a2 = planets[1].angle % (Math.PI * 2), a3 = planets[2].angle % (Math.PI * 2);
+    var d12 = ((a2 - a1 + Math.PI * 3) % (Math.PI * 2)) - Math.PI, d13 = ((a3 - a1 + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
     var same = Math.abs(d12) < ALIGN_TOL && Math.abs(d13) < ALIGN_TOL;
-    var opp12 = ((a2 - a1 + Math.PI * 4) % (Math.PI * 2));
-    var opp13 = ((a3 - a1 + Math.PI * 4) % (Math.PI * 2));
-    var anyLine = same ||
-      (Math.abs(opp12 - Math.PI) < ALIGN_TOL && Math.abs(opp13 - Math.PI) < ALIGN_TOL) ||
-      (Math.abs(d12) < ALIGN_TOL && Math.abs(opp13 - Math.PI) < ALIGN_TOL) ||
-      (Math.abs(opp12 - Math.PI) < ALIGN_TOL && Math.abs(d13) < ALIGN_TOL);
-    return anyLine;
+    var opp12 = ((a2 - a1 + Math.PI * 4) % (Math.PI * 2)), opp13 = ((a3 - a1 + Math.PI * 4) % (Math.PI * 2));
+    return same || (Math.abs(opp12 - Math.PI) < ALIGN_TOL && Math.abs(opp13 - Math.PI) < ALIGN_TOL) || (Math.abs(d12) < ALIGN_TOL && Math.abs(opp13 - Math.PI) < ALIGN_TOL) || (Math.abs(opp12 - Math.PI) < ALIGN_TOL && Math.abs(d13) < ALIGN_TOL);
   }
 
-  game.onTap(function(tx, ty) {
-    if (done || lastTapCooldown > 0) return;
+  function initGame() {
+    planets = [{ r: 130, speed: 1.1, angle: 0, size: 22, col: PCOLS[0] }, { r: 220, speed: 0.65, angle: Math.PI * 0.7, size: 28, col: PCOLS[1] }, { r: 320, speed: 0.38, angle: Math.PI * 1.4, size: 34, col: PCOLS[2] }];
+    bgStars = []; for (var bsi = 0; bsi < 60; bsi++) bgStars.push({ x: Math.random() * W, y: Math.random() * H, r: Math.random() < 0.7 ? 8 : 16 });
+    score = 0; errors = 0; timeLeft = MAX_TIME; done = false; elapsed = 0; particles = []; flash = 0; flashCol = C.b; resultText = ''; resultTimer = 0; alignPulse = 0; lastTapCooldown = 0;
+  }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (score * 600 + Math.ceil(timeLeft) * 100) : score * 200;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawScene() {
     var aligned = getAlignScore();
-    if (aligned) {
-      score++;
-      alignPulse = 0.5;
-      flashCol = C.correct;
-      flashAnim = 0.28;
-      resultText = '直列！';
-      resultTimer = 0.45;
-      lastTapCooldown = 0.5;
-      game.audio.play('se_success', 0.6);
-      for (var p = 0; p < 8; p++) {
-        var pa = Math.random() * Math.PI * 2;
-        particles.push({ x: CX, y: CY, vx: Math.cos(pa) * 220, vy: Math.sin(pa) * 220, life: 0.4, col: C.align });
-      }
-      if (score >= NEEDED && !done) {
-        done = true;
-        game.audio.play('se_success', 0.9);
-        setTimeout(function() { game.end.success(score * 450 + Math.ceil(timeLeft) * 80); }, 700);
-      }
+    for (var pi2 = 0; pi2 < planets.length; pi2++) for (var ri = 0; ri < 36; ri++) { var ra = ri * Math.PI * 2 / 36; pc(CX + Math.cos(ra) * planets[pi2].r, CY + Math.sin(ra) * planets[pi2].r, 2, planets[pi2].col, 0.15); }
+    if (aligned) { var glow = 0.6 + 0.3 * Math.sin(elapsed * 12); game.draw.line(CX - 420, CY, CX + 420, CY, ALIGN, 3); game.draw.rect(0, CY - 20, W, 40, ALIGN, glow * 0.06); }
+    pc(CX, CY, 52, SUN, 0.9); pc(CX - 15, CY - 15, 18, SUN_HI, 0.35);
+    for (var pi3 = 0; pi3 < planets.length; pi3++) { var pl = planets[pi3], px = CX + Math.cos(pl.angle) * pl.r, py = CY + Math.sin(pl.angle) * pl.r; pc(px, py, pl.size, pl.col, 0.9); pc(px - pl.size * 0.3, py - pl.size * 0.3, pl.size * 0.28, C.g, 0.3); }
+    if (aligned) txt('ALIGNED! TAP NOW!', W / 2, snap(H * 0.84), 48, ALIGN);
+    else txt('WAIT FOR ALIGNMENT', W / 2, snap(H * 0.84), 32, '#ffffff44');
+  }
+
+  // ── 入力 ──
+  game.onTap(function() {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done || lastTapCooldown > 0) return;
+    if (getAlignScore()) {
+      score++; alignPulse = 0.5; flash = 0.28; flashCol = C.b; resultText = 'ALIGNED!'; resultTimer = 0.45; lastTapCooldown = 0.5; game.audio.play('se_success', 0.6);
+      for (var p = 0; p < 8; p++) { var pa = Math.random() * Math.PI * 2; particles.push({ x: CX, y: CY, vx: Math.cos(pa) * 220, vy: Math.sin(pa) * 220, life: 0.4, col: ALIGN }); }
+      if (score >= NEEDED) { finish(true); return; }
     } else {
-      errors++;
-      flashCol = C.wrong;
-      flashAnim = 0.28;
-      resultText = 'まだ揃ってない！';
-      resultTimer = 0.42;
-      lastTapCooldown = 0.3;
-      game.audio.play('se_failure', 0.25);
-      if (errors >= MAX_ERR && !done) {
-        done = true;
-        setTimeout(function() { game.end.failure(); }, 600);
-      }
+      errors++; flash = 0.28; flashCol = C.a; resultText = 'NOT YET!'; resultTimer = 0.42; lastTapCooldown = 0.3; game.audio.play('se_failure', 0.25);
+      if (errors >= MAX_ERR) { finish(false); return; }
     }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!planets) initGame(); background(); drawScene();
+      txt(GAME_TITLE, W / 2, H * 0.10, 74, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.145, 20, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) txt('► 100円 投入 ◄ TAP TO START', W / 2, H * 0.92, 40, C.a);
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'COSMIC!' : 'MISALIGNED', W / 2, H * 0.35, 62, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
-      timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
-      }
+      timeLeft -= dt; elapsed += dt;
+      if (timeLeft <= 0) { finish(false); return; }
+      for (var pi = 0; pi < planets.length; pi++) planets[pi].angle += planets[pi].speed * dt * (1 + score * 0.03);
+      if (alignPulse > 0) alignPulse -= dt * 2; if (lastTapCooldown > 0) lastTapCooldown -= dt; if (flash > 0) flash -= dt * 3; if (resultTimer > 0) resultTimer -= dt;
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt * 2.5; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    for (var pi = 0; pi < planets.length; pi++) {
-      planets[pi].angle += planets[pi].speed * dt * (1 + score * 0.015);
-    }
+    // ---- 描画 ----
+    background(); drawScene();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 4, snap(particles[pp2].y) - 4, 8, 8, particles[pp2].col, particles[pp2].life * 1.6);
+    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.09);
+    if (resultTimer > 0) txt(resultText, W / 2, snap(H * 0.88), 52, flashCol);
 
-    if (alignPulse > 0) alignPulse -= dt * 2;
-    if (lastTapCooldown > 0) lastTapCooldown -= dt;
-    if (flashAnim > 0) flashAnim -= dt * 3;
-    if (resultTimer > 0) resultTimer -= dt;
-
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt * 2.5;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
-
-    var aligned = getAlignScore();
-
-    // Draw
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    for (var bsi2 = 0; bsi2 < bgStars.length; bsi2++) {
-      game.draw.circle(bgStars[bsi2].x, bgStars[bsi2].y, bgStars[bsi2].r, C.star, 0.3);
-    }
-
-    // Orbit rings
-    for (var pi2 = 0; pi2 < planets.length; pi2++) {
-      for (var ri = 0; ri < 36; ri++) {
-        var ra = ri * Math.PI * 2 / 36;
-        game.draw.circle(CX + Math.cos(ra) * planets[pi2].r, CY + Math.sin(ra) * planets[pi2].r, 2, planets[pi2].col, 0.15);
-      }
-    }
-
-    // Alignment beam
-    if (aligned) {
-      var glow = 0.6 + 0.3 * Math.sin(elapsed * 12);
-      game.draw.line(CX - 420, CY, CX + 420, CY, C.align, 3);
-      game.draw.rect(0, CY - 20, W, 40, C.align, glow * 0.06);
-    }
-
-    // Sun
-    var sunPulse = 1 + 0.05 * Math.sin(elapsed * 3);
-    game.draw.circle(CX + 5, CY + 5, 52, '#000', 0.3);
-    game.draw.circle(CX, CY, 52 * sunPulse, C.sun, 0.9);
-    game.draw.circle(CX - 15, CY - 15, 20, C.sunHi, 0.35);
-
-    // Planets
-    for (var pi3 = 0; pi3 < planets.length; pi3++) {
-      var pl = planets[pi3];
-      var px = CX + Math.cos(pl.angle) * pl.r;
-      var py = CY + Math.sin(pl.angle) * pl.r;
-      game.draw.circle(px + 3, py + 3, pl.size, '#000', 0.3);
-      game.draw.circle(px, py, pl.size, pl.col, 0.9);
-      game.draw.circle(px - pl.size * 0.3, py - pl.size * 0.3, pl.size * 0.28, '#fff', 0.3);
-    }
-
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 8 * p.life, p.col, p.life);
-    }
-
-    if (aligned && !done) {
-      game.draw.text('直列！今タップ！', W / 2, H * 0.84, { size: 52, color: C.align, bold: true });
-    } else {
-      game.draw.text('全惑星が一列に並んだら', W / 2, H * 0.84, { size: 36, color: C.text + '44' });
-    }
-
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, flashCol, flashAnim * 0.09);
-    if (resultTimer > 0) {
-      game.draw.text(resultText, W / 2, H * 0.88, { size: 52, color: flashCol, bold: true });
-    }
-
-    for (var ei = 0; ei < MAX_ERR; ei++) {
-      game.draw.circle(W / 2 - (MAX_ERR - 1) * 56 + ei * 112, H * 0.955, 22, ei < errors ? C.wrong : C.ui, 0.9);
-    }
-
-    game.draw.text(score + ' / ' + NEEDED, W / 2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft / 90);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 12, ratio > 0.3 ? C.correct : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(score + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var ei = 0; ei < MAX_ERR; ei++) game.draw.rect(snap(W / 2 + (ei - (MAX_ERR - 1) / 2) * 56) - 10, 224, 20, 20, ei < errors ? C.a : '#030310');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.03);
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
