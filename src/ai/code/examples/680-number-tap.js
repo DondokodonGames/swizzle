@@ -1,182 +1,135 @@
 // 680-number-tap.js
-// 数字タッチ — 散らばった数字を1から順番に素早くタップせよ
-// 操作: タップで数字を昇順に押す
-// 成功: 1から25まで完走  失敗: 60秒
+// ナンバータップ — 盤面に散らばった数字を、1から順にできるだけ速くタップする
+// 操作: 光っている次の数字（NEXT）を探してタップ。順番を間違えると軽いペナルティ
+// 成功: 1〜16 を全押し  失敗: 20秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#040312',
-    cell:    '#0e0c2a',
-    next:    '#a78bfa',
-    nextBg:  '#4c1d95',
-    done:    '#1e1b4b',
-    doneTxt: '#312e81',
-    correct: '#22c55e',
-    wrong:   '#ef4444',
-    text:    '#f1f5f9',
-    ui:      '#060412'
-  };
+  // ── パレット（ネオンアーケード、数字盤） ──
+  var C = { bg:'#040312', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var GRID_COLS = 5;
-  var GRID_ROWS = 5;
-  var TOTAL = 25;
-  var CELL = 180;
-  var GAP = 10;
-  var GRID_W = GRID_COLS * CELL + (GRID_COLS - 1) * GAP;
-  var GRID_H = GRID_ROWS * CELL + (GRID_ROWS - 1) * GAP;
-  var GRID_X = (W - GRID_W) / 2;
-  var GRID_Y = (H - GRID_H) / 2 + 80;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'NUMBER TAP';
+  var HOW_TO_PLAY = 'TAP THE NUMBERS 1 TO 16 IN ORDER AS FAST AS YOU CAN';
+  var MAX_TIME = 20;
+  var GRID_COLS = 4, GRID_ROWS = 4, TOTAL = 16, CELL = 210, GAP = 14;
+  var GRID_W = GRID_COLS * CELL + (GRID_COLS - 1) * GAP, GRID_H = GRID_ROWS * CELL + (GRID_ROWS - 1) * GAP;
+  var GRID_X = snap((W - GRID_W) / 2), GRID_Y = snap((H - GRID_H) / 2 + 60);
 
-  var positions = [];  // positions[i] = {row, col} for number (i+1)
-  var cellDone = [];   // cellDone[i] = true if number (i+1) is tapped
-  var nextNum = 1;
-  var done = false;
-  var timeLeft = 60;
-  var elapsed = 0;
-  var flashAnim = 0;
-  var particles = [];
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  // ── ゲーム変数 ──
+  var positions, cellDone, nextNum, timeLeft, done, flash, particles;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.d : '#060412');
+  }
+
+  function background() { game.draw.clear(C.bg); }
 
   function cellX(col) { return GRID_X + col * (CELL + GAP); }
   function cellY(row) { return GRID_Y + row * (CELL + GAP); }
 
-  function setup() {
-    var cells = [];
-    for (var r = 0; r < GRID_ROWS; r++) {
-      for (var c = 0; c < GRID_COLS; c++) {
-        cells.push({ row: r, col: c });
-      }
-    }
-    for (var i = cells.length - 1; i > 0; i--) {
-      var j = Math.floor(Math.random() * (i + 1));
-      var tmp = cells[i]; cells[i] = cells[j]; cells[j] = tmp;
-    }
-    positions = cells;
-    cellDone = [];
-    for (var k = 0; k < TOTAL; k++) cellDone.push(false);
-    nextNum = 1;
+  function initGame() {
+    var cells = []; for (var r = 0; r < GRID_ROWS; r++) for (var c = 0; c < GRID_COLS; c++) cells.push({ row: r, col: c });
+    for (var i = cells.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = cells[i]; cells[i] = cells[j]; cells[j] = t; }
+    positions = cells; cellDone = []; for (var k = 0; k < TOTAL; k++) cellDone.push(false);
+    nextNum = 1; timeLeft = MAX_TIME; done = false; flash = 0; particles = [];
   }
 
-  game.onTap(function(tx, ty) {
+  function finish(success) {
     if (done) return;
-    var col = Math.floor((tx - GRID_X) / (CELL + GAP));
-    var row = Math.floor((ty - GRID_Y) / (CELL + GAP));
+    done = true; resultSuccess = success;
+    finalScore = success ? (Math.ceil(timeLeft) * 200 + 3000) : (nextNum - 1) * 150;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawScene() {
+    for (var ni = 0; ni < TOTAL; ni++) {
+      var pos = positions[ni], cx = cellX(pos.col), cy = cellY(pos.row), num = ni + 1, isDone = cellDone[ni], isNext = num === nextNum;
+      if (isDone) { game.draw.rect(cx, cy, CELL, CELL, '#1e1b4b', 0.85); txt('' + num, cx + CELL / 2, cy + CELL / 2 + 14, 44, '#312e81'); }
+      else if (isNext) { var pu = 0.75 + 0.25 * Math.sin(game.time.elapsed * 7); game.draw.rect(cx, cy, CELL, CELL, C.d, pu); game.draw.rect(cx, cy, CELL, 8, C.g, 0.7); txt('' + num, cx + CELL / 2, cy + CELL / 2 + 18, 68, C.g); }
+      else { game.draw.rect(cx, cy, CELL, CELL, '#0e0c2a', 0.85); game.draw.rect(cx, cy, CELL, 6, C.e, 0.3); txt('' + num, cx + CELL / 2, cy + CELL / 2 + 16, 56, C.g); }
+    }
+  }
+
+  // ── 入力 ──
+  game.onTap(function(tx, ty) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    var col = Math.floor((tx - GRID_X) / (CELL + GAP)), row = Math.floor((ty - GRID_Y) / (CELL + GAP));
     if (col < 0 || col >= GRID_COLS || row < 0 || row >= GRID_ROWS) return;
-    // Check in-cell (not in gap)
-    var localX = (tx - GRID_X) - col * (CELL + GAP);
-    var localY = (ty - GRID_Y) - row * (CELL + GAP);
-    if (localX > CELL || localY > CELL) return;
-
-    // Find number at this cell
-    var tappedNum = -1;
-    for (var i = 0; i < TOTAL; i++) {
-      if (positions[i].row === row && positions[i].col === col) {
-        tappedNum = i + 1;
-        break;
-      }
-    }
-    if (tappedNum < 0) return;
-
-    if (tappedNum === nextNum) {
-      cellDone[tappedNum - 1] = true;
-      var pos = positions[tappedNum - 1];
-      for (var p = 0; p < 5; p++) {
-        var pa = Math.random() * Math.PI * 2;
-        particles.push({
-          x: cellX(pos.col) + CELL / 2,
-          y: cellY(pos.row) + CELL / 2,
-          vx: Math.cos(pa) * 160, vy: Math.sin(pa) * 160,
-          life: 0.4, col: C.next
-        });
-      }
-      game.audio.play('se_tap', 0.1);
-      nextNum++;
-      if (nextNum > TOTAL) {
-        done = true;
-        game.audio.play('se_success', 0.9);
-        var score = Math.floor(timeLeft * 80) + 2000;
-        setTimeout(function() { game.end.success(score); }, 600);
-      }
-    } else {
-      // Wrong tap
-      flashAnim = 0.18;
-      game.audio.play('se_failure', 0.12);
-    }
+    if ((tx - GRID_X) - col * (CELL + GAP) > CELL || (ty - GRID_Y) - row * (CELL + GAP) > CELL) return;
+    var tn = -1; for (var i = 0; i < TOTAL; i++) if (positions[i].row === row && positions[i].col === col) { tn = i + 1; break; }
+    if (tn < 0) return;
+    if (tn === nextNum) {
+      cellDone[tn - 1] = true; var pos = positions[tn - 1];
+      for (var p = 0; p < 5; p++) { var pa = Math.random() * Math.PI * 2; particles.push({ x: cellX(pos.col) + CELL / 2, y: cellY(pos.row) + CELL / 2, vx: Math.cos(pa) * 160, vy: Math.sin(pa) * 160, life: 0.4, col: C.c }); }
+      game.audio.play('se_tap', 0.1); nextNum++; if (nextNum > TOTAL) { finish(true); return; }
+    } else { flash = 0.18; game.audio.play('se_failure', 0.12); }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!positions) initGame(); background(); drawScene();
+      txt(GAME_TITLE, W / 2, H * 0.10, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.145, 20, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) txt('► 100円 投入 ◄ TAP TO START', W / 2, H * 0.90, 40, C.a);
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'ALL TAPPED!' : 'TIME UP', W / 2, H * 0.35, 66, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
-      }
-    }
-    if (flashAnim > 0) flashAnim -= dt * 5;
-
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt * 3;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
+      if (timeLeft <= 0) { finish(false); return; }
+      if (flash > 0) flash -= dt * 5;
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt * 3; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    // Draw
-    game.draw.rect(0, 0, W, H, C.bg);
+    // ---- 描画 ----
+    background(); drawScene();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 4, snap(particles[pp2].y) - 4, 8, 8, particles[pp2].col, particles[pp2].life * 1.6);
+    if (flash > 0) game.draw.rect(0, 0, W, H, C.a, flash * 0.06);
 
-    // Grid
-    for (var ni = 0; ni < TOTAL; ni++) {
-      var pos = positions[ni];
-      var cx = cellX(pos.col);
-      var cy = cellY(pos.row);
-      var num = ni + 1;
-      var isDone = cellDone[ni];
-      var isNext = num === nextNum;
-
-      if (isDone) {
-        game.draw.rect(cx, cy, CELL, CELL, C.done, 0.85);
-        game.draw.text('' + num, cx + CELL / 2, cy + CELL / 2 + 14, { size: 44, color: C.doneTxt, bold: true });
-      } else if (isNext) {
-        var pulse = 0.75 + 0.25 * Math.sin(elapsed * 7);
-        game.draw.rect(cx + 4, cy + 4, CELL, CELL, '#000', 0.3);
-        game.draw.rect(cx, cy, CELL, CELL, C.nextBg, pulse);
-        game.draw.rect(cx - 5, cy - 5, CELL + 10, CELL + 10, C.next, 0.18);
-        game.draw.rect(cx, cy, CELL, 8, '#ffffff22', 0.7);
-        game.draw.text('' + num, cx + CELL / 2, cy + CELL / 2 + 16, { size: 64, color: '#fff', bold: true });
-      } else {
-        game.draw.rect(cx + 3, cy + 3, CELL, CELL, '#000', 0.28);
-        game.draw.rect(cx, cy, CELL, CELL, C.cell, 0.85);
-        game.draw.rect(cx, cy, CELL, 6, '#ffffff12', 0.8);
-        game.draw.text('' + num, cx + CELL / 2, cy + CELL / 2 + 14, { size: 52, color: C.text, bold: true });
-      }
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p2 = particles[pp2];
-      game.draw.circle(p2.x, p2.y, 8 * p2.life, p2.col, p2.life);
-    }
-
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, C.wrong, flashAnim * 0.06);
-
-    // Header
-    var headerY = GRID_Y - 90;
-    game.draw.text('次: ' + nextNum, W * 0.3, headerY, { size: 44, color: C.next, bold: true });
-    game.draw.text((nextNum - 1) + ' / ' + TOTAL, W * 0.75, headerY, { size: 38, color: '#ffffff55' });
-
-    var ratio = Math.max(0, timeLeft / 60);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 12, ratio > 0.3 ? C.correct : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt('NEXT ' + nextNum + '   ' + (nextNum - 1) + ' / ' + TOTAL, W / 2, 168, 44, C.b);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.04);
-    setup();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
