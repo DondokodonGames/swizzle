@@ -1,249 +1,171 @@
 // 603-earthquake.js
-// アースクエイク — 揺れる大地でバランスを保いながら逃げろ
-// 操作: 左右スワイプで傾く地面に合わせて反対に体重移動
-// 成功: 20秒間バランス維持  失敗: 3回転落 or 20秒
+// アースクエイク — 揺れて傾く足場の上で、反対側へ体重移動してバランスを保つ
+// 操作: 傾いた方向と逆へ左右スワイプ/タップで踏ん張る（端まで滑ると転落）
+// 成功: 15秒 生き残る  失敗: 3回 転落 or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#150a00',
-    ground:  '#3a2000',
-    groundHi:'#5a3010',
-    crack:   '#221000',
-    player:  '#44aaff',
-    playerHi:'#88ddff',
-    danger:  '#ef4444',
-    safe:    '#22c55e',
-    dust:    '#88660044',
-    text:    '#f1f5f9',
-    ui:      '#2a1800'
-  };
+  // ── パレット（ネオンアーケード、崩落地帯） ──
+  var C = { bg:'#0a0400', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var SURVIVE_TIME = 20;
-  var PLAT_W = W * 0.7;
-  var PLAT_H = 40;
-  var PLAT_CX = W / 2;
-  var PLAT_Y = H * 0.65;
-  var PIVOT_X = PLAT_CX;
-  var PIVOT_Y = PLAT_Y;
-
-  var platformAngle = 0;
-  var platformAngVel = 0;
-  var SHAKE_PERIOD = 1.5;
-  var shakeTimer = 0;
-  var shakeTarget = 0;
-  var SHAKE_AMP = 0.5; // radians
-
-  // Player
-  var playerRelX = 0; // position along platform (-0.5 to 0.5 normalized)
-  var playerVelX = 0;
-  var PLAYER_R = 28;
-  var playerGrounded = true;
-  var playerY = PLAT_Y - PLAYER_R - PLAT_H / 2;
-  var playerActualX = PLAT_CX;
-  var falls = 0;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'EARTHQUAKE';
+  var HOW_TO_PLAY = 'SWIPE / TAP AGAINST THE TILT TO KEEP YOUR BALANCE · DO NOT SLIDE OFF';
+  var MAX_TIME = 15;         // 修正2: 20 → 15
   var MAX_FALLS = 3;
-  var invincible = 0;
+  var PLAT_W = W * 0.72, PLAT_H = 44;
+  var PIVOT_X = W / 2, PIVOT_Y = snap(H * 0.62);
+  var PLAYER_R = 30;
 
-  var survived = 0;
-  var done = false;
-  var elapsed = 0;
-  var timeLeft = SURVIVE_TIME;
-  var particles = [];
-  var flashAnim = 0, flashCol = C.danger;
-  var hitFlash = 0;
-  var cracks = [];
-  var dustParticles = [];
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  game.onSwipe(function(dir) {
+  // ── ゲーム変数 ──
+  var platAngle, platAngVel, shakeTimer, shakePeriod, shakeTarget, playerRelX, playerVelX, playerAX, playerAY, falls, invincible, timeLeft, done, particles, flash, hitFlash, cracks, dust;
+  var SHAKE_AMP = 0.5;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.f : '#2a1400');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function initGame() { platAngle = 0; platAngVel = 0; shakeTimer = 0; shakePeriod = 1.5; shakeTarget = 0; playerRelX = 0; playerVelX = 0; playerAX = PIVOT_X; playerAY = PIVOT_Y - PLAYER_R; falls = 0; invincible = 0; timeLeft = MAX_TIME; done = false; particles = []; flash = 0; hitFlash = 0; cracks = []; dust = []; }
+
+  function finish(success) {
     if (done) return;
-    if (dir === 'left') playerVelX -= 180;
-    else if (dir === 'right') playerVelX += 180;
+    done = true; resultSuccess = success;
+    finalScore = success ? (MAX_TIME * 200 + (MAX_FALLS - falls) * 600) : Math.round((MAX_TIME - timeLeft) * 200);
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawScene() {
+    var shakeX = Math.sin(game.time.elapsed * 12) * 8 * Math.abs(platAngle);
+    game.draw.rect(shakeX, snap(H * 0.82), W, H * 0.18, '#3a2000', 0.6);
+    for (var di2 = 0; di2 < dust.length; di2++) { var dp = dust[di2]; game.draw.rect(snap(dp.x + shakeX), snap(dp.y), 10, 10, '#8a6a20', dp.life * 0.4); }
+
+    // platform (pixel blocks along the tilted line)
+    var cosA = Math.cos(platAngle), sinA = Math.sin(platAngle);
+    for (var bx = -PLAT_W / 2; bx <= PLAT_W / 2; bx += 16) {
+      var wx = PIVOT_X + bx * cosA, wy = PIVOT_Y + bx * sinA;
+      game.draw.rect(snap(wx) - 8, snap(wy), 16, PLAT_H, '#5a3010');
+      game.draw.rect(snap(wx) - 8, snap(wy), 16, 6, C.f, 0.8);
+    }
+    for (var ci = 0; ci < cracks.length; ci++) { var cr = cracks[ci], cx = PIVOT_X + cr.x * cosA, cy = PIVOT_Y + cr.x * sinA; game.draw.rect(snap(cx) - 2, snap(cy), 4, PLAT_H, '#1a0c00', cr.life * 0.6); }
+
+    // player
+    var pCol = hitFlash > 0 ? C.a : C.e;
+    var pa = (invincible > 0 && Math.floor(game.time.elapsed * 8) % 2 === 0) ? 0.3 : 0.9;
+    pc(playerAX, playerAY, PLAYER_R, pCol, pa); pc(playerAX - 8, playerAY - 8, PLAYER_R * 0.3, C.g, 0.5 * pa);
+
+    // balance meter
+    game.draw.rect(W / 2 - 200, snap(H * 0.20), 400, 16, '#2a1400', 0.8);
+    var bx2 = W / 2 + playerRelX * 200;
+    pc(bx2, H * 0.20 + 8, 16, Math.abs(playerRelX) > 0.6 ? C.a : C.b, 0.95);
+  }
+
+  // ── 入力 ──
+  game.onSwipe(function(dir) {
+    if (state !== S.PLAYING || done) return;
+    if (dir === 'left') playerVelX -= 190; else if (dir === 'right') playerVelX += 190;
     game.audio.play('se_tap', 0.15);
   });
 
-  game.onTap(function(tx, ty) {
+  game.onTap(function(tx) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
     if (done) return;
-    if (tx < W / 2) playerVelX -= 120;
-    else playerVelX += 120;
-    game.audio.play('se_tap', 0.1);
+    if (tx < W / 2) playerVelX -= 130; else playerVelX += 130; game.audio.play('se_tap', 0.1);
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!particles) initGame(); background(); drawScene();
+      txt(GAME_TITLE, W / 2, H * 0.12, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.165, 20, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.90, 56, C.a);
+        txt('TAP TO START', W / 2, H * 0.94, 42, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'STAYED UP!' : 'FELL OFF', W / 2, H * 0.35, 66, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_success', 0.9);
-        setTimeout(function() { game.end.success(SURVIVE_TIME * 100 + (MAX_FALLS - falls) * 400); }, 700);
-        return;
+      if (timeLeft <= 0) { finish(true); return; }
+      if (flash > 0) flash -= dt * 3; if (hitFlash > 0) hitFlash -= dt * 3; if (invincible > 0) invincible -= dt;
+
+      shakeTimer += dt;
+      if (shakeTimer > shakePeriod) { shakeTimer = 0; shakeTarget = (Math.random() - 0.5) * SHAKE_AMP * 2; shakePeriod = 0.8 + Math.random() * 0.8; if (Math.random() < 0.5) cracks.push({ x: (Math.random() - 0.5) * PLAT_W, life: 1.5 }); }
+      platAngVel += (shakeTarget - platAngle) * 4 * dt; platAngVel *= 0.92; platAngle += platAngVel * dt;
+      platAngle = Math.max(-SHAKE_AMP * 1.2, Math.min(SHAKE_AMP * 1.2, platAngle));
+      for (var ci = cracks.length - 1; ci >= 0; ci--) { cracks[ci].life -= dt; if (cracks[ci].life <= 0) cracks.splice(ci, 1); }
+
+      var gravEffect = Math.sin(platAngle) * 400;
+      playerVelX += gravEffect * dt; playerVelX *= 0.88;
+      playerRelX += playerVelX * dt / (PLAT_W / 2);
+      playerRelX = Math.max(-1, Math.min(1, playerRelX));
+      var localX = playerRelX * PLAT_W / 2, cosA = Math.cos(platAngle), sinA = Math.sin(platAngle);
+      playerAX = PIVOT_X + localX * cosA - (PLAT_H / 2 + PLAYER_R) * (-sinA);
+      playerAY = PIVOT_Y + localX * sinA - (PLAT_H / 2 + PLAYER_R) * cosA;
+
+      if (Math.random() < 0.2) dust.push({ x: PIVOT_X + (Math.random() - 0.5) * PLAT_W, y: PIVOT_Y + PLAT_H, vx: (Math.random() - 0.5) * 40, vy: -20 - Math.random() * 30, life: 0.5 });
+      for (var di = dust.length - 1; di >= 0; di--) { dust[di].x += dust[di].vx * dt; dust[di].y += dust[di].vy * dt; dust[di].life -= dt * 2; if (dust[di].life <= 0) dust.splice(di, 1); }
+
+      if (Math.abs(playerRelX) >= 1 && invincible <= 0) {
+        falls++; invincible = 1.5; hitFlash = 0.5; flash = 0.4; playerRelX = 0; playerVelX = 0; game.audio.play('se_failure', 0.5);
+        for (var pi = 0; pi < 8; pi++) { var a = Math.random() * Math.PI * 2; particles.push({ x: playerAX, y: playerAY, vx: Math.cos(a) * 180, vy: Math.sin(a) * 180, life: 0.4, col: C.e }); }
+        if (falls >= MAX_FALLS) { finish(false); return; }
       }
-    }
-    if (flashAnim > 0) flashAnim -= dt * 3;
-    if (hitFlash > 0) hitFlash -= dt * 3;
-    if (invincible > 0) invincible -= dt;
-
-    // Earthquake shake
-    shakeTimer += dt;
-    if (shakeTimer > SHAKE_PERIOD) {
-      shakeTimer = 0;
-      shakeTarget = (Math.random() - 0.5) * SHAKE_AMP * 2;
-      SHAKE_PERIOD = 0.8 + Math.random() * 0.8;
-      // Add crack effect
-      if (Math.random() < 0.5) {
-        cracks.push({ x: (Math.random() - 0.5) * PLAT_W, life: 1.5 });
-      }
-    }
-    // Lerp platform angle toward target
-    platformAngVel += (shakeTarget - platformAngle) * 4 * dt;
-    platformAngVel *= 0.92;
-    platformAngle += platformAngVel * dt;
-    platformAngle = Math.max(-SHAKE_AMP * 1.2, Math.min(SHAKE_AMP * 1.2, platformAngle));
-
-    // Update cracks
-    for (var ci = cracks.length - 1; ci >= 0; ci--) {
-      cracks[ci].life -= dt;
-      if (cracks[ci].life <= 0) cracks.splice(ci, 1);
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 300 * dt; p.life -= dt * 2.5; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    // Gravity on player (slides toward low end of platform)
-    var gravEffect = Math.sin(platformAngle) * 400; // force pushing player downhill
-    playerVelX += gravEffect * dt;
-    playerVelX *= 0.88; // friction
-    playerRelX += playerVelX * dt / (PLAT_W / 2);
-    playerRelX = Math.max(-1, Math.min(1, playerRelX));
+    // ---- 描画 ----
+    background(); drawScene();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 2);
+    if (flash > 0) game.draw.rect(0, 0, W, H, C.a, flash * 0.1);
+    if (hitFlash > 0) game.draw.rect(0, 0, W, H, C.a, hitFlash * 0.08);
 
-    // Compute player world position
-    var localX = playerRelX * PLAT_W / 2;
-    var cosA = Math.cos(platformAngle), sinA = Math.sin(platformAngle);
-    playerActualX = PIVOT_X + localX * cosA - (PLAT_H / 2 + PLAYER_R) * (-sinA);
-    playerY = PIVOT_Y + localX * sinA + (PLAT_H / 2 + PLAYER_R) * cosA;
-
-    // Dust particles
-    if (Math.random() < 0.2) {
-      dustParticles.push({
-        x: PIVOT_X + (Math.random() - 0.5) * PLAT_W,
-        y: PLAT_Y + PLAT_H / 2,
-        vx: (Math.random() - 0.5) * 40,
-        vy: -20 - Math.random() * 30,
-        life: 0.5
-      });
-    }
-    for (var di = dustParticles.length - 1; di >= 0; di--) {
-      dustParticles[di].x += dustParticles[di].vx * dt;
-      dustParticles[di].y += dustParticles[di].vy * dt;
-      dustParticles[di].life -= dt * 2;
-      if (dustParticles[di].life <= 0) dustParticles.splice(di, 1);
-    }
-
-    // Fall check
-    if (Math.abs(playerRelX) >= 1 && invincible <= 0) {
-      falls++;
-      invincible = 1.5;
-      hitFlash = 0.5;
-      flashCol = C.danger;
-      flashAnim = 0.4;
-      playerRelX = 0;
-      playerVelX = 0;
-      game.audio.play('se_failure', 0.5);
-      for (var pi = 0; pi < 8; pi++) {
-        var ang = Math.random() * Math.PI * 2;
-        particles.push({ x: playerActualX, y: playerY, vx: Math.cos(ang) * 180, vy: Math.sin(ang) * 180, life: 0.4, col: C.playerHi });
-      }
-      if (falls >= MAX_FALLS && !done) {
-        done = true;
-        game.audio.play('se_failure', 0.7);
-        setTimeout(function() { game.end.failure(); }, 600);
-      }
-    }
-
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].vy += 300 * dt;
-      particles[pp].life -= dt * 2.5;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
-
-    // Draw
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Background shake effect
-    var shakeX = Math.sin(elapsed * 12) * 8 * Math.abs(platformAngle);
-    game.draw.rect(0 + shakeX, H * 0.8, W, H * 0.2, C.ground, 0.6);
-
-    // Dust
-    for (var di2 = 0; di2 < dustParticles.length; di2++) {
-      var dp = dustParticles[di2];
-      game.draw.circle(dp.x + shakeX, dp.y, 12 * dp.life, C.dust.slice(0, 7), dp.life * 0.3);
-    }
-
-    // Platform (rotated)
-    var cosA2 = Math.cos(platformAngle), sinA2 = Math.sin(platformAngle);
-    var hw = PLAT_W / 2, hh = PLAT_H / 2;
-    // Draw platform as rectangle with shadow
-    var corners = [[-hw,-hh],[hw,-hh],[hw,hh],[-hw,hh]];
-    for (var ri = 0; ri < 3; ri++) {
-      var c1 = corners[ri], c2 = corners[ri + 1];
-      var x1 = PIVOT_X + c1[0] * cosA2 - c1[1] * sinA2;
-      var y1 = PIVOT_Y + c1[0] * sinA2 + c1[1] * cosA2;
-      var x2 = PIVOT_X + c2[0] * cosA2 - c2[1] * sinA2;
-      var y2 = PIVOT_Y + c2[0] * sinA2 + c2[1] * cosA2;
-      game.draw.line(x1, y1, x2, y2, C.groundHi, 8);
-    }
-    // Top face
-    var t1 = corners[0], t2 = corners[1];
-    var tx1 = PIVOT_X + t1[0] * cosA2 - t1[1] * sinA2;
-    var ty1 = PIVOT_Y + t1[0] * sinA2 + t1[1] * cosA2;
-    var tx2 = PIVOT_X + t2[0] * cosA2 - t2[1] * sinA2;
-    var ty2 = PIVOT_Y + t2[0] * sinA2 + t2[1] * cosA2;
-    game.draw.line(tx1, ty1, tx2, ty2, C.groundHi, 10);
-
-    // Cracks on platform
-    for (var ci2 = 0; ci2 < cracks.length; ci2++) {
-      var cr = cracks[ci2];
-      var crWX = PIVOT_X + cr.x * cosA2;
-      var crWY = PIVOT_Y + cr.x * sinA2;
-      game.draw.line(crWX - 10, crWY - 5, crWX + 10, crWY + 5, C.crack, 3);
-    }
-
-    // Player
-    var pCol = hitFlash > 0 ? C.danger : C.player;
-    var pAlpha = (invincible > 0 && Math.floor(elapsed * 8) % 2 === 0) ? 0.3 : 0.9;
-    game.draw.circle(playerActualX + 4, playerY + 4, PLAYER_R, '#000', 0.3);
-    game.draw.circle(playerActualX, playerY, PLAYER_R, pCol, pAlpha);
-    game.draw.circle(playerActualX - 8, playerY - 8, PLAYER_R * 0.3, C.playerHi, 0.5 * pAlpha);
-
-    // Balance indicator
-    var balanceRatio = playerRelX;
-    game.draw.rect(W / 2 - 80, H * 0.12 - 8, 160, 16, C.ui, 0.5);
-    game.draw.circle(W / 2 + balanceRatio * 80, H * 0.12, 12, Math.abs(balanceRatio) > 0.6 ? C.danger : C.safe, 0.9);
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 10 * p.life, p.col, p.life * 0.8);
-    }
-
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, flashCol, flashAnim * 0.1);
-    if (hitFlash > 0) game.draw.rect(0, 0, W, H, C.danger, hitFlash * 0.08);
-
-    // Fall dots
-    for (var fi = 0; fi < MAX_FALLS; fi++) {
-      game.draw.circle(W / 2 - (MAX_FALLS - 1) * 80 + fi * 160, H * 0.955, 28, fi < falls ? C.danger : C.safe, 0.9);
-    }
-
-    var ratio = Math.max(0, timeLeft / SURVIVE_TIME);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 12, ratio > 0.3 ? C.safe : C.danger);
-    game.draw.text(Math.ceil(timeLeft) + '秒', W / 2, 36, { size: 44, color: '#fff', bold: true });
-    game.draw.text('バランスを保て!', W / 2, 80, { size: 36, color: ratio > 0.3 ? C.safe : C.danger });
+    timeBar();
+    txt(Math.ceil(timeLeft) + 's', W / 2, 96, 44, C.g);
+    for (var fi = 0; fi < MAX_FALLS; fi++) game.draw.rect(snap(W / 2 + (fi - (MAX_FALLS - 1) / 2) * 56) - 10, 168, 20, 20, fi < falls ? C.a : C.b);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.07);
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);

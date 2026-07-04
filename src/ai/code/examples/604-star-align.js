@@ -1,289 +1,176 @@
 // 604-star-align.js
-// スターアライン — 星座を完成させるために星を正しい位置に配置する
-// 操作: タップで星を選択、もう一度タップで配置先を指定
-// 成功: 8星座完成  失敗: 10回配置ミス or 90秒
+// スターアライン — 下段の星をタップで選び、光る枠へ運んで星座を完成させる
+// 操作: 下の星をタップで選択 → 空いた枠をタップで配置。全枠を埋めると星座完成
+// 成功: 3つ 星座完成  失敗: 25秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#000008',
-    space:   '#000010',
-    star:    '#ffeeaa',
-    starHi:  '#ffffff',
-    selected:'#44aaff',
-    selectedHi:'#88ccff',
-    slot:    '#112233',
-    slotHi:  '#224466',
-    line:    '#224466',
-    correct: '#22c55e',
-    wrong:   '#ef4444',
-    text:    '#f1f5f9',
-    ui:      '#0a0a2a'
-  };
+  // ── パレット（アイスブルー、星海） ──
+  var C = { bg:'#000308', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#3355ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  // Constellation patterns (relative positions of stars)
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'STAR ALIGN';
+  var HOW_TO_PLAY = 'TAP A STAR TO PICK IT · TAP A GLOWING SLOT TO PLACE · FILL THE SHAPE';
+  var MAX_TIME = 25;
+  var NEEDED   = 3;          // 修正2: 8 → 3
+
+  // 星座パターン（相対座標）
   var PATTERNS = [
-    [[0,0],[1,0],[2,0],[1,-1]], // T shape
-    [[0,0],[1,1],[2,0],[0,1]], // Diamond
-    [[0,0],[0,1],[1,1],[2,1],[2,0]], // L
-    [[0,0],[1,0],[2,0],[1,1],[1,-1]], // Plus
-    [[0,0],[1,1],[2,2],[0,2]], // Z
-    [[0,0],[0,1],[0,2],[1,0],[2,0]], // Corner
-    [[0,0],[1,0],[2,0],[0,1],[2,1]], // U
-    [[0,1],[1,0],[1,2],[2,1]] // X
+    [[0,0],[1,0],[2,0],[1,-1]],
+    [[0,0],[1,1],[2,0],[0,1]],
+    [[0,0],[1,0],[2,0],[1,1],[1,-1]],
+    [[0,0],[1,1],[2,2],[0,2]],
+    [[0,0],[1,0],[2,0],[0,1],[2,1]]
   ];
+  var STAR_R = 26, SLOT_R = 30;
+  var PLAY_OX = 60, PLAY_OY = snap(H * 0.24), PLAY_W = W - 120, PLAY_H = snap(H * 0.42);
 
-  var STAR_R = 22;
-  var SLOT_R = 26;
-  var PLAY_W = W - 80;
-  var PLAY_H = H * 0.5;
-  var PLAY_OX = 40;
-  var PLAY_OY = H * 0.22;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var stars = []; // draggable stars at bottom
-  var slots = []; // target positions for current constellation
-  var selectedStar = -1;
-  var constellationsDone = 0;
-  var NEEDED = 8;
-  var mistakes = 0;
-  var MAX_MISTAKES = 10;
-  var done = false;
-  var timeLeft = 90;
-  var elapsed = 0;
-  var particles = [];
-  var flashAnim = 0, flashCol = C.correct;
-  var twinkling = [];
-  var resultText = '';
-  var resultTimer = 0;
+  // ── ゲーム変数 ──
+  var stars, slots, selectedStar, done_count, timeLeft, done, particles, flash, twinkling, resultText, resultTimer, lock;
 
-  // Background stars
-  for (var bsi = 0; bsi < 80; bsi++) {
-    twinkling.push({ x: Math.random() * W, y: Math.random() * H, r: Math.random() * 2 + 0.5, phase: Math.random() * Math.PI * 2 });
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function star(cx, cy, r, color, alpha) { cx = snap(cx); cy = snap(cy); for (var i = 0; i < 5; i++) { var a = i / 5 * Math.PI * 2 - Math.PI / 2; game.draw.rect(cx + Math.cos(a) * r - 4, cy + Math.sin(a) * r - 4, 8, 8, color, alpha); var a2 = a + Math.PI / 5; game.draw.rect(cx + Math.cos(a2) * r * 0.45 - 4, cy + Math.sin(a2) * r * 0.45 - 4, 8, 8, color, alpha); } pc(cx, cy, r * 0.4, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.e : '#050518');
+  }
+
+  function background() { game.draw.clear(C.bg); for (var i = 0; i < twinkling.length; i++) { var ts = twinkling[i]; game.draw.rect(snap(ts.x), snap(ts.y), ts.r, ts.r, C.g, 0.3 + Math.sin(ts.phase) * 0.25); } }
+
   function loadConstellation() {
-    var patIdx = constellationsDone % PATTERNS.length;
-    var pat = PATTERNS[patIdx];
-
-    // Scale pattern to fit play area
+    var pat = PATTERNS[done_count % PATTERNS.length];
     var maxC = 0, maxR = 0;
-    for (var i = 0; i < pat.length; i++) {
-      if (pat[i][0] > maxC) maxC = pat[i][0];
-      if (Math.abs(pat[i][1]) > maxR) maxR = Math.abs(pat[i][1]);
-    }
-    var scale = Math.min(PLAY_W * 0.6 / (maxC + 1), PLAY_H * 0.5 / (maxR * 2 + 1), 120);
-    var centerX = PLAY_OX + PLAY_W / 2;
-    var centerY = PLAY_OY + PLAY_H / 2;
-
+    for (var i = 0; i < pat.length; i++) { if (pat[i][0] > maxC) maxC = pat[i][0]; if (Math.abs(pat[i][1]) > maxR) maxR = Math.abs(pat[i][1]); }
+    var scale = Math.min(PLAY_W * 0.55 / (maxC + 1), PLAY_H * 0.5 / (maxR * 2 + 1), 150);
+    var cx = PLAY_OX + PLAY_W / 2, cy = PLAY_OY + PLAY_H / 2;
     slots = [];
-    for (var si = 0; si < pat.length; si++) {
-      slots.push({
-        x: centerX + pat[si][0] * scale - maxC * scale / 2,
-        y: centerY + pat[si][1] * scale,
-        filled: false,
-        starIdx: -1,
-        phase: Math.random() * Math.PI * 2
-      });
-    }
-
-    // Create stars to place (same count as slots)
-    var starY = H * 0.83;
-    var starSpacing = Math.min(120, (W - 80) / pat.length);
-    var startX = W / 2 - (pat.length - 1) * starSpacing / 2;
+    for (var si = 0; si < pat.length; si++) slots.push({ x: snap(cx + pat[si][0] * scale - maxC * scale / 2), y: snap(cy + pat[si][1] * scale), filled: false, phase: Math.random() * Math.PI * 2 });
+    var starY = snap(H * 0.80), spacing = Math.min(140, (W - 120) / pat.length), startX = W / 2 - (pat.length - 1) * spacing / 2;
     stars = [];
-    for (var i2 = 0; i2 < pat.length; i2++) {
-      stars.push({
-        x: startX + i2 * starSpacing,
-        y: starY,
-        phase: Math.random() * Math.PI * 2,
-        placed: false
-      });
-    }
+    for (var i2 = 0; i2 < pat.length; i2++) stars.push({ x: snap(startX + i2 * spacing), y: starY, phase: Math.random() * Math.PI * 2, placed: false });
     selectedStar = -1;
   }
 
-  function checkComplete() {
-    return slots.every(function(s) { return s.filled; });
+  function initGame() { done_count = 0; timeLeft = MAX_TIME; done = false; particles = []; flash = 0; resultText = ''; resultTimer = 0; lock = false; twinkling = []; for (var i = 0; i < 70; i++) twinkling.push({ x: Math.random() * W, y: Math.random() * H, r: 8, phase: Math.random() * Math.PI * 2 }); loadConstellation(); }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (done_count * 900 + Math.ceil(timeLeft) * 120) : done_count * 300;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
   }
 
-  game.onTap(function(tx, ty) {
-    if (done) return;
+  function drawScene() {
+    // slot links
+    for (var i = 0; i < slots.length - 1; i++) if (slots[i].filled && slots[i + 1].filled) game.draw.line(slots[i].x, slots[i].y, slots[i + 1].x, slots[i + 1].y, C.d, 3);
+    for (var si = 0; si < slots.length; si++) {
+      var sl = slots[si], pu = 1 + Math.sin(sl.phase) * 0.15;
+      if (!sl.filled) { pc(sl.x, sl.y, SLOT_R * pu, C.d, 0.28); pc(sl.x, sl.y, SLOT_R * 0.4, C.e, 0.7); }
+      else { pc(sl.x, sl.y, STAR_R * 1.4, C.b, 0.18); star(sl.x, sl.y, STAR_R, C.c, 0.95); }
+    }
+    for (var s2 = 0; s2 < stars.length; s2++) {
+      var st = stars[s2]; if (st.placed) continue; var sel = (s2 === selectedStar), pu2 = 1 + Math.sin(st.phase) * 0.1;
+      if (sel) { pc(st.x, st.y, STAR_R * 1.7, C.e, 0.3); star(st.x, st.y, STAR_R * pu2, C.e, 0.95); }
+      else star(st.x, st.y, STAR_R * pu2, C.c, 0.85);
+    }
+  }
 
+  // ── 入力 ──
+  game.onTap(function(tx, ty) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done || lock) return;
     if (selectedStar < 0) {
-      // Try to select a star from the bottom
-      for (var si = 0; si < stars.length; si++) {
-        var s = stars[si];
-        if (s.placed) continue;
-        var dx = tx - s.x, dy = ty - s.y;
-        if (dx * dx + dy * dy < (STAR_R + 30) * (STAR_R + 30)) {
-          selectedStar = si;
-          game.audio.play('se_tap', 0.2);
+      for (var si = 0; si < stars.length; si++) { var s = stars[si]; if (s.placed) continue; var dx = tx - s.x, dy = ty - s.y; if (dx * dx + dy * dy < (STAR_R + 34) * (STAR_R + 34)) { selectedStar = si; game.audio.play('se_tap', 0.2); return; } }
+    } else {
+      for (var sli = 0; sli < slots.length; sli++) {
+        var sl = slots[sli]; if (sl.filled) continue; var dx2 = tx - sl.x, dy2 = ty - sl.y;
+        if (dx2 * dx2 + dy2 * dy2 < (SLOT_R + 40) * (SLOT_R + 40)) {
+          sl.filled = true; stars[selectedStar].placed = true; selectedStar = -1; game.audio.play('se_tap', 0.35);
+          if (slots.every(function(s) { return s.filled; })) {
+            done_count++; flash = 0.4; resultText = 'ALIGNED!'; resultTimer = 0.7; game.audio.play('se_success', 0.8);
+            var cx = PLAY_OX + PLAY_W / 2, cy = PLAY_OY + PLAY_H / 2;
+            for (var pi = 0; pi < 14; pi++) { var a = Math.random() * Math.PI * 2; particles.push({ x: cx + (Math.random() - 0.5) * 220, y: cy + (Math.random() - 0.5) * 220, vx: Math.cos(a) * 200, vy: Math.sin(a) * 200, life: 0.6, col: C.g }); }
+            if (done_count >= NEEDED) { finish(true); return; }
+            lock = true; setTimeout(function() { if (!done) { loadConstellation(); lock = false; } }, 1000);
+          }
           return;
         }
       }
-    } else {
-      // Try to place selected star in a slot
-      var hitSlot = -1;
-      for (var sli = 0; sli < slots.length; sli++) {
-        var sl = slots[sli];
-        if (sl.filled) continue;
-        var dx2 = tx - sl.x, dy2 = ty - sl.y;
-        if (dx2 * dx2 + dy2 * dy2 < (SLOT_R + 40) * (SLOT_R + 40)) {
-          hitSlot = sli;
-          break;
-        }
-      }
-
-      if (hitSlot >= 0) {
-        // Place star
-        slots[hitSlot].filled = true;
-        slots[hitSlot].starIdx = selectedStar;
-        stars[selectedStar].placed = true;
-        stars[selectedStar].x = slots[hitSlot].x;
-        stars[selectedStar].y = slots[hitSlot].y;
-        selectedStar = -1;
-        game.audio.play('se_tap', 0.3);
-
-        if (checkComplete()) {
-          constellationsDone++;
-          flashCol = C.correct;
-          flashAnim = 0.4;
-          resultText = '完成!';
-          resultTimer = 0.7;
-          game.audio.play('se_success', 0.8);
-          for (var pi = 0; pi < 12; pi++) {
-            var ang = Math.random() * Math.PI * 2;
-            var cx = PLAY_OX + PLAY_W / 2, cy = PLAY_OY + PLAY_H / 2;
-            particles.push({ x: cx + (Math.random() - 0.5) * 200, y: cy + (Math.random() - 0.5) * 200, vx: Math.cos(ang) * 200, vy: Math.sin(ang) * 200, life: 0.6, col: C.starHi });
-          }
-          if (constellationsDone >= NEEDED && !done) {
-            done = true;
-            game.audio.play('se_success', 0.9);
-            setTimeout(function() { game.end.success(constellationsDone * 600 + Math.ceil(timeLeft) * 100); }, 800);
-          } else {
-            setTimeout(function() { if (!done) loadConstellation(); }, 1200);
-          }
-        }
-      } else {
-        // Clicked wrong area
-        if (tx < W / 2 - 20 || tx > W / 2 + 20 || ty < PLAY_OY || ty > PLAY_OY + PLAY_H) {
-          // Deselect
-          selectedStar = -1;
-        }
-      }
+      selectedStar = -1;
     }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!twinkling) initGame(); background(); drawScene();
+      txt(GAME_TITLE, W / 2, H * 0.12, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.165, 20, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.92, 56, C.a);
+        txt('TAP TO START', W / 2, H * 0.96, 42, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'SKY COMPLETE!' : 'TIME UP', W / 2, H * 0.35, 64, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
-      }
-    }
-    if (flashAnim > 0) flashAnim -= dt * 3;
-    if (resultTimer > 0) resultTimer -= dt;
-
-    for (var ti = 0; ti < twinkling.length; ti++) {
-      twinkling[ti].phase += dt * (1 + Math.random());
-    }
-    for (var si = 0; si < stars.length; si++) {
-      stars[si].phase += dt * 2;
-    }
-    for (var sli = 0; sli < slots.length; sli++) {
-      slots[sli].phase += dt * 1.5;
+      if (timeLeft <= 0) { finish(false); return; }
+      if (flash > 0) flash -= dt * 3; if (resultTimer > 0) resultTimer -= dt;
+      for (var ti = 0; ti < twinkling.length; ti++) twinkling[ti].phase += dt * 1.5;
+      for (var si = 0; si < stars.length; si++) stars[si].phase += dt * 2;
+      for (var sli = 0; sli < slots.length; sli++) slots[sli].phase += dt * 1.5;
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt * 1.5; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt * 1.5;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
+    // ---- 描画 ----
+    background(); drawScene();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.5);
+    if (flash > 0) game.draw.rect(0, 0, W, H, C.b, flash * 0.1);
+    if (resultTimer > 0) txt(resultText, W / 2, snap(PLAY_OY + PLAY_H + 60), 56, C.c);
 
-    // Draw
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Background stars
-    for (var bsi2 = 0; bsi2 < twinkling.length; bsi2++) {
-      var ts = twinkling[bsi2];
-      var ta = 0.3 + Math.sin(ts.phase) * 0.25;
-      game.draw.circle(ts.x, ts.y, ts.r, C.starHi, ta);
-    }
-
-    // Constellation area
-    game.draw.rect(PLAY_OX, PLAY_OY, PLAY_W, PLAY_H, C.space, 0.5);
-
-    // Slot connections (lines between filled slots)
-    for (var sli2 = 0; sli2 < slots.length - 1; sli2++) {
-      if (slots[sli2].filled && slots[sli2 + 1].filled) {
-        game.draw.line(slots[sli2].x, slots[sli2].y, slots[sli2 + 1].x, slots[sli2 + 1].y, C.line, 3);
-      }
-    }
-
-    // Slots
-    for (var sli3 = 0; sli3 < slots.length; sli3++) {
-      var sl2 = slots[sli3];
-      var pulse = 1 + Math.sin(sl2.phase) * 0.15;
-      if (!sl2.filled) {
-        game.draw.circle(sl2.x, sl2.y, SLOT_R * pulse, C.slotHi, 0.3);
-        game.draw.circle(sl2.x, sl2.y, SLOT_R * 0.4, C.slot, 0.8);
-      } else {
-        // Filled slot — star placed
-        game.draw.circle(sl2.x, sl2.y, STAR_R * 1.5, C.correct, 0.2);
-        game.draw.circle(sl2.x, sl2.y, STAR_R * pulse, C.star, 0.9);
-        game.draw.circle(sl2.x - 6, sl2.y - 6, STAR_R * 0.3, C.starHi, 0.6);
-      }
-    }
-
-    // Stars at bottom
-    for (var si2 = 0; si2 < stars.length; si2++) {
-      var s2 = stars[si2];
-      if (s2.placed) continue;
-      var isSelected = (si2 === selectedStar);
-      var pulse2 = 1 + Math.sin(s2.phase) * 0.1;
-      if (isSelected) {
-        game.draw.circle(s2.x, s2.y, STAR_R * 1.8, C.selected, 0.25);
-        game.draw.circle(s2.x, s2.y, STAR_R * pulse2, C.selectedHi, 0.9);
-      } else {
-        game.draw.circle(s2.x, s2.y, STAR_R * 1.3, C.star, 0.15);
-        game.draw.circle(s2.x, s2.y, STAR_R * pulse2, C.star, 0.85);
-      }
-      game.draw.circle(s2.x - 6, s2.y - 6, STAR_R * 0.28, C.starHi, 0.5);
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 10 * p.life, p.col, p.life * 0.8);
-    }
-
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, flashCol, flashAnim * 0.1);
-
-    if (resultTimer > 0) {
-      game.draw.text(resultText, W / 2, PLAY_OY + PLAY_H + 40, { size: 60, color: flashCol, bold: true });
-    }
-
-    // Mistake dots
-    for (var mi = 0; mi < MAX_MISTAKES; mi++) {
-      game.draw.circle(W / 2 - (MAX_MISTAKES - 1) * 38 + mi * 76, H * 0.955, 16, mi < mistakes ? C.wrong : C.ui, 0.9);
-    }
-
-    game.draw.text(constellationsDone + ' / ' + NEEDED, W / 2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft / 90);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 12, ratio > 0.3 ? C.selected : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(done_count + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.04);
-    loadConstellation();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
