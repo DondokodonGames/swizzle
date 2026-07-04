@@ -1,252 +1,150 @@
 // 740-neon-dash.js
-// ネオンダッシュ — 迫り来る障害物をタップでジャンプして乗り越えろ
-// 操作: タップでジャンプ（空中では無効）
-// 成功: 30個クリア  失敗: 5回衝突 or 90秒
+// ネオンダッシュ — 迫ってくる障害物をタップジャンプで飛び越え続ける
+// 操作: 地上にいるときタップでジャンプ。障害物に当たるとダメージ
+// 成功: 10個 クリア  失敗: 3回 衝突 or 22秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#020612',
-    ground:  '#1e3a5f',
-    groundHi:'#2563eb',
-    runner:  '#22c55e',
-    runnerHi:'#86efac',
-    obstacle:'#f97316',
-    obstHi:  '#fde68a',
-    speedLine:'#0d2240',
-    correct: '#22c55e',
-    wrong:   '#ef4444',
-    text:    '#f1f5f9',
-    ui:      '#020810'
-  };
+  // ── パレット（ネオンアーケード、ランナー） ──
+  var C = { bg:'#020612', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
+  var RUNNER = '#00ff9f', RUNNER_HI = '#86efac', OBST = '#ff6600', OBST_HI = '#ffe600';
 
-  var GROUND_Y = H * 0.74;
-  var RUNNER_X = W * 0.22;
-  var RUNNER_W = 52;
-  var RUNNER_H = 80;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'NEON DASH';
+  var HOW_TO_PLAY = 'TAP TO JUMP OVER THE INCOMING OBSTACLES · TIME IT RIGHT';
+  var MAX_TIME = 22;
+  var NEEDED   = 10;         // 修正2: 30 → 10
+  var MAX_HITS = 3;          // 修正2: 5 → 3
+  var GROUND_Y = snap(H * 0.74), RUNNER_X = W * 0.22, RUNNER_W = 52, RUNNER_H = 80, GRAVITY = 1800, JUMP_V = -900, BASE_SPEED = 460;
 
-  var runnerY = GROUND_Y - RUNNER_H;
-  var runnerVy = 0;
-  var isGrounded = true;
-  var GRAVITY = 1800;
-  var JUMP_V = -900;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var speedLines = [];
-  for (var sli = 0; sli < 8; sli++) {
-    speedLines.push({
-      x: Math.random() * W,
-      y: H * 0.08 + Math.random() * (H * 0.58),
-      len: 60 + Math.random() * 90
-    });
+  // ── ゲーム変数 ──
+  var runnerY, runnerVy, isGrounded, speedLines, obstacles, spawnTimer, score, hits, timeLeft, done, elapsed, particles, flash, flashCol, resultText, resultTimer, legPhase, hitAnim;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  var obstacles = [];
-  var spawnTimer = 1.1;
-  var BASE_SPEED = 480;
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
 
-  var score = 0;
-  var NEEDED = 30;
-  var hits = 0;
-  var MAX_HITS = 5;
-  var done = false;
-  var timeLeft = 90;
-  var elapsed = 0;
-
-  var particles = [];
-  var flashAnim = 0, flashCol = C.correct;
-  var resultTimer = 0, resultText = '';
-  var legPhase = 0;
-  var hitAnim = 0;
-
-  function spawnObstacle() {
-    var h = 72 + Math.random() * 130;
-    obstacles.push({ x: W + 60, h: h, scored: false, hit: false });
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.e : '#020810');
   }
 
-  game.onTap(function(tx, ty) {
+  function background() { game.draw.clear(C.bg); for (var sli3 = 0; sli3 < speedLines.length; sli3++) { var sl = speedLines[sli3]; game.draw.line(sl.x, sl.y, sl.x - sl.len, sl.y, '#0d2240', 0.55); } }
+
+  function spawnObstacle() { obstacles.push({ x: W + 60, h: 72 + Math.random() * 120, scored: false, hit: false }); }
+
+  function initGame() {
+    runnerY = GROUND_Y - RUNNER_H; runnerVy = 0; isGrounded = true; obstacles = []; spawnTimer = 1.1; score = 0; hits = 0; timeLeft = MAX_TIME; done = false; elapsed = 0; particles = []; flash = 0; flashCol = C.b; resultText = ''; resultTimer = 0; legPhase = 0; hitAnim = 0;
+    speedLines = []; for (var sli = 0; sli < 8; sli++) speedLines.push({ x: Math.random() * W, y: H * 0.08 + Math.random() * (H * 0.58), len: 60 + Math.random() * 90 });
+    spawnObstacle();
+  }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (score * 500 + Math.ceil(timeLeft) * 100) : score * 150;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawScene() {
+    game.draw.rect(0, GROUND_Y, W, H - GROUND_Y, '#1e3a5f', 0.9); game.draw.line(0, GROUND_Y, W, GROUND_Y, C.e, 3);
+    for (var oi2 = 0; oi2 < obstacles.length; oi2++) { var ob2 = obstacles[oi2]; game.draw.rect(snap(ob2.x - 28), GROUND_Y - ob2.h, 56, ob2.h, OBST, 0.9); game.draw.rect(snap(ob2.x - 28), GROUND_Y - ob2.h, 56, 12, OBST_HI, 0.5); }
+    var shake = hitAnim > 0 ? Math.sin(elapsed * 30) * 12 * hitAnim : 0, rx = RUNNER_X + shake, rcol = hitAnim > 0 ? C.a : RUNNER;
+    game.draw.rect(snap(rx - RUNNER_W / 2), runnerY, RUNNER_W, RUNNER_H, rcol, 0.9);
+    pc(rx, runnerY - 26, 24, rcol, 0.9); pc(rx - 7, runnerY - 31, 8, RUNNER_HI, 0.45);
+    if (isGrounded) { var l1x = rx - 14 + Math.sin(legPhase) * 14, l2x = rx + 14 - Math.sin(legPhase) * 14; game.draw.line(rx - 14, runnerY + RUNNER_H, l1x, runnerY + RUNNER_H + 24, rcol, 9); game.draw.line(rx + 14, runnerY + RUNNER_H, l2x, runnerY + RUNNER_H + 24, rcol, 9); }
+  }
+
+  // ── 入力 ──
+  game.onTap(function() {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
     if (done || !isGrounded) return;
-    runnerVy = JUMP_V;
-    isGrounded = false;
-    game.audio.play('se_tap', 0.1);
-    for (var p = 0; p < 4; p++) {
-      var pa = Math.PI + (Math.random() - 0.5) * Math.PI * 0.5;
-      particles.push({ x: RUNNER_X, y: GROUND_Y, vx: Math.cos(pa) * 110, vy: Math.sin(pa) * 160, life: 0.3, col: C.runner });
-    }
+    runnerVy = JUMP_V; isGrounded = false; game.audio.play('se_tap', 0.1);
+    for (var p = 0; p < 4; p++) { var pa = Math.PI + (Math.random() - 0.5) * Math.PI * 0.5; particles.push({ x: RUNNER_X, y: GROUND_Y, vx: Math.cos(pa) * 110, vy: Math.sin(pa) * 160, life: 0.3, col: RUNNER }); }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!obstacles) initGame(); background(); drawScene();
+      txt(GAME_TITLE, W / 2, H * 0.12, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.165, 20, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) txt('► 100円 投入 ◄ TAP TO START', W / 2, H * 0.30, 40, C.a);
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'FLAWLESS RUN!' : 'WIPED OUT', W / 2, H * 0.35, 60, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
-      timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
-      }
-    }
-
-    // Runner physics
-    if (!done || hitAnim > 0) {
-      runnerVy += GRAVITY * dt;
-      runnerY += runnerVy * dt;
-      if (runnerY >= GROUND_Y - RUNNER_H) {
-        runnerY = GROUND_Y - RUNNER_H;
-        runnerVy = 0;
-        isGrounded = true;
-      }
-    }
-
-    if (isGrounded) legPhase += dt * 9;
-    if (hitAnim > 0) hitAnim -= dt * 3;
-
-    // Speed lines update
-    var spd = Math.min(900, BASE_SPEED + score * 8);
-    for (var sli2 = 0; sli2 < speedLines.length; sli2++) {
-      speedLines[sli2].x -= spd * dt * 0.28;
-      if (speedLines[sli2].x < -speedLines[sli2].len) {
-        speedLines[sli2].x = W + 60;
-        speedLines[sli2].y = H * 0.08 + Math.random() * (H * 0.58);
-      }
-    }
-
-    // Spawn obstacles
-    spawnTimer -= dt;
-    var rate = Math.max(0.65, 1.1 - score * 0.012);
-    if (spawnTimer <= 0 && !done) {
-      spawnTimer = rate;
-      spawnObstacle();
-    }
-
-    for (var oi = obstacles.length - 1; oi >= 0; oi--) {
-      var ob = obstacles[oi];
-      ob.x -= spd * dt;
-
-      // Score pass
-      if (!ob.scored && !ob.hit && ob.x + 30 < RUNNER_X - RUNNER_W / 2) {
-        ob.scored = true;
-        score++;
-        flashCol = C.correct;
-        flashAnim = 0.18;
-        resultText = 'クリア！';
-        resultTimer = 0.32;
-        game.audio.play('se_tap', 0.07);
-        if (score >= NEEDED && !done) {
-          done = true;
-          game.audio.play('se_success', 0.9);
-          setTimeout(function() { game.end.success(score * 300 + Math.ceil(timeLeft) * 80); }, 700);
+      timeLeft -= dt; elapsed += dt;
+      if (timeLeft <= 0) { finish(false); return; }
+      runnerVy += GRAVITY * dt; runnerY += runnerVy * dt;
+      if (runnerY >= GROUND_Y - RUNNER_H) { runnerY = GROUND_Y - RUNNER_H; runnerVy = 0; isGrounded = true; }
+      if (isGrounded) legPhase += dt * 9; if (hitAnim > 0) hitAnim -= dt * 3;
+      var spd = Math.min(900, BASE_SPEED + score * 18);
+      for (var sli2 = 0; sli2 < speedLines.length; sli2++) { speedLines[sli2].x -= spd * dt * 0.28; if (speedLines[sli2].x < -speedLines[sli2].len) { speedLines[sli2].x = W + 60; speedLines[sli2].y = H * 0.08 + Math.random() * (H * 0.58); } }
+      spawnTimer -= dt; var rate = Math.max(0.65, 1.1 - score * 0.025); if (spawnTimer <= 0) { spawnTimer = rate; spawnObstacle(); }
+      for (var oi = obstacles.length - 1; oi >= 0; oi--) {
+        var ob = obstacles[oi]; ob.x -= spd * dt;
+        if (!ob.scored && !ob.hit && ob.x + 30 < RUNNER_X - RUNNER_W / 2) {
+          ob.scored = true; score++; flash = 0.18; flashCol = C.b; resultText = 'CLEAR!'; resultTimer = 0.32; game.audio.play('se_tap', 0.07);
+          if (score >= NEEDED) { finish(true); return; }
         }
-      }
-
-      // Collision
-      var oL = ob.x - 28, oR = ob.x + 28, oT = GROUND_Y - ob.h;
-      var rL = RUNNER_X - RUNNER_W / 2 + 6;
-      var rR = RUNNER_X + RUNNER_W / 2 - 6;
-      var rB = runnerY + RUNNER_H - 4;
-      var rT = runnerY + 4;
-
-      if (!ob.scored && !ob.hit && rR > oL && rL < oR && rB > oT) {
-        ob.hit = true;
-        ob.scored = true;
-        hits++;
-        flashCol = C.wrong;
-        flashAnim = 0.5;
-        resultText = '衝突！！';
-        resultTimer = 0.5;
-        hitAnim = 0.4;
-        game.audio.play('se_failure', 0.4);
-        runnerVy = JUMP_V * 0.55;
-        isGrounded = false;
-        for (var pe = 0; pe < 7; pe++) {
-          var pea = Math.random() * Math.PI * 2;
-          particles.push({ x: RUNNER_X, y: runnerY + RUNNER_H / 2, vx: Math.cos(pea) * 220, vy: Math.sin(pea) * 220, life: 0.45, col: C.wrong });
+        var oL = ob.x - 28, oR = ob.x + 28, oT = GROUND_Y - ob.h, rL = RUNNER_X - RUNNER_W / 2 + 6, rR = RUNNER_X + RUNNER_W / 2 - 6, rB = runnerY + RUNNER_H - 4;
+        if (!ob.scored && !ob.hit && rR > oL && rL < oR && rB > oT) {
+          ob.hit = true; ob.scored = true; hits++; flash = 0.5; flashCol = C.a; resultText = 'CRASH!'; resultTimer = 0.5; hitAnim = 0.4; game.audio.play('se_failure', 0.4); runnerVy = JUMP_V * 0.55; isGrounded = false;
+          for (var pe = 0; pe < 7; pe++) { var pea = Math.random() * Math.PI * 2; particles.push({ x: RUNNER_X, y: runnerY + RUNNER_H / 2, vx: Math.cos(pea) * 220, vy: Math.sin(pea) * 220, life: 0.45, col: C.a }); }
+          if (hits >= MAX_HITS) { finish(false); return; }
         }
-        if (hits >= MAX_HITS && !done) {
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 600);
-        }
+        if (ob.x < -100) obstacles.splice(oi, 1);
       }
-
-      if (ob.x < -100) obstacles.splice(oi, 1);
+      if (flash > 0) flash -= dt * 3; if (resultTimer > 0) resultTimer -= dt;
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt * 2.5; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    if (flashAnim > 0) flashAnim -= dt * 3;
-    if (resultTimer > 0) resultTimer -= dt;
+    // ---- 描画 ----
+    background(); drawScene();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 4, snap(particles[pp2].y) - 4, 8, 8, particles[pp2].col, particles[pp2].life * 1.6);
+    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.09);
+    if (resultTimer > 0) txt(resultText, W / 2, snap(H * 0.18), 52, flashCol);
 
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt * 2.5;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
-
-    // Draw
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Speed lines
-    for (var sli3 = 0; sli3 < speedLines.length; sli3++) {
-      var sl = speedLines[sli3];
-      game.draw.line(sl.x, sl.y, sl.x - sl.len, sl.y, C.speedLine, 0.55);
-    }
-
-    // Ground
-    game.draw.rect(0, GROUND_Y, W, H - GROUND_Y, C.ground, 0.9);
-    game.draw.line(0, GROUND_Y, W, GROUND_Y, C.groundHi, 3);
-
-    // Obstacles
-    for (var oi2 = 0; oi2 < obstacles.length; oi2++) {
-      var ob2 = obstacles[oi2];
-      game.draw.rect(ob2.x - 28 + 4, GROUND_Y - ob2.h + 4, 56, ob2.h, '#000', 0.3);
-      game.draw.rect(ob2.x - 28, GROUND_Y - ob2.h, 56, ob2.h, C.obstacle, 0.9);
-      game.draw.rect(ob2.x - 28, GROUND_Y - ob2.h, 56, 12, C.obstHi, 0.5);
-    }
-
-    // Runner
-    var ry = runnerY;
-    var shake = hitAnim > 0 ? Math.sin(elapsed * 30) * 12 * hitAnim : 0;
-    var rx = RUNNER_X + shake;
-    game.draw.rect(rx - RUNNER_W / 2 + 4, ry + 4, RUNNER_W, RUNNER_H, '#000', 0.3);
-    game.draw.rect(rx - RUNNER_W / 2, ry, RUNNER_W, RUNNER_H, hitAnim > 0 ? C.wrong : C.runner, 0.9);
-    game.draw.circle(rx, ry - 26, 24, hitAnim > 0 ? C.wrong : C.runner, 0.9);
-    game.draw.circle(rx - 7, ry - 31, 9, C.runnerHi, 0.45);
-    if (isGrounded) {
-      var l1x = rx - 14 + Math.sin(legPhase) * 14;
-      var l2x = rx + 14 - Math.sin(legPhase) * 14;
-      game.draw.line(rx - 14, ry + RUNNER_H, l1x, ry + RUNNER_H + 24, C.runner, 9);
-      game.draw.line(rx + 14, ry + RUNNER_H, l2x, ry + RUNNER_H + 24, C.runner, 9);
-    }
-
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 8 * p.life, p.col, p.life);
-    }
-
-    if (!isGrounded) {
-      game.draw.text('ジャンプ中', W / 2, H * 0.88, { size: 36, color: C.runner + '88' });
-    } else if (!done) {
-      game.draw.text('タップでジャンプ', W / 2, H * 0.88, { size: 38, color: C.text + '44' });
-    }
-
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, flashCol, flashAnim * 0.09);
-    if (resultTimer > 0) {
-      game.draw.text(resultText, W / 2, H * 0.18, { size: 52, color: flashCol, bold: true });
-    }
-
-    for (var hi = 0; hi < MAX_HITS; hi++) {
-      game.draw.circle(W / 2 - (MAX_HITS - 1) * 60 + hi * 120, H * 0.955, 22, hi < hits ? C.wrong : C.ui, 0.9);
-    }
-
-    game.draw.text(score + ' / ' + NEEDED, W / 2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft / 90);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 12, ratio > 0.3 ? C.correct : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(score + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var hi = 0; hi < MAX_HITS; hi++) game.draw.rect(snap(W / 2 + (hi - (MAX_HITS - 1) / 2) * 56) - 10, 224, 20, 20, hi < hits ? C.a : '#020810');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.04);
-    spawnObstacle();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
