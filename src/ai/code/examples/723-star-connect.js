@@ -1,244 +1,158 @@
 // 723-star-connect.js
-// 星座つなぎ — 光る星を順番通りにタップして星座を描け
-// 操作: タップで星を番号順にタップ
-// 成功: 15星座完成  失敗: 6回ミス or 90秒
+// スターコネクト — 番号を記憶し、光る星を順番通りにタップして星座を描く
+// 操作: 提示中に番号を覚え、1番から順に星をタップ。線でつながり星座が完成
+// 成功: 5星座 完成  失敗: 3回 ミス or 28秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#01020a',
-    star:    '#e2e8f0',
-    starHi:  '#fde68a',
-    starDone:'#22c55e',
-    line:    '#7c3aed',
-    correct: '#22c55e',
-    wrong:   '#ef4444',
-    text:    '#f1f5f9',
-    ui:      '#03040f'
-  };
+  // ── パレット（アイスブルー、星空） ──
+  var C = { bg:'#01020a', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#3355ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
+  var STAR = '#e2e8f0', STAR_HI = '#ffe600', STAR_DONE = '#00ff9f', LINE = '#3355ff';
 
-  var STAR_COUNT = 5;
-  var STAR_R = 36;
-  var PLAY_X0 = 80, PLAY_Y0 = 280;
-  var PLAY_W = W - 160, PLAY_H = H * 0.55;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'STAR CONNECT';
+  var HOW_TO_PLAY = 'MEMORIZE THE NUMBERS · TAP THE STARS IN ORDER TO DRAW THE CONSTELLATION';
+  var MAX_TIME = 28;
+  var NEEDED   = 5;          // 修正2: 15 → 5
+  var MAX_ERR  = 3;          // 修正2: 6 → 3
+  var STAR_R = 36, REVEAL_DUR = 1.2, PLAY_X0 = 80, PLAY_Y0 = 340, PLAY_W = W - 160, PLAY_H = H * 0.50;
 
-  var stars = [];
-  var nextIdx = 0;
-  var connectedLines = [];
-  var revealTimer = 0;
-  var REVEAL_DUR = 1.2;  // show numbers at start of each round
-  var revealing = true;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var round = 0;
-  var NEEDED = 15;
-  var errors = 0;
-  var MAX_ERR = 6;
-  var done = false;
-  var timeLeft = 90;
-  var elapsed = 0;
+  // ── ゲーム変数 ──
+  var stars, nextIdx, connectedLines, revealTimer, revealing, round, errors, timeLeft, done, elapsed, particles, flash, flashCol, resultText, resultTimer, waitTimer, bgStars;
 
-  var particles = [];
-  var flashAnim = 0, flashCol = C.correct;
-  var resultTimer = 0, resultText = '';
-  var waitTimer = 0;
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
 
-  // Background star field (decorative)
-  var bgStars = [];
-  for (var bs = 0; bs < 60; bs++) {
-    bgStars.push({ x: Math.random() * W, y: Math.random() * H, r: Math.random() * 3 + 1, ph: Math.random() * Math.PI * 2 });
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function ring(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) { var d = qx * qx + qy * qy; if (d <= r * r && d >= (r - 12) * (r - 12)) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); } }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  function newConstellation() {
-    round++;
-    var count = Math.min(7, 3 + Math.floor(round / 3));
-    stars = [];
-    connectedLines = [];
-    nextIdx = 0;
-    revealing = true;
-    revealTimer = REVEAL_DUR;
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
 
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.e : '#03040f');
+  }
+
+  function background() { game.draw.clear(C.bg); for (var bsi = 0; bsi < bgStars.length; bsi++) { bgStars[bsi].ph += 0.016; var bAlpha = 0.3 + 0.2 * Math.sin(bgStars[bsi].ph); game.draw.rect(snap(bgStars[bsi].x), snap(bgStars[bsi].y), bgStars[bsi].r, bgStars[bsi].r, STAR, bAlpha); } }
+
+  function newConstellation() {
+    round++; var count = Math.min(6, 3 + Math.floor(round / 2)); stars = []; connectedLines = []; nextIdx = 0; revealing = true; revealTimer = REVEAL_DUR;
     var placed = [];
     for (var i = 0; i < count; i++) {
       var ok = false, sx, sy, tries = 0;
-      while (!ok && tries < 200) {
-        tries++;
-        sx = PLAY_X0 + STAR_R + Math.random() * (PLAY_W - STAR_R * 2);
-        sy = PLAY_Y0 + STAR_R + Math.random() * (PLAY_H - STAR_R * 2);
-        ok = true;
-        for (var j = 0; j < placed.length; j++) {
-          var dx2 = sx - placed[j].x, dy2 = sy - placed[j].y;
-          if (dx2 * dx2 + dy2 * dy2 < (STAR_R * 3) * (STAR_R * 3)) { ok = false; break; }
-        }
-      }
+      while (!ok && tries < 200) { tries++; sx = PLAY_X0 + STAR_R + Math.random() * (PLAY_W - STAR_R * 2); sy = PLAY_Y0 + STAR_R + Math.random() * (PLAY_H - STAR_R * 2); ok = true; for (var j = 0; j < placed.length; j++) { var dx2 = sx - placed[j].x, dy2 = sy - placed[j].y; if (dx2 * dx2 + dy2 * dy2 < (STAR_R * 3) * (STAR_R * 3)) { ok = false; break; } } }
       placed.push({ x: sx, y: sy, num: i + 1, tapped: false, phase: Math.random() * Math.PI * 2 });
     }
-    stars = placed;
-    waitTimer = 0;
+    stars = placed; waitTimer = 0;
   }
 
+  function initGame() { round = 0; errors = 0; timeLeft = MAX_TIME; done = false; elapsed = 0; particles = []; flash = 0; flashCol = C.b; resultText = ''; resultTimer = 0; waitTimer = 0; bgStars = []; for (var bs = 0; bs < 60; bs++) bgStars.push({ x: Math.random() * W, y: Math.random() * H, r: Math.random() < 0.7 ? 8 : 16, ph: Math.random() * Math.PI * 2 }); newConstellation(); }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (round * 700 + Math.ceil(timeLeft) * 100) : round * 200;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawScene() {
+    for (var li = 0; li < connectedLines.length; li++) { var ln = connectedLines[li]; game.draw.line(ln.x1, ln.y1, ln.x2, ln.y2, LINE, 4); }
+    for (var si2 = 0; si2 < stars.length; si2++) {
+      var st = stars[si2], pulse = 0.88 + 0.12 * Math.sin(st.phase * 2);
+      pc(st.x, st.y, STAR_R * pulse, st.tapped ? STAR_DONE : STAR, st.tapped ? 0.9 : 0.75);
+      if (revealing || st.tapped || st.num === nextIdx + 1) txt(st.num + '', st.x, st.y + 14, 44, st.tapped ? C.g : STAR_HI);
+      if (st.num === nextIdx + 1 && !revealing) ring(st.x, st.y, STAR_R + 16, STAR_HI, 0.3 + 0.15 * Math.sin(elapsed * 5));
+    }
+    var phStr = revealing ? 'MEMORIZE!' : 'NEXT ' + (nextIdx + 1);
+    txt(phStr, W / 2, PLAY_Y0 - 60, 44, revealing ? STAR_HI : STAR_DONE);
+  }
+
+  // ── 入力 ──
   game.onTap(function(tx, ty) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
     if (done || revealing || waitTimer > 0) return;
     var hit = -1;
-    for (var i = 0; i < stars.length; i++) {
-      if (stars[i].tapped) continue;
-      var dx = tx - stars[i].x, dy = ty - stars[i].y;
-      if (dx * dx + dy * dy < (STAR_R + 20) * (STAR_R + 20)) { hit = i; break; }
-    }
+    for (var i = 0; i < stars.length; i++) { if (stars[i].tapped) continue; var dx = tx - stars[i].x, dy = ty - stars[i].y; if (dx * dx + dy * dy < (STAR_R + 20) * (STAR_R + 20)) { hit = i; break; } }
     if (hit < 0) return;
-
     if (stars[hit].num === nextIdx + 1) {
-      // Correct
-      if (nextIdx > 0) {
-        connectedLines.push({ x1: stars[hit - 0].x, y1: stars[hit - 0].y,
-          x2: stars[nextIdx - 1] >= 0 ? stars[nextIdx].x : stars[hit].x,
-          y2: stars[nextIdx - 1] >= 0 ? stars[nextIdx].y : stars[hit].y });
-        // Find previous tapped star for line
-        var prev = null;
-        for (var pi = 0; pi < stars.length; pi++) {
-          if (stars[pi].num === nextIdx) { prev = stars[pi]; break; }
-        }
-        if (prev) connectedLines.push({ x1: prev.x, y1: prev.y, x2: stars[hit].x, y2: stars[hit].y });
-      }
-      stars[hit].tapped = true;
-      nextIdx++;
-      game.audio.play('se_tap', 0.12);
-      for (var p = 0; p < 4; p++) {
-        var pa = Math.random() * Math.PI * 2;
-        particles.push({ x: stars[hit].x, y: stars[hit].y, vx: Math.cos(pa)*150, vy: Math.sin(pa)*150, life: 0.4, col: C.starHi });
-      }
-
+      if (nextIdx > 0) { var prev = null; for (var pi = 0; pi < stars.length; pi++) if (stars[pi].num === nextIdx) { prev = stars[pi]; break; } if (prev) connectedLines.push({ x1: prev.x, y1: prev.y, x2: stars[hit].x, y2: stars[hit].y }); }
+      stars[hit].tapped = true; nextIdx++; game.audio.play('se_tap', 0.12);
+      for (var p = 0; p < 4; p++) { var pa = Math.random() * Math.PI * 2; particles.push({ x: stars[hit].x, y: stars[hit].y, vx: Math.cos(pa) * 150, vy: Math.sin(pa) * 150, life: 0.4, col: STAR_HI }); }
       if (nextIdx >= stars.length) {
-        // Constellation complete!
-        flashCol = C.correct;
-        flashAnim = 0.4;
-        resultText = '星座完成！';
-        resultTimer = 0.7;
-        game.audio.play('se_success', 0.65);
-        // Burst
-        for (var p2 = 0; p2 < 12; p2++) {
-          var pa2 = Math.random() * Math.PI * 2;
-          particles.push({ x: W / 2, y: H * 0.50, vx: Math.cos(pa2)*260, vy: Math.sin(pa2)*260, life: 0.6, col: C.starHi });
-        }
-        if (round >= NEEDED && !done) {
-          done = true;
-          game.audio.play('se_success', 0.9);
-          setTimeout(function() { game.end.success(round * 600 + Math.ceil(timeLeft) * 80); }, 700);
-        } else {
-          waitTimer = 1.0;
-        }
+        flash = 0.4; flashCol = C.b; resultText = 'CONSTELLATION!'; resultTimer = 0.7; game.audio.play('se_success', 0.65);
+        for (var p2 = 0; p2 < 12; p2++) { var pa2 = Math.random() * Math.PI * 2; particles.push({ x: W / 2, y: H * 0.50, vx: Math.cos(pa2) * 260, vy: Math.sin(pa2) * 260, life: 0.6, col: STAR_HI }); }
+        if (round >= NEEDED) { finish(true); return; }
+        waitTimer = 1.0;
       }
     } else {
-      errors++;
-      flashCol = C.wrong;
-      flashAnim = 0.3;
-      resultText = '順番が違う！';
-      resultTimer = 0.5;
-      game.audio.play('se_failure', 0.3);
-      if (errors >= MAX_ERR && !done) {
-        done = true;
-        setTimeout(function() { game.end.failure(); }, 600);
-      }
+      errors++; flash = 0.3; flashCol = C.a; resultText = 'WRONG ORDER!'; resultTimer = 0.5; game.audio.play('se_failure', 0.3);
+      if (errors >= MAX_ERR) { finish(false); return; }
     }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!stars) initGame(); background(); drawScene();
+      txt(GAME_TITLE, W / 2, H * 0.10, 78, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.145, 20, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) txt('► 100円 投入 ◄ TAP TO START', W / 2, H * 0.92, 40, C.a);
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'STARGAZER!' : 'LOST IN SPACE', W / 2, H * 0.35, 54, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
-      timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
-      }
+      timeLeft -= dt; elapsed += dt;
+      if (timeLeft <= 0) { finish(false); return; }
+      if (revealing) { revealTimer -= dt; if (revealTimer <= 0) revealing = false; }
+      if (waitTimer > 0) { waitTimer -= dt; if (waitTimer <= 0) newConstellation(); }
+      for (var si = 0; si < stars.length; si++) if (!stars[si].tapped) stars[si].phase += dt * 1.5;
+      if (flash > 0) flash -= dt * 3; if (resultTimer > 0) resultTimer -= dt;
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt * 2.5; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    if (revealing) {
-      revealTimer -= dt;
-      if (revealTimer <= 0) revealing = false;
-    }
+    // ---- 描画 ----
+    background(); drawScene();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 4, snap(particles[pp2].y) - 4, 8, 8, particles[pp2].col, particles[pp2].life * 1.6);
+    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.08);
+    if (resultTimer > 0) txt(resultText, W / 2, snap(H * 0.88), 52, flashCol);
 
-    if (waitTimer > 0) {
-      waitTimer -= dt;
-      if (waitTimer <= 0) newConstellation();
-    }
-
-    for (var si = 0; si < stars.length; si++) {
-      if (!stars[si].tapped) stars[si].phase += dt * 1.5;
-    }
-
-    if (flashAnim > 0) flashAnim -= dt * 3;
-    if (resultTimer > 0) resultTimer -= dt;
-
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt * 2.5;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
-
-    // Draw
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Background star field
-    for (var bsi = 0; bsi < bgStars.length; bsi++) {
-      bgStars[bsi].ph += dt * 0.8;
-      var bAlpha = 0.3 + 0.2 * Math.sin(bgStars[bsi].ph);
-      game.draw.circle(bgStars[bsi].x, bgStars[bsi].y, bgStars[bsi].r, C.star, bAlpha);
-    }
-
-    // Connection lines
-    for (var li = 0; li < connectedLines.length; li++) {
-      var ln = connectedLines[li];
-      game.draw.line(ln.x1, ln.y1, ln.x2, ln.y2, C.line, 4);
-    }
-
-    // Stars
-    for (var si2 = 0; si2 < stars.length; si2++) {
-      var st = stars[si2];
-      var pulse = 0.88 + 0.12 * Math.sin(st.phase * 2);
-      var sCol = st.tapped ? C.starDone : C.star;
-      game.draw.circle(st.x + 3, st.y + 3, STAR_R, '#000', 0.25);
-      game.draw.circle(st.x, st.y, STAR_R * pulse, sCol, st.tapped ? 0.9 : 0.75);
-      if (revealing || st.tapped || st.num === nextIdx + 1) {
-        game.draw.text(st.num + '', st.x, st.y + 14, { size: 44, color: st.tapped ? '#fff' : C.starHi, bold: true });
-      }
-      if (st.num === nextIdx + 1 && !revealing) {
-        game.draw.circle(st.x, st.y, STAR_R + 18, C.starHi, 0.2 + 0.1 * Math.sin(elapsed * 5));
-      }
-    }
-
-    // Phase label
-    var phStr = revealing ? '記憶せよ！' : ('次: ' + (nextIdx + 1) + ' 番');
-    game.draw.text(phStr, W / 2, PLAY_Y0 - 60, { size: 44, color: revealing ? C.starHi : C.starDone, bold: true });
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p2 = particles[pp2];
-      game.draw.circle(p2.x, p2.y, 9 * p2.life, p2.col, p2.life);
-    }
-
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, flashCol, flashAnim * 0.08);
-
-    if (resultTimer > 0) {
-      game.draw.text(resultText, W / 2, H * 0.88, { size: 52, color: flashCol, bold: true });
-    }
-
-    for (var ei = 0; ei < MAX_ERR; ei++) {
-      game.draw.circle(W / 2 - (MAX_ERR - 1) * 56 + ei * 112, H * 0.955, 22, ei < errors ? C.wrong : C.ui, 0.9);
-    }
-
-    game.draw.text(round + ' / ' + NEEDED, W / 2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft / 90);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 12, ratio > 0.3 ? C.correct : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(round + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var ei = 0; ei < MAX_ERR; ei++) game.draw.rect(snap(W / 2 + (ei - (MAX_ERR - 1) / 2) * 56) - 10, 224, 20, 20, ei < errors ? C.a : '#03040f');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.03);
-    newConstellation();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
