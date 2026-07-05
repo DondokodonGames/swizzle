@@ -18,8 +18,12 @@ export interface IframeAsset {
  *                     { type: 'ERROR', message: string }
  */
 export function buildIframeHtml(gameCode: string, maxDurationMs: number): string {
-  // Escape backticks so the code can be embedded in a template literal inside the HTML
-  const escapedCode = gameCode.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$/g, '\\$');
+  // JSON-encode the game code so it can be embedded as a safe JS string literal.
+  // This avoids new Function() / eval(), which iOS Safari (WKWebView) blocks inside
+  // sandboxed srcdoc iframes even when CSP allows 'unsafe-eval'. We inject a <script>
+  // element instead — that path is governed by 'unsafe-inline', not 'unsafe-eval'.
+  // Also escape </script> to prevent the HTML parser from terminating the outer <script> block.
+  const encodedCode = JSON.stringify(gameCode).replace(/<\/script>/gi, '<\\/script>');
 
   return `<!DOCTYPE html>
 <html>
@@ -305,10 +309,15 @@ export function buildIframeHtml(gameCode: string, maxDurationMs: number): string
         if (isRunning) game.end.failure();
       }, ${maxDurationMs});
 
-      // Execute game code
+      // Execute game code via dynamic <script> injection (iOS Safari compatible).
+      // new Function() is blocked by WebKit in sandboxed srcdoc iframes on iOS;
+      // inline <script> element injection is allowed under 'unsafe-inline' instead.
       try {
-        var userFn = new Function('game', \`${escapedCode}\`);
-        userFn(game);
+        window.__sg = game;
+        var se = document.createElement('script');
+        se.textContent = '(function(game){' + ${encodedCode} + '})(window.__sg)';
+        document.body.appendChild(se);
+        delete window.__sg;
       } catch (err) {
         parent.postMessage({ type: 'ERROR', message: String(err) }, '*');
         return;
