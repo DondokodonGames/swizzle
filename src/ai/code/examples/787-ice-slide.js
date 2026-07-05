@@ -1,275 +1,167 @@
 // 787-ice-slide.js
-// アイスライド — 氷の上を滑る石をタップで方向転換、ゴールへ導け
+// アイスライド — 氷の上を滑る石をタップで方向転換させ、ゴールへ導け
 // 操作: タップで石の進行方向を90度回転させる
-// 成功: 20回ゴール  失敗: 10回ミス or 90秒
+// 成功: 8回 ゴール  失敗: 3回 ミス or 26秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#020810',
-    ice:     '#0e2a4a',
-    iceHi:   '#1e4a7a',
-    stone:   '#64748b',
-    stoneHi: '#94a3b8',
-    goal:    '#22c55e',
-    goalGlow:'#15803d',
-    wall:    '#1e293b',
-    wallHi:  '#334155',
-    trail:   '#38bdf8',
-    correct: '#22c55e',
-    wrong:   '#ef4444',
-    text:    '#f1f5f9',
-    ui:      '#040810'
-  };
+  // ── パレット（アイスブルー、氷原） ──
+  var C = { bg:'#020810', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#3355ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
+  var ICE = '#0e2a4a', ICE_HI = '#1e4a7a', STONE = '#6a7a8a', STONE_HI = '#a0b0c0', GOAL = '#00ff41', WALL = '#1e2b45', WALL_HI = '#3a4a6a', TRAIL = '#00cfff';
 
-  var GRID = 8; // 8×8 grid
-  var CELL = Math.floor(W / (GRID + 2));
-  var OFFSET_X = (W - GRID * CELL) / 2;
-  var OFFSET_Y = H * 0.18;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'ICE SLIDE';
+  var HOW_TO_PLAY = 'TAP TO TURN THE SLIDING STONE 90 DEGREES · STEER IT TO THE GOAL STAR';
+  var MAX_TIME = 26;
+  var NEEDED   = 8;          // 修正2: 20 → 8
+  var MAX_MISS = 3;          // 修正2: 10 → 3
+  var GRID = 8, CELL = Math.floor(W / (GRID + 2)), OFFSET_X = snap((W - GRID * CELL) / 2), OFFSET_Y = snap(H * 0.20), SLIDE_SPEED = 10;
 
-  var stoneX = 0, stoneY = 0; // grid coords
-  var stoneVX = 1, stoneVY = 0; // direction
-  var stonePixX = 0, stonePixY = 0; // pixel position (for animation)
-  var sliding = false;
-  var slideTimer = 0;
-  var SLIDE_SPEED = 10; // cells per second
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var goalX = 0, goalY = 0;
-  var walls = []; // [{x, y}]
+  // ── ゲーム変数 ──
+  var stoneX, stoneY, stoneVX, stoneVY, stonePixX, stonePixY, sliding, slideTimer, goalX, goalY, walls, score, missed, done, timeLeft, elapsed, trail, particles, flash, flashCol, resultText, resultTimer, lockNext;
 
-  var score = 0;
-  var NEEDED = 20;
-  var missed = 0;
-  var MAX_MISS = 10;
-  var done = false;
-  var timeLeft = 90;
-  var elapsed = 0;
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
 
-  var trail = [];
-  var particles = [];
-  var flashAnim = 0, flashCol = C.correct;
-  var resultTimer = 0, resultText = '';
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
 
-  function cellToPixel(gx, gy) {
-    return {
-      x: OFFSET_X + gx * CELL + CELL / 2,
-      y: OFFSET_Y + gy * CELL + CELL / 2
-    };
+  function star(cx, cy, r, color, alpha) { cx = snap(cx); cy = snap(cy); for (var si = 0; si < 5; si++) { var sa = si * Math.PI * 2 / 5 - Math.PI / 2; for (var t = 0; t < r; t += 8) { var w = (r - t) * 0.45; game.draw.rect(snap(cx + Math.cos(sa) * t - w / 2), snap(cy + Math.sin(sa) * t - w / 2), snap(w) + 4, snap(w) + 4, color, alpha); } } pc(cx, cy, r * 0.4, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  function hasWall(gx, gy) {
-    if (gx < 0 || gx >= GRID || gy < 0 || gy >= GRID) return true;
-    for (var i = 0; i < walls.length; i++) {
-      if (walls[i].x === gx && walls[i].y === gy) return true;
-    }
-    return false;
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.e : '#040810');
   }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function cellToPixel(gx, gy) { return { x: OFFSET_X + gx * CELL + CELL / 2, y: OFFSET_Y + gy * CELL + CELL / 2 }; }
+
+  function hasWall(gx, gy) { if (gx < 0 || gx >= GRID || gy < 0 || gy >= GRID) return true; for (var i = 0; i < walls.length; i++) if (walls[i].x === gx && walls[i].y === gy) return true; return false; }
 
   function setupLevel() {
-    // Random start position (left or top edge)
     var side = Math.floor(Math.random() * 2);
-    if (side === 0) { stoneX = 0; stoneY = Math.floor(Math.random() * GRID); stoneVX = 1; stoneVY = 0; }
-    else { stoneX = Math.floor(Math.random() * GRID); stoneY = 0; stoneVX = 0; stoneVY = 1; }
+    if (side === 0) { stoneX = 0; stoneY = Math.floor(Math.random() * GRID); stoneVX = 1; stoneVY = 0; goalX = GRID - 1; goalY = Math.floor(Math.random() * GRID); }
+    else { stoneX = Math.floor(Math.random() * GRID); stoneY = 0; stoneVX = 0; stoneVY = 1; goalX = Math.floor(Math.random() * GRID); goalY = GRID - 1; }
+    walls = []; var numWalls = 2 + Math.floor(Math.random() * 3), attempts = 0;
+    while (walls.length < numWalls && attempts < 50) { attempts++; var wx = Math.floor(Math.random() * GRID), wy = Math.floor(Math.random() * GRID); if ((wx === stoneX && wy === stoneY) || (wx === goalX && wy === goalY)) continue; walls.push({ x: wx, y: wy }); }
+    var pix = cellToPixel(stoneX, stoneY); stonePixX = pix.x; stonePixY = pix.y; sliding = true; trail = []; slideTimer = 0; lockNext = false;
+  }
 
-    // Goal on opposite side
-    if (side === 0) { goalX = GRID - 1; goalY = Math.floor(Math.random() * GRID); }
-    else { goalX = Math.floor(Math.random() * GRID); goalY = GRID - 1; }
+  function initGame() { score = 0; missed = 0; done = false; timeLeft = MAX_TIME; elapsed = 0; particles = []; flash = 0; flashCol = C.b; resultText = ''; resultTimer = 0; setupLevel(); }
 
-    // Random walls (2-4)
-    walls = [];
-    var numWalls = 2 + Math.floor(Math.random() * 3);
-    var attempts = 0;
-    while (walls.length < numWalls && attempts < 50) {
-      attempts++;
-      var wx = Math.floor(Math.random() * GRID);
-      var wy = Math.floor(Math.random() * GRID);
-      if (wx === stoneX && wy === stoneY) continue;
-      if (wx === goalX && wy === goalY) continue;
-      walls.push({ x: wx, y: wy });
-    }
-
-    var pix = cellToPixel(stoneX, stoneY);
-    stonePixX = pix.x;
-    stonePixY = pix.y;
-    sliding = true;
-    trail = [];
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (score * 500 + Math.ceil(timeLeft) * 130) : score * 150;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
   }
 
   function slideStep() {
-    var nx = stoneX + stoneVX;
-    var ny = stoneY + stoneVY;
+    var nx = stoneX + stoneVX, ny = stoneY + stoneVY;
     if (hasWall(nx, ny)) {
-      // Hit wall or boundary — stop
       sliding = false;
-      if (stoneX === goalX && stoneY === goalY) {
-        // Already at goal
-      } else {
-        // Missed — stone stopped not at goal
-        missed++;
-        flashCol = C.wrong;
-        flashAnim = 0.28;
-        resultText = '届かない！';
-        resultTimer = 0.4;
-        game.audio.play('se_failure', 0.3);
-        if (missed >= MAX_MISS && !done) {
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 600);
-        } else {
-          setTimeout(function() { if (!done) setupLevel(); }, 700);
-        }
+      if (!(stoneX === goalX && stoneY === goalY)) {
+        missed++; flash = 0.28; flashCol = C.a; resultText = 'STUCK!'; resultTimer = 0.4; game.audio.play('se_failure', 0.3);
+        if (missed >= MAX_MISS) { finish(false); return; }
+        lockNext = true; setTimeout(function() { if (!done && state === S.PLAYING) setupLevel(); }, 700);
       }
       return;
     }
-    stoneX = nx;
-    stoneY = ny;
-    var pix = cellToPixel(stoneX, stoneY);
-    trail.push({ x: pix.x, y: pix.y, life: 1.0 });
-
+    stoneX = nx; stoneY = ny; var pix = cellToPixel(stoneX, stoneY); trail.push({ x: pix.x, y: pix.y, life: 1.0 });
     if (stoneX === goalX && stoneY === goalY) {
-      // Reached goal!
-      sliding = false;
-      score++;
-      flashCol = C.correct;
-      flashAnim = 0.22;
-      resultText = 'ゴール！';
-      resultTimer = 0.4;
-      game.audio.play('se_success', 0.65);
-      for (var p = 0; p < 8; p++) {
-        var pa = Math.random() * Math.PI * 2;
-        particles.push({ x: pix.x, y: pix.y, vx: Math.cos(pa) * 160, vy: Math.sin(pa) * 160, life: 0.45, col: C.goal });
-      }
-      if (score >= NEEDED && !done) {
-        done = true;
-        game.audio.play('se_success', 0.9);
-        setTimeout(function() { game.end.success(score * 400 + Math.ceil(timeLeft) * 130); }, 700);
-        return;
-      }
-      setTimeout(function() { if (!done) setupLevel(); }, 600);
+      sliding = false; score++; flash = 0.22; flashCol = C.b; resultText = 'GOAL!'; resultTimer = 0.4; game.audio.play('se_success', 0.65);
+      for (var p = 0; p < 8; p++) { var pa = Math.random() * Math.PI * 2; particles.push({ x: pix.x, y: pix.y, vx: Math.cos(pa) * 160, vy: Math.sin(pa) * 160, life: 0.45, col: GOAL }); }
+      if (score >= NEEDED) { finish(true); return; }
+      lockNext = true; setTimeout(function() { if (!done && state === S.PLAYING) setupLevel(); }, 600);
     }
   }
 
-  game.onTap(function(tx, ty) {
+  function drawScene() {
+    for (var gx = 0; gx < GRID; gx++) for (var gy2 = 0; gy2 < GRID; gy2++) {
+      var px = OFFSET_X + gx * CELL, py = OFFSET_Y + gy2 * CELL, isWall = hasWall(gx, gy2);
+      game.draw.rect(px + 2, py + 2, CELL - 4, CELL - 4, isWall ? WALL : ICE, 0.8); game.draw.rect(px + 2, py + 2, CELL - 4, 4, isWall ? WALL_HI : ICE_HI, isWall ? 0.4 : 0.3);
+    }
+    var gPix = cellToPixel(goalX, goalY);
+    pc(gPix.x, gPix.y, CELL * 0.4, GOAL, 0.2 + 0.15 * Math.sin(elapsed * 5)); star(gPix.x, gPix.y, CELL * 0.32, GOAL, 0.9);
+    for (var tri = 0; tri < trail.length; tri++) pc(trail[tri].x, trail[tri].y, CELL * 0.18 * trail[tri].life, TRAIL, trail[tri].life * 0.5);
+    pc(stonePixX, stonePixY, CELL * 0.34, STONE, 0.95); pc(stonePixX - CELL * 0.1, stonePixY - CELL * 0.1, CELL * 0.1, STONE_HI, 0.5);
+    pc(stonePixX + stoneVX * CELL * 0.5, stonePixY + stoneVY * CELL * 0.5, 8, TRAIL, 0.7);
+  }
+
+  // ── 入力 ──
+  game.onTap(function() {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
     if (done || !sliding) return;
-    // Rotate direction 90 degrees
-    var oldVX = stoneVX;
-    stoneVX = -stoneVY;
-    stoneVY = oldVX;
-    game.audio.play('se_tap', 0.07);
+    var oldVX = stoneVX; stoneVX = -stoneVY; stoneVY = oldVX; game.audio.play('se_tap', 0.07);
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (stoneX === undefined) initGame(); background(); drawScene();
+      txt(GAME_TITLE, W / 2, H * 0.10, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.145, 20, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) txt('► 100円 投入 ◄ TAP TO START', W / 2, H * 0.92, 40, C.a);
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'ICE PILOT!' : 'GROUNDED', W / 2, H * 0.35, 56, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
-      timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
-      }
-    }
-
-    // Slide animation
-    if (sliding) {
-      slideTimer += dt * SLIDE_SPEED;
-      if (slideTimer >= 1) {
-        slideTimer -= 1;
-        slideStep();
-      }
+      timeLeft -= dt; elapsed += dt;
+      if (timeLeft <= 0) { finish(false); return; }
       if (sliding) {
-        var targetPix = cellToPixel(stoneX + stoneVX, stoneY + stoneVY);
-        var curPix = cellToPixel(stoneX, stoneY);
-        stonePixX = curPix.x + (targetPix.x - curPix.x) * slideTimer;
-        stonePixY = curPix.y + (targetPix.y - curPix.y) * slideTimer;
+        slideTimer += dt * SLIDE_SPEED;
+        if (slideTimer >= 1) { slideTimer -= 1; slideStep(); }
+        if (sliding) { var targetPix = cellToPixel(stoneX + stoneVX, stoneY + stoneVY), curPix = cellToPixel(stoneX, stoneY); stonePixX = curPix.x + (targetPix.x - curPix.x) * slideTimer; stonePixY = curPix.y + (targetPix.y - curPix.y) * slideTimer; }
       }
+      for (var ti = trail.length - 1; ti >= 0; ti--) { trail[ti].life -= dt * 3; if (trail[ti].life <= 0) trail.splice(ti, 1); }
+      if (flash > 0) flash -= dt * 3; if (resultTimer > 0) resultTimer -= dt;
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt * 2.5; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    for (var ti = trail.length - 1; ti >= 0; ti--) {
-      trail[ti].life -= dt * 3;
-      if (trail[ti].life <= 0) trail.splice(ti, 1);
-    }
+    // ---- 描画 ----
+    background(); drawScene();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) { var p2 = particles[pp2]; game.draw.rect(snap(p2.x) - 5, snap(p2.y) - 5, 10, 10, p2.col, p2.life * 2.2); }
+    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.09);
+    if (resultTimer > 0) txt(resultText, W / 2, snap(H * 0.94), 52, flashCol);
 
-    if (flashAnim > 0) flashAnim -= dt * 3;
-    if (resultTimer > 0) resultTimer -= dt;
-
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt * 2.5;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
-
-    // Draw
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Ice grid
-    for (var gx = 0; gx < GRID; gx++) {
-      for (var gy2 = 0; gy2 < GRID; gy2++) {
-        var px = OFFSET_X + gx * CELL;
-        var py = OFFSET_Y + gy2 * CELL;
-        var isWall = hasWall(gx, gy2);
-        game.draw.rect(px + 2, py + 2, CELL - 4, CELL - 4, isWall ? C.wall : C.ice, 0.8);
-        if (!isWall) {
-          game.draw.rect(px + 2, py + 2, CELL - 4, 4, C.iceHi, 0.3);
-        }
-        if (isWall) {
-          game.draw.rect(px + 2, py + 2, CELL - 4, 4, C.wallHi, 0.4);
-        }
-      }
-    }
-
-    // Goal
-    var gPix = cellToPixel(goalX, goalY);
-    game.draw.circle(gPix.x, gPix.y, CELL * 0.38, C.goalGlow, 0.3 + 0.15 * Math.sin(elapsed * 5));
-    game.draw.circle(gPix.x, gPix.y, CELL * 0.28, C.goal, 0.9);
-    game.draw.text('★', gPix.x, gPix.y + 10, { size: 32, color: '#fff', bold: true });
-
-    // Trail
-    for (var tri = 0; tri < trail.length; tri++) {
-      game.draw.circle(trail[tri].x, trail[tri].y, CELL * 0.18 * trail[tri].life, C.trail, trail[tri].life * 0.5);
-    }
-
-    // Stone
-    if (sliding || !done) {
-      game.draw.circle(stonePixX + 4, stonePixY + 4, CELL * 0.34, '#000', 0.3);
-      game.draw.circle(stonePixX, stonePixY, CELL * 0.34, C.stone, 0.95);
-      game.draw.circle(stonePixX - CELL * 0.1, stonePixY - CELL * 0.1, CELL * 0.1, C.stoneHi, 0.5);
-      // Direction arrow
-      var arrowX = stonePixX + stoneVX * CELL * 0.5;
-      var arrowY = stonePixY + stoneVY * CELL * 0.5;
-      game.draw.circle(arrowX, arrowY, 8, C.trail, 0.7);
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p2 = particles[pp2];
-      game.draw.circle(p2.x, p2.y, 10 * p2.life, p2.col, p2.life);
-    }
-
-    if (!done && sliding) {
-      game.draw.text('タップで方向転換', W / 2, H * 0.88, { size: 36, color: C.text + '44' });
-    }
-
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, flashCol, flashAnim * 0.09);
-    if (resultTimer > 0) {
-      game.draw.text(resultText, W / 2, H * 0.12, { size: 52, color: flashCol, bold: true });
-    }
-
-    for (var mi = 0; mi < MAX_MISS; mi++) {
-      game.draw.circle(W / 2 - (MAX_MISS - 1) * 44 + mi * 88, H * 0.955, 18, mi < missed ? C.wrong : C.ui, 0.9);
-    }
-
-    game.draw.text(score + ' / ' + NEEDED, W / 2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft / 90);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 12, ratio > 0.3 ? C.correct : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(score + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var mi = 0; mi < MAX_MISS; mi++) game.draw.rect(snap(W / 2 + (mi - (MAX_MISS - 1) / 2) * 56) - 10, 224, 20, 20, mi < missed ? C.a : '#040810');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.04);
-    setupLevel();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
