@@ -54,7 +54,6 @@ export class CodeGameValidator {
     // 2. 構文チェック
     try {
       // node.js環境での構文検証（new Functionでパース）
-      // eslint-disable-next-line no-new-func
       new Function('game', code);
     } catch (err) {
       errors.push({
