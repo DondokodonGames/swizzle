@@ -29,6 +29,8 @@ import * as fs from 'fs';
 import { fileURLToPath } from 'url';
 import { randomUUID } from 'crypto';
 import { SupabaseUploader } from '../publishers/SupabaseUploader.js';
+import { CodeGameValidator } from '../code/CodeGameValidator.js';
+import { CodeQualityScorer } from '../code/CodeQualityScorer.js';
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
@@ -57,12 +59,34 @@ function saveProgress(data: ProgressData): void {
   fs.writeFileSync(PROGRESS_FILE, JSON.stringify(data, null, 2), 'utf-8');
 }
 
+/** tier → 1プレイ価格(円)。PRICE_SYNC=true のときのみ適用 */
+const TIER_PRICE_YEN: Record<string, number> = { S: 100, A: 50, B: 30, C: 10 };
+
 interface GameMeta {
   filename: string;
   templateId: string;
   title: string;
   description: string;
   code: string;
+  /** ヘッダーコメント // @tier: S|A|B|C */
+  tier?: string;
+  /** ヘッダーコメント // @mechanic: <MECHANICS_CATALOG_V2のID> */
+  mechanic?: string;
+  /** ヘッダーコメント // @theme: <世界観テーマ> */
+  theme?: string;
+  /** ヘッダーコメント // @trend: <SNSトレンド元ネタID> */
+  trendSource?: string;
+}
+
+/** 先頭コメント群から // @key: value ヘッダーを解釈 */
+function parseHeaderTags(lines: string[]): Record<string, string> {
+  const tags: Record<string, string> = {};
+  for (const line of lines.slice(0, 20)) {
+    if (!line.startsWith('//')) break;
+    const m = /^\/\/\s*@(tier|mechanic|theme|trend)\s*:\s*(\S.*)$/.exec(line.trim());
+    if (m) tags[m[1]] = m[2].trim();
+  }
+  return tags;
 }
 
 function parseGameFile(filePath: string, filename: string): GameMeta | null {
@@ -72,6 +96,7 @@ function parseGameFile(filePath: string, filename: string): GameMeta | null {
   // Line 1: // NNN-kebab-name.js
   // Line 2: // タイトル — 体験説明
   // Line 3: // 操作: ...
+  // 任意:   // @tier: S  // @mechanic: timing_one_shot  // @theme: space  // @trend: xxx
   const baseName = filename.replace(/\.js$/, '');
   const templateId = `example:${baseName}`;
 
@@ -99,7 +124,16 @@ function parseGameFile(filePath: string, filename: string): GameMeta | null {
     description = `Swizzle mini game: ${title}`;
   }
 
-  return { filename, templateId, title, description, code };
+  const tags = parseHeaderTags(lines);
+  const tier = tags.tier ? tags.tier.toUpperCase() : undefined;
+
+  return {
+    filename, templateId, title, description, code,
+    tier: tier && TIER_PRICE_YEN[tier] !== undefined ? tier : undefined,
+    mechanic: tags.mechanic,
+    theme: tags.theme,
+    trendSource: tags.trend,
+  };
 }
 
 async function main() {
@@ -108,6 +142,7 @@ async function main() {
 
   const skipUpload = process.env.SKIP_UPLOAD === 'true' || process.env.DRY_RUN === 'true';
   const overwrite = process.env.OVERWRITE === 'true' || process.env.FORCE === 'true';
+  const priceSync = process.env.PRICE_SYNC === 'true';
 
   // examples/ ディレクトリの .js ファイルを列挙（アルファベット順）
   const allFiles = fs.readdirSync(EXAMPLES_DIR)
@@ -178,6 +213,11 @@ async function main() {
     console.log(`\n${prefix} ⬆️  ${meta.title}`);
     console.log(`         template_id: ${meta.templateId}`);
 
+    // 品質スコアはハードコードではなくスコアラーv2の実測値を使う
+    const validation = new CodeGameValidator().validate(meta.code);
+    const quality = new CodeQualityScorer().score(meta.code, null, validation);
+    console.log(`         品質スコアv2: ${quality.total}/100${meta.tier ? ` / tier: ${meta.tier}` : ''}${meta.mechanic ? ` / mechanic: ${meta.mechanic}` : ''}`);
+
     // CodeGameProject オブジェクト構築
     const project = {
       id: randomUUID(),
@@ -212,18 +252,28 @@ async function main() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const result = await (uploader as any).uploadGame(
         project,
-        85,
+        quality.total,
         {
           autoPublish: true,
           reviewStatus: 'approved' as const,
           gameType: 'code' as const,
           templateId: meta.templateId,
           overwrite,
+          mechanic: meta.mechanic,
+          theme: meta.theme,
+          trendSource: meta.trendSource,
         }
       );
 
       if (result.success) {
         console.log(`         ✅ ${overwrite ? '上書き完了' : '登録完了'} — ID: ${result.gameId}`);
+        if (priceSync && meta.tier && result.gameId) {
+          const yen = TIER_PRICE_YEN[meta.tier];
+          const ok = await uploader.syncPriceYen(result.gameId, yen);
+          console.log(ok
+            ? `         💴 価格連動: ${meta.tier} → ${yen}円/プレイ`
+            : `         ⚠️ 価格連動に失敗 (tier ${meta.tier})`);
+        }
         succeeded++;
         uploadedSet.add(meta.templateId);
         progress.uploadedTemplateIds = Array.from(uploadedSet);
