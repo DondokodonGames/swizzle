@@ -73,7 +73,11 @@
     "ai:code:neta:local": "SKIP_UPLOAD=true tsx src/ai/v2/run-code-neta.ts 1",
     "ai:code:status": "tsx src/ai/v2/run-code-status.ts",
     "ai:upload:examples": "tsx src/ai/v2/run-upload-examples.ts",
-    "ai:upload:examples:dry": "DRY_RUN=true tsx src/ai/v2/run-upload-examples.ts"
+    "ai:upload:examples:dry": "DRY_RUN=true tsx src/ai/v2/run-upload-examples.ts",
+    "ai:neta:trend": "tsx src/ai/v2/run-trend-neta.ts",
+    "games:smoke": "tsx scripts/smoke-code-games.ts",
+    "games:smoke:all": "tsx scripts/smoke-code-games.ts --all",
+    "games:smoke:quick": "tsx scripts/smoke-code-games.ts --quick"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.91.1",
@@ -111,6 +115,7 @@
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.3",
     "jsdom": "^29.1.1",
+    "playwright": "^1.61.1",
     "tsx": "^4.20.6",
     "typescript": "^5.0.2",
     "vite": "^4.5.14",
