@@ -1,9 +1,23 @@
 import { buildIframeHtml, IframeAsset } from './iframeTemplate';
-import { CodeGameProject, CodeGameAsset, CodeGameAudioAsset } from '../../types/code-game/SwizzleGameAPI';
+import { BestScoreStore } from './BestScoreStore';
+import { CodeGameProject, CodeGameAsset, CodeGameAudioAsset, GameEndStats } from '../../types/code-game/SwizzleGameAPI';
 
-export type GameResult = { result: 'success' | 'failure'; score: number };
+export type GameResult = {
+  result: 'success' | 'failure';
+  score: number;
+  /** 保存後のベストスコア(今回の記録を含む) */
+  best: number;
+  /** 既存ベストを更新した場合 true(初回記録は false) */
+  isNewRecord: boolean;
+  stats?: GameEndStats;
+};
 export type GameErrorCallback = (message: string) => void;
 export type GameEndCallback = (result: GameResult) => void;
+
+export interface LaunchOptions {
+  /** ベストスコア保存のキー。省略時は project.id */
+  gameId?: string;
+}
 
 function resolveUrl(asset: CodeGameAsset | CodeGameAudioAsset): string | null {
   if ('storageUrl' in asset && asset.storageUrl) return asset.storageUrl;
@@ -55,12 +69,15 @@ export class CodeGameRunner {
     container: HTMLElement,
     onEnd: GameEndCallback,
     onError?: GameErrorCallback,
+    options?: LaunchOptions,
   ): void {
     this.stop();
 
     this.onEnd = onEnd;
     this.onError = onError ?? null;
 
+    const gameId = options?.gameId || project.id;
+    const bestScore = BestScoreStore.get(gameId);
     const assets = buildAssetList(project);
     const maxMs = maxDurationMs(project);
     const html = buildIframeHtml(project.code, maxMs);
@@ -79,7 +96,10 @@ export class CodeGameRunner {
       if (!msg?.type) return;
 
       if (msg.type === 'READY') {
-        iframe.contentWindow?.postMessage({ type: 'INIT', assets }, '*');
+        iframe.contentWindow?.postMessage(
+          { type: 'INIT', assets, context: { gameId, bestScore } },
+          '*'
+        );
         // Small delay to let assets finish loading inside iframe, then START
         setTimeout(() => {
           iframe.contentWindow?.postMessage({ type: 'START' }, '*');
@@ -87,7 +107,9 @@ export class CodeGameRunner {
       }
 
       if (msg.type === 'GAME_END') {
-        this.onEnd?.({ result: msg.result, score: msg.score ?? 0 });
+        const score = msg.score ?? 0;
+        const { best, isNewRecord } = BestScoreStore.record(gameId, score);
+        this.onEnd?.({ result: msg.result, score, best, isNewRecord, stats: msg.stats });
         this.cleanup();
       }
 

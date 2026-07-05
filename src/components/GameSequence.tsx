@@ -32,6 +32,10 @@ interface GameScore {
   points: number;
   time: number;
   success: boolean;
+  /** 端末ローカルのベストスコア(今回の記録を反映済み) */
+  best?: number;
+  /** 既存ベストを更新した場合 true */
+  isNewRecord?: boolean;
 }
 
 interface GameSequenceProps {
@@ -343,7 +347,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
       // プレイ開始を計測
       track('play_start', { gameId: currentGame.id, index: currentIndex });
 
-      const onGameEnd = (result: { success?: boolean; score?: number; timeElapsed?: number }) => {
+      const onGameEnd = (result: { success?: boolean; score?: number; timeElapsed?: number; best?: number; isNewRecord?: boolean }) => {
         setGameStartTime(null);
         track('play_end', {
           gameId: currentGame.id,
@@ -354,7 +358,9 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
         setCurrentScore({
           points: result.score || 0,
           time: result.timeElapsed || 0,
-          success: result.success || false
+          success: result.success || false,
+          best: result.best,
+          isNewRecord: result.isNewRecord,
         });
         currentGameRef.current = null;
         setGameState('bridge');
@@ -368,13 +374,14 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
           runner.launch(
             currentGame.projectData as unknown as CodeGameProject,
             canvasRef.current!,
-            (r) => onGameEnd({ success: r.result === 'success', score: r.score }),
+            (r) => onGameEnd({ success: r.result === 'success', score: r.score, best: r.best, isNewRecord: r.isNewRecord }),
             (errMsg) => {
               console.error(`❌ コードゲームエラー: "${currentGame.title}"`, errMsg);
               codeRunnerRef.current = null;
               currentGameRef.current = null;
               setTimeout(() => handleNextGame(), 2000);
-            }
+            },
+            { gameId: currentGame.id }
           );
         } else {
           await bridge.launchFullGame(

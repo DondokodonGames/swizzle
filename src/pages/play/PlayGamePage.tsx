@@ -459,6 +459,7 @@ export function PlayGamePage() {
       <div style={s.gameWrap}>
         <CodeGamePlayer
           project={projectData as unknown as CodeGameProject}
+          gameId={gameId}
           onEnd={(result) => {
             track('play_end', { gameId, source: 'play_page', result: result.result });
             setPageState('finished');
