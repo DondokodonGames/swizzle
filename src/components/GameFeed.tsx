@@ -4,6 +4,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SocialService } from '../social/services/SocialService';
+import { getUserSeed } from '../social/services/FeedShuffleService';
 import { PublicGame } from '../social/types/SocialTypes';
 import { supabase } from '../lib/supabase';
 
@@ -160,8 +161,8 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
           .then(games => {
             return games || [];
           }),
-        // ランダム
-        withTimeout(socialService.getRandomGames(12), 8000)
+        // ランダム(端末シード+日付で決定的 = ユーザーごと・日ごとに違う12本)
+        withTimeout(socialService.getRandomGames(12, getUserSeed()), 8000)
           .then(games => {
             return games || [];
           }),

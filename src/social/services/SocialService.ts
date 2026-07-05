@@ -6,6 +6,7 @@
 import { PublicGame, UserProfile, UserGame, GameFilters } from '../types/SocialTypes';
 import { database, SupabaseError, supabase } from '../../lib/supabase';
 import { NotificationService } from './NotificationService';
+import { dailyShuffle, prioritizeUnplayed, getPlayedIds } from './FeedShuffleService';
 import type { ReactionStats, InteractionHistory } from '../../lib/database.types';
 
 // 🆕 Phase 3: トレンドゲーム型定義
@@ -1284,13 +1285,16 @@ export class SocialService {
    * @param limit 取得数
    * @returns ランダムなゲームリスト
    */
-  async getRandomGames(limit: number = 10): Promise<PublicGame[]> {
+  async getRandomGames(limit: number = 10, seed?: string): Promise<PublicGame[]> {
     try {
       // 公開済みゲームを取得（100件で十分）
       const gamesData = await database.userGames.getPublished({ limit: 100 });
 
-      // ランダムにシャッフル
-      const shuffled = [...gamesData].sort(() => Math.random() - 0.5);
+      // シードあり: 日替わり決定的シャッフル+未プレイ優先(ユーザーごとに違う出会い)
+      // シードなし: 従来どおり毎回ランダム
+      const shuffled = seed
+        ? prioritizeUnplayed(dailyShuffle(gamesData as Array<{ id: string }>, seed), getPlayedIds())
+        : [...gamesData].sort(() => Math.random() - 0.5);
 
       // 指定数だけ取得
       const randomGames = shuffled.slice(0, limit);
