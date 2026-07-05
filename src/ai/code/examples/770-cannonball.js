@@ -1,275 +1,158 @@
 // 770-cannonball.js
 // キャノンボール — 大砲の弾道を予測してターゲットに直撃させろ
-// 操作: タップで大砲を発射（タップX位置で弾道が変わる）
-// 成功: 30回命中  失敗: 10回外れ or 75秒
+// 操作: タップで発射（タップX位置で発射角が変わる）
+// 成功: 10回 命中  失敗: 3回 外れ or 26秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#0a0603',
-    sky:     '#0d1b2a',
-    ground:  '#2d1a0a',
-    groundHi:'#5c3d1e',
-    cannon:  '#374151',
-    cannonHi:'#9ca3af',
-    ball:    '#d97706',
-    ballHi:  '#fde68a',
-    target:  '#22c55e',
-    targetHi:'#4ade80',
-    smoke:   '#6b7280',
-    correct: '#22c55e',
-    wrong:   '#ef4444',
-    text:    '#f1f5f9',
-    ui:      '#0c0804'
-  };
+  // ── パレット（ネオンアーケード、砲撃） ──
+  var C = { bg:'#0a0603', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
+  var SKY = '#0a1420', GROUND = '#2d1a0a', GROUND_HI = '#5c3d1e', CANNON = '#3a4a5a', CANNON_HI = '#9caab8', BALL = '#ff8800', BALL_HI = '#ffe600', TARGET = '#00ff41';
 
-  var GROUND_Y = H * 0.76;
-  var CANNON_X = W * 0.14;
-  var CANNON_Y = GROUND_Y - 44;
-  var GRAVITY = 1200;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'CANNONBALL';
+  var HOW_TO_PLAY = 'TAP TO FIRE · YOUR TAP X SETS THE LAUNCH ANGLE · HIT THE TARGET';
+  var MAX_TIME = 26;
+  var NEEDED   = 10;         // 修正2: 30 → 10
+  var MAX_ERR  = 3;          // 修正2: 10 → 3
+  var GROUND_Y = snap(H * 0.76), CANNON_X = snap(W * 0.14), CANNON_Y = GROUND_Y - 44, GRAVITY = 1200, TARGET_R = 60, WAIT_DUR = 0.5;
 
-  var targetX = 0;
-  var targetY = 0;
-  var TARGET_R = 56;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var ball = null;
-  var trajectoryDots = [];
-  var aimX = W / 2; // current aim tap X
-  var cannonAnim = 0;
+  // ── ゲーム変数 ──
+  var targetX, targetY, ball, trajectoryDots, cannonAnim, waitTimer, score, errors, done, timeLeft, elapsed, smoke, flash, flashCol, resultText, resultTimer;
 
-  var waitTimer = 0;
-  var WAIT_DUR = 0.5;
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
 
-  var score = 0;
-  var NEEDED = 30;
-  var errors = 0;
-  var MAX_ERR = 10;
-  var done = false;
-  var timeLeft = 75;
-  var elapsed = 0;
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
 
-  var smokeParticles = [];
-  var flashAnim = 0, flashCol = C.correct;
-  var resultTimer = 0, resultText = '';
+  function ring(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) { var d = qx * qx + qy * qy; if (d <= r * r && d >= (r - 12) * (r - 12)) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); } }
 
-  function newTarget() {
-    targetX = W * 0.45 + Math.random() * W * 0.45;
-    targetY = GROUND_Y - 80 - Math.random() * (H * 0.32);
-    ball = null;
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.f : '#0c0804');
+  }
+
+  function background() { game.draw.clear(SKY); game.draw.rect(0, GROUND_Y, W, H - GROUND_Y, GROUND, 1.0); game.draw.rect(0, GROUND_Y, W, 14, GROUND_HI, 0.6); }
+
+  function newTarget() { targetX = W * 0.45 + Math.random() * W * 0.45; targetY = GROUND_Y - 80 - Math.random() * (H * 0.32); ball = null; }
+
   function getLaunchVelocity(aimTapX) {
-    // Map tap X to launch angle (left = steep, right = shallow)
-    var norm = (aimTapX - CANNON_X) / (W - CANNON_X);
-    norm = Math.max(0.05, Math.min(0.95, norm));
-    // Angle from 20 to 75 degrees
-    var angle = 0.35 + (1 - norm) * 1.05;
-    var spd = 900 + Math.random() * 80;
+    var norm = Math.max(0.05, Math.min(0.95, (aimTapX - CANNON_X) / (W - CANNON_X))), angle = 0.35 + (1 - norm) * 1.05, spd = 900 + Math.random() * 80;
     return { vx: Math.cos(angle) * spd, vy: -Math.sin(angle) * spd };
   }
 
   function fire(tapX) {
-    var v = getLaunchVelocity(tapX);
-    ball = { x: CANNON_X, y: CANNON_Y, vx: v.vx, vy: v.vy, hit: false, done: false };
-    cannonAnim = 0.4;
-    // Smoke
-    for (var p = 0; p < 6; p++) {
-      var pa = -Math.PI * 0.4 + Math.random() * Math.PI * 0.3;
-      smokeParticles.push({ x: CANNON_X + 60, y: CANNON_Y, vx: Math.cos(pa) * (60 + Math.random() * 80), vy: Math.sin(pa) * 60 - 40, life: 0.6, r: 20 + Math.random() * 20 });
-    }
-    // Preview dots
-    trajectoryDots = [];
-    var px = CANNON_X, py = CANNON_Y, pvx = v.vx, pvy = v.vy;
-    for (var ti = 0; ti < 12; ti++) {
-      var dtSim = 0.1;
-      for (var si = 0; si < 3; si++) {
-        pvy += GRAVITY * dtSim;
-        px += pvx * dtSim;
-        py += pvy * dtSim;
-      }
-      if (py > GROUND_Y) break;
-      trajectoryDots.push({ x: px, y: py });
-    }
+    var v = getLaunchVelocity(tapX); ball = { x: CANNON_X, y: CANNON_Y, vx: v.vx, vy: v.vy, done: false }; cannonAnim = 0.4;
+    for (var p = 0; p < 6; p++) { var pa = -Math.PI * 0.4 + Math.random() * Math.PI * 0.3; smoke.push({ x: CANNON_X + 60, y: CANNON_Y, vx: Math.cos(pa) * (60 + Math.random() * 80), vy: Math.sin(pa) * 60 - 40, life: 0.6, r: 18 + Math.random() * 18 }); }
+    trajectoryDots = []; var px = CANNON_X, py = CANNON_Y, pvx = v.vx, pvy = v.vy;
+    for (var ti = 0; ti < 12; ti++) { for (var si = 0; si < 3; si++) { pvy += GRAVITY * 0.1; px += pvx * 0.1; py += pvy * 0.1; } if (py > GROUND_Y) break; trajectoryDots.push({ x: px, y: py }); }
     game.audio.play('se_tap', 0.12);
   }
 
-  game.onTap(function(tx, ty) {
-    if (done || waitTimer > 0) return;
-    if (ball && !ball.done) return; // already in flight
-    aimX = tx;
+  function initGame() { score = 0; errors = 0; done = false; timeLeft = MAX_TIME; elapsed = 0; smoke = []; flash = 0; flashCol = C.b; resultText = ''; resultTimer = 0; cannonAnim = 0; waitTimer = 0; trajectoryDots = []; newTarget(); }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (score * 450 + Math.ceil(timeLeft) * 100) : score * 150;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawScene() {
+    ring(targetX, targetY, TARGET_R, TARGET, 0.9); pc(targetX, targetY, TARGET_R * 0.6, TARGET, 0.4 + 0.3 * Math.sin(elapsed * 5)); pc(targetX, targetY, TARGET_R * 0.25, C.g, 0.85);
+    for (var ti2 = 0; ti2 < trajectoryDots.length; ti2++) { var td = trajectoryDots[ti2]; game.draw.rect(snap(td.x) - 4, snap(td.y) - 4, 8, 8, BALL, Math.max(0.1, 0.5 - ti2 * 0.04)); }
+    var recoil = cannonAnim > 0 ? cannonAnim * 16 : 0;
+    game.draw.rect(snap(CANNON_X - 52 + recoil), CANNON_Y - 22, 96, 44, CANNON, 0.9); game.draw.rect(snap(CANNON_X - 52 + recoil), CANNON_Y - 22, 96, 10, CANNON_HI, 0.4);
+    game.draw.rect(snap(CANNON_X + 16 + recoil), CANNON_Y - 14, 56, 28, CANNON, 0.95);
+    pc(CANNON_X - 8, CANNON_Y, 34, CANNON, 0.95); pc(CANNON_X - 32, CANNON_Y + 28, 26, '#1a2530', 0.9); pc(CANNON_X + 16, CANNON_Y + 28, 20, '#1a2530', 0.9);
+    if (ball && !ball.done) { pc(ball.x, ball.y, 22, BALL, 0.95); pc(ball.x - 7, ball.y - 7, 7, BALL_HI, 0.6); }
+    for (var pp2 = 0; pp2 < smoke.length; pp2++) { var sp = smoke[pp2]; pc(sp.x, sp.y, sp.r * sp.life, '#6b7280', sp.life * 0.4); }
+  }
+
+  // ── 入力 ──
+  game.onTap(function(tx) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done || waitTimer > 0 || (ball && !ball.done)) return;
     fire(tx);
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (targetX === undefined) initGame(); background(); drawScene();
+      txt(GAME_TITLE, W / 2, H * 0.10, 78, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.145, 20, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) txt('► 100円 投入 ◄ TAP TO START', W / 2, H * 0.88, 40, C.a);
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'DIRECT HIT!' : 'MISFIRE', W / 2, H * 0.35, 58, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
-      timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
-      }
-    }
-
-    if (waitTimer > 0) {
-      waitTimer -= dt;
-      if (waitTimer <= 0 && !done) newTarget();
-    }
-
-    if (ball && !ball.done) {
-      ball.vx += 0; // no wind (or add if desired)
-      ball.vy += GRAVITY * dt;
-      ball.x += ball.vx * dt;
-      ball.y += ball.vy * dt;
-
-      // Hit target?
-      var dx = ball.x - targetX;
-      var dy = ball.y - targetY;
-      if (Math.sqrt(dx * dx + dy * dy) < TARGET_R + 20) {
-        ball.done = true;
-        score++;
-        flashCol = C.correct;
-        flashAnim = 0.25;
-        resultText = '命中！';
-        resultTimer = 0.4;
-        game.audio.play('se_success', 0.7);
-        for (var p2 = 0; p2 < 8; p2++) {
-          var pa2 = Math.random() * Math.PI * 2;
-          smokeParticles.push({ x: targetX, y: targetY, vx: Math.cos(pa2) * 180, vy: Math.sin(pa2) * 180 - 100, life: 0.45, r: 14 });
-        }
-        waitTimer = WAIT_DUR;
-        if (score >= NEEDED && !done) {
-          done = true;
-          game.audio.play('se_success', 0.9);
-          setTimeout(function() { game.end.success(score * 360 + Math.ceil(timeLeft) * 100); }, 700);
-          return;
+      timeLeft -= dt; elapsed += dt;
+      if (timeLeft <= 0) { finish(false); return; }
+      if (waitTimer > 0) { waitTimer -= dt; if (waitTimer <= 0) newTarget(); }
+      if (ball && !ball.done) {
+        ball.vy += GRAVITY * dt; ball.x += ball.vx * dt; ball.y += ball.vy * dt;
+        var dx = ball.x - targetX, dy = ball.y - targetY;
+        if (Math.sqrt(dx * dx + dy * dy) < TARGET_R + 20) {
+          ball.done = true; score++; flash = 0.25; flashCol = C.b; resultText = 'HIT!'; resultTimer = 0.4; game.audio.play('se_success', 0.7);
+          for (var p2 = 0; p2 < 8; p2++) { var pa2 = Math.random() * Math.PI * 2; smoke.push({ x: targetX, y: targetY, vx: Math.cos(pa2) * 180, vy: Math.sin(pa2) * 180 - 100, life: 0.45, r: 14 }); }
+          waitTimer = WAIT_DUR; if (score >= NEEDED) { finish(true); return; }
+        } else if (ball.y > GROUND_Y + 20) {
+          ball.done = true; errors++; flash = 0.3; flashCol = C.a; resultText = 'MISS!'; resultTimer = 0.42; game.audio.play('se_failure', 0.28);
+          for (var p3 = 0; p3 < 5; p3++) { var pa3 = -Math.PI * 0.8 + Math.random() * Math.PI * 0.6; smoke.push({ x: ball.x, y: GROUND_Y, vx: Math.cos(pa3) * 80, vy: Math.sin(pa3) * 80 - 60, life: 0.5, r: 16 }); }
+          waitTimer = WAIT_DUR; if (errors >= MAX_ERR) { finish(false); return; }
+        } else if (ball.x > W + 60) {
+          ball.done = true; errors++; flash = 0.28; flashCol = C.a; resultText = 'OVERSHOT!'; resultTimer = 0.38; game.audio.play('se_failure', 0.22);
+          waitTimer = WAIT_DUR; if (errors >= MAX_ERR) { finish(false); return; }
         }
       }
-
-      // Hit ground?
-      if (ball.y > GROUND_Y + 20) {
-        ball.done = true;
-        errors++;
-        flashCol = C.wrong;
-        flashAnim = 0.3;
-        resultText = 'はずれ！';
-        resultTimer = 0.42;
-        game.audio.play('se_failure', 0.28);
-        // Ground hit smoke
-        for (var p3 = 0; p3 < 5; p3++) {
-          var pa3 = -Math.PI * 0.8 + Math.random() * Math.PI * 0.6;
-          smokeParticles.push({ x: ball.x, y: GROUND_Y, vx: Math.cos(pa3) * 80, vy: Math.sin(pa3) * 80 - 60, life: 0.5, r: 16 });
-        }
-        waitTimer = WAIT_DUR;
-        if (errors >= MAX_ERR && !done) {
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 600);
-        }
-      }
-
-      // Off screen sides
-      if (ball.x > W + 60) {
-        ball.done = true;
-        errors++;
-        flashCol = C.wrong;
-        flashAnim = 0.28;
-        resultText = '飛びすぎ！';
-        resultTimer = 0.38;
-        game.audio.play('se_failure', 0.22);
-        waitTimer = WAIT_DUR;
-        if (errors >= MAX_ERR && !done) {
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 600);
-        }
-      }
+      if (cannonAnim > 0) cannonAnim -= dt * 3; if (flash > 0) flash -= dt * 3; if (resultTimer > 0) resultTimer -= dt;
+      for (var pp = smoke.length - 1; pp >= 0; pp--) { var sp2 = smoke[pp]; sp2.x += sp2.vx * dt; sp2.y += sp2.vy * dt; sp2.vy += 200 * dt; sp2.life -= dt * 1.8; if (sp2.life <= 0) smoke.splice(pp, 1); }
     }
 
-    if (cannonAnim > 0) cannonAnim -= dt * 3;
-    if (flashAnim > 0) flashAnim -= dt * 3;
-    if (resultTimer > 0) resultTimer -= dt;
+    // ---- 描画 ----
+    background(); drawScene();
+    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.09);
+    if (resultTimer > 0) txt(resultText, W / 2, snap(H * 0.30), 56, flashCol);
 
-    for (var pp = smokeParticles.length - 1; pp >= 0; pp--) {
-      smokeParticles[pp].x += smokeParticles[pp].vx * dt;
-      smokeParticles[pp].y += smokeParticles[pp].vy * dt;
-      smokeParticles[pp].vy += 200 * dt;
-      smokeParticles[pp].life -= dt * 1.8;
-      if (smokeParticles[pp].life <= 0) smokeParticles.splice(pp, 1);
-    }
-
-    // Draw
-    game.draw.rect(0, 0, W, H, C.sky);
-    game.draw.rect(0, GROUND_Y, W, H - GROUND_Y, C.ground, 1.0);
-    game.draw.rect(0, GROUND_Y, W, 14, C.groundHi, 0.6);
-
-    // Target
-    var targetPulse = 0.7 + 0.3 * Math.sin(elapsed * 5);
-    game.draw.circle(targetX + 4, targetY + 4, TARGET_R, '#000', 0.25);
-    game.draw.circle(targetX, targetY, TARGET_R, C.target, 0.85);
-    game.draw.circle(targetX, targetY, TARGET_R * 0.6, C.targetHi, targetPulse * 0.5);
-    game.draw.circle(targetX, targetY, TARGET_R * 0.25, C.targetHi, 0.85);
-    // Crosshair
-    game.draw.line(targetX - TARGET_R, targetY, targetX + TARGET_R, targetY, C.targetHi, 3);
-    game.draw.line(targetX, targetY - TARGET_R, targetX, targetY + TARGET_R, C.targetHi, 3);
-
-    // Trajectory preview dots
-    for (var ti2 = 0; ti2 < trajectoryDots.length; ti2++) {
-      var td = trajectoryDots[ti2];
-      var alpha = 0.5 - ti2 * 0.04;
-      game.draw.circle(td.x, td.y, 6, C.ball, Math.max(0.1, alpha));
-    }
-
-    // Cannon body
-    var cx = CANNON_X;
-    var cy = CANNON_Y;
-    var recoil = cannonAnim > 0 ? cannonAnim * 16 : 0;
-    game.draw.rect(cx - 52 + recoil, cy - 22, 96, 44, C.cannon, 0.9);
-    game.draw.rect(cx - 52 + recoil, cy - 22, 96, 10, C.cannonHi, 0.4);
-    game.draw.rect(cx + 16 + recoil, cy - 14, 56, 28, C.cannon, 0.95); // barrel
-    game.draw.rect(cx + 16 + recoil, cy - 14, 56, 7, C.cannonHi, 0.35);
-    game.draw.circle(cx - 8, cy, 36, C.cannon, 0.95);
-    game.draw.circle(cx - 8, cy, 28, C.cannonHi, 0.2);
-    // Wheels
-    game.draw.circle(cx - 32, CANNON_Y + 28, 28, '#1f2937', 0.9);
-    game.draw.circle(cx + 16, CANNON_Y + 28, 22, '#1f2937', 0.9);
-
-    // Ball in flight
-    if (ball && !ball.done) {
-      game.draw.circle(ball.x + 3, ball.y + 3, 22, '#000', 0.25);
-      game.draw.circle(ball.x, ball.y, 22, C.ball, 0.95);
-      game.draw.circle(ball.x - 7, ball.y - 7, 7, C.ballHi, 0.5);
-    }
-
-    // Smoke particles
-    for (var pp2 = 0; pp2 < smokeParticles.length; pp2++) {
-      var sp = smokeParticles[pp2];
-      game.draw.circle(sp.x, sp.y, sp.r * sp.life, C.smoke, sp.life * 0.4);
-    }
-
-    if (!done && !ball) {
-      game.draw.text('タップで発射！', W / 2, H * 0.88, { size: 40, color: C.text + '44' });
-    }
-
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, flashCol, flashAnim * 0.09);
-    if (resultTimer > 0) {
-      game.draw.text(resultText, W / 2, H * 0.22, { size: 56, color: flashCol, bold: true });
-    }
-
-    for (var ei = 0; ei < MAX_ERR; ei++) {
-      game.draw.circle(W / 2 - (MAX_ERR - 1) * 48 + ei * 96, H * 0.955, 20, ei < errors ? C.wrong : C.ui, 0.9);
-    }
-
-    game.draw.text(score + ' / ' + NEEDED, W / 2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft / 75);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 12, ratio > 0.3 ? C.correct : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(score + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var ei = 0; ei < MAX_ERR; ei++) game.draw.rect(snap(W / 2 + (ei - (MAX_ERR - 1) / 2) * 56) - 10, 224, 20, 20, ei < errors ? C.a : '#0c0804');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.04);
-    newTarget();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
