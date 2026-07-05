@@ -1,229 +1,147 @@
 // 776-countdown-zero.js
 // カウントダウンゼロ — カウントが「0」になった瞬間だけタップせよ
-// 操作: タップ — カウントが0になった瞬間（0.3秒以内）
-// 成功: 30回ジャスト  失敗: 8回失敗 or 90秒
+// 操作: タップ — カウントが0になった瞬間（短い猶予内）
+// 成功: 10回 ジャスト  失敗: 3回 失敗 or 24秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#020208',
-    numCd:   '#818cf8',
-    numZero: '#fbbf24',
-    numZeroGlow: '#fde68a',
-    correct: '#22c55e',
-    wrong:   '#ef4444',
-    text:    '#f1f5f9',
-    ui:      '#080810',
-    tick:    '#38bdf8'
-  };
+  // ── パレット（ネオンアーケード、時計） ──
+  var C = { bg:'#020208', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
+  var NUM_CD = '#7700ff', NUM_ZERO = '#ffe600', ZERO_GLOW = '#fff3b0', TICK = '#00cfff';
 
-  var count = 0;
-  var countDown = 0;
-  var COUNT_FROM = 0;
-  var tickInterval = 0.9;
-  var tickTimer = 0;
-  var phase = 'counting'; // 'counting' | 'zero' | 'wait'
-  var zeroTimer = 0;
-  var ZERO_WINDOW = 0.32; // must tap within this window
-  var answered = false;
-  var waitTimer = 0;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'COUNTDOWN ZERO';
+  var HOW_TO_PLAY = 'TAP ONLY THE INSTANT THE COUNT HITS ZERO · TOO EARLY OR LATE MISSES';
+  var MAX_TIME = 24;
+  var NEEDED   = 10;         // 修正2: 30 → 10
+  var MAX_ERR  = 3;          // 修正2: 8 → 3
   var WAIT_DUR = 0.38;
-  var numBounce = 0; // animation for number change
 
-  var score = 0;
-  var NEEDED = 30;
-  var errors = 0;
-  var MAX_ERR = 8;
-  var done = false;
-  var timeLeft = 90;
-  var elapsed = 0;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var ripples = [];
-  var flashAnim = 0, flashCol = C.correct;
-  var resultTimer = 0, resultText = '';
+  // ── ゲーム変数 ──
+  var count, tickInterval, tickTimer, cdPhase, zeroTimer, zeroWindow, answered, waitTimer, numBounce, score, errors, done, timeLeft, elapsed, ripples, flash, flashCol, resultText, resultTimer;
 
-  function startCount() {
-    COUNT_FROM = 2 + Math.floor(Math.random() * 4); // 2-5
-    count = COUNT_FROM;
-    tickInterval = Math.max(0.5, 0.9 - score * 0.01);
-    ZERO_WINDOW = Math.max(0.22, 0.32 - score * 0.003);
-    tickTimer = tickInterval;
-    phase = 'counting';
-    answered = false;
-    numBounce = 0;
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function ring(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) { var d = qx * qx + qy * qy; if (d <= r * r && d >= (r - 12) * (r - 12)) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); } }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  game.onTap(function(tx, ty) {
-    if (done || answered || waitTimer > 0) return;
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
 
-    if (phase === 'zero') {
-      // Correct!
-      var accuracy = 1 - (zeroTimer / ZERO_WINDOW);
-      score++;
-      answered = true;
-      flashCol = C.correct;
-      flashAnim = 0.22;
-      resultText = accuracy > 0.7 ? 'ジャスト！' : '0！';
-      resultTimer = 0.38;
-      game.audio.play('se_success', 0.65);
-      ripples.push({ x: W / 2, y: H * 0.44, r: 0, maxR: 280, life: 1.0 });
-      if (score >= NEEDED && !done) {
-        done = true;
-        game.audio.play('se_success', 0.9);
-        setTimeout(function() { game.end.success(score * 380 + Math.ceil(timeLeft) * 120); }, 700);
-        return;
-      }
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.d : '#080810');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function startCount() {
+    count = 2 + Math.floor(Math.random() * 4); tickInterval = Math.max(0.5, 0.9 - score * 0.02); zeroWindow = Math.max(0.24, 0.34 - score * 0.006);
+    tickTimer = tickInterval; cdPhase = 'counting'; answered = false; numBounce = 0;
+  }
+
+  function initGame() { score = 0; errors = 0; done = false; timeLeft = MAX_TIME; elapsed = 0; ripples = []; flash = 0; flashCol = C.b; resultText = ''; resultTimer = 0; waitTimer = 0; startCount(); }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (score * 500 + Math.ceil(timeLeft) * 120) : score * 150;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawScene() {
+    var cy = snap(H * 0.44);
+    ring(W / 2, cy, 260, '#161230', 0.9); ring(W / 2, cy, 230, '#0d0d1f', 0.9);
+    for (var ti = 0; ti < 12; ti++) { var ta = ti * Math.PI * 2 / 12 - Math.PI / 2; game.draw.line(W / 2 + Math.cos(ta) * 230, cy + Math.sin(ta) * 230, W / 2 + Math.cos(ta) * 250, cy + Math.sin(ta) * 250, TICK, ti % 3 === 0 ? 5 : 2); }
+    for (var ri2 = 0; ri2 < ripples.length; ri2++) { var rp = ripples[ri2]; ring(W / 2, cy, rp.r, C.b, rp.life * 0.6); }
+    var isZero = cdPhase === 'zero', bounce = 1.0 + numBounce * 0.15, numSize = Math.floor(280 * bounce);
+    if (isZero) txt('0', W / 2, cy + 20, numSize + 40, ZERO_GLOW);
+    txt('' + (isZero ? 0 : count), W / 2, cy + 20, numSize, isZero ? NUM_ZERO : NUM_CD);
+    if (state === S.PLAYING) {
+      if (cdPhase === 'zero' && !answered) { var wFrac = Math.max(0, 1 - zeroTimer / zeroWindow); game.draw.rect(W / 2 - 200, snap(H * 0.70), 400, 16, '#161230', 0.8); game.draw.rect(W / 2 - 200, snap(H * 0.70), 400 * wFrac, 16, NUM_ZERO, 0.9); txt('TAP NOW!', W / 2, snap(H * 0.78), 60, NUM_ZERO); }
+      else if (cdPhase === 'counting' && !answered) txt('WAIT FOR ZERO...', W / 2, snap(H * 0.70), 40, C.g);
+    }
+  }
+
+  // ── 入力 ──
+  game.onTap(function() {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done || answered || waitTimer > 0) return;
+    if (cdPhase === 'zero') {
+      var accuracy = 1 - (zeroTimer / zeroWindow); score++; answered = true; flash = 0.22; flashCol = C.b; resultText = accuracy > 0.7 ? 'JUST!' : 'ZERO!'; resultTimer = 0.38; game.audio.play('se_success', 0.65);
+      ripples.push({ x: W / 2, y: H * 0.44, r: 0, life: 1.0 });
+      if (score >= NEEDED) { finish(true); return; }
       waitTimer = WAIT_DUR;
     } else {
-      // Wrong phase
-      errors++;
-      answered = true;
-      flashCol = C.wrong;
-      flashAnim = 0.3;
-      resultText = phase === 'counting' ? count + '！まだ' + count + 'だ！' : 'タイムオーバー！';
-      resultTimer = 0.45;
-      game.audio.play('se_failure', 0.3);
-      if (errors >= MAX_ERR && !done) {
-        done = true;
-        setTimeout(function() { game.end.failure(); }, 600);
-        return;
-      }
+      errors++; answered = true; flash = 0.3; flashCol = C.a; resultText = 'TOO EARLY!'; resultTimer = 0.45; game.audio.play('se_failure', 0.3);
+      if (errors >= MAX_ERR) { finish(false); return; }
       waitTimer = WAIT_DUR;
     }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
-    if (!done) {
-      timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
-      }
-    }
-
-    if (waitTimer > 0) {
-      waitTimer -= dt;
-      if (waitTimer <= 0 && !done) startCount();
+    if (state === S.ATTRACT) {
+      if (count === undefined) initGame(); background(); drawScene();
+      txt(GAME_TITLE, W / 2, H * 0.10, 74, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.145, 20, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) txt('► 100円 投入 ◄ TAP TO START', W / 2, H * 0.90, 40, C.a);
+      scanlines();
       return;
     }
 
-    if (numBounce > 0) numBounce -= dt * 6;
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'PERFECT TIMING!' : 'MISTIMED', W / 2, H * 0.35, 54, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
 
-    if (phase === 'counting') {
-      tickTimer -= dt;
-      if (tickTimer <= 0) {
-        count--;
-        numBounce = 0.5;
-        game.audio.play('se_tap', 0.06);
-        if (count <= 0) {
-          phase = 'zero';
-          zeroTimer = 0;
-          numBounce = 0.8;
-        } else {
-          tickTimer = tickInterval;
-        }
+    // PLAYING
+    if (!done) {
+      timeLeft -= dt; elapsed += dt;
+      if (timeLeft <= 0) { finish(false); return; }
+      if (waitTimer > 0) { waitTimer -= dt; if (waitTimer <= 0) startCount(); }
+      else {
+        if (numBounce > 0) numBounce -= dt * 6;
+        if (cdPhase === 'counting') { tickTimer -= dt; if (tickTimer <= 0) { count--; numBounce = 0.5; game.audio.play('se_tap', 0.06); if (count <= 0) { cdPhase = 'zero'; zeroTimer = 0; numBounce = 0.8; } else tickTimer = tickInterval; } }
+        else if (cdPhase === 'zero') { zeroTimer += dt; if (zeroTimer > zeroWindow && !answered) { errors++; answered = true; flash = 0.3; flashCol = C.a; resultText = 'TOO LATE!'; resultTimer = 0.45; game.audio.play('se_failure', 0.28); waitTimer = WAIT_DUR; if (errors >= MAX_ERR) { finish(false); return; } } }
       }
-    } else if (phase === 'zero') {
-      zeroTimer += dt;
-      if (zeroTimer > ZERO_WINDOW && !answered) {
-        // Missed the window
-        errors++;
-        answered = true;
-        flashCol = C.wrong;
-        flashAnim = 0.3;
-        resultText = '遅すぎ！';
-        resultTimer = 0.45;
-        game.audio.play('se_failure', 0.28);
-        if (errors >= MAX_ERR && !done) {
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 600);
-        } else {
-          waitTimer = WAIT_DUR;
-        }
-      }
+      for (var ri = ripples.length - 1; ri >= 0; ri--) { ripples[ri].r += 400 * dt; ripples[ri].life -= dt * 2.5; if (ripples[ri].life <= 0) ripples.splice(ri, 1); }
+      if (flash > 0) flash -= dt * 3; if (resultTimer > 0) resultTimer -= dt;
     }
 
-    // Ripples
-    for (var ri = ripples.length - 1; ri >= 0; ri--) {
-      ripples[ri].r += 400 * dt;
-      ripples[ri].life -= dt * 2.5;
-      if (ripples[ri].life <= 0) ripples.splice(ri, 1);
-    }
+    // ---- 描画 ----
+    background(); drawScene();
+    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.1);
+    if (resultTimer > 0) txt(resultText, W / 2, snap(H * 0.84), 56, flashCol);
 
-    if (flashAnim > 0) flashAnim -= dt * 3;
-    if (resultTimer > 0) resultTimer -= dt;
-
-    // Draw
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Clock face circles
-    for (var ci = 0; ci < 3; ci++) {
-      game.draw.circle(W / 2, H * 0.44, 260 - ci * 30, ci === 0 ? '#1a1a3a' : '#0d0d1f', 0.6 + ci * 0.1);
-    }
-    // Tick marks
-    for (var ti = 0; ti < 12; ti++) {
-      var ta = ti * Math.PI * 2 / 12 - Math.PI / 2;
-      var r1 = 230; var r2 = 250;
-      game.draw.line(W / 2 + Math.cos(ta) * r1, H * 0.44 + Math.sin(ta) * r1,
-                     W / 2 + Math.cos(ta) * r2, H * 0.44 + Math.sin(ta) * r2,
-                     C.tick, ti % 3 === 0 ? 5 : 2);
-    }
-
-    // Ripples
-    for (var ri2 = 0; ri2 < ripples.length; ri2++) {
-      var rp = ripples[ri2];
-      for (var rj = 0; rj < 20; rj++) {
-        if (rj % 3 === 2) continue;
-        var ra = rj * Math.PI * 2 / 20;
-        game.draw.circle(rp.x + Math.cos(ra) * rp.r, rp.y + Math.sin(ra) * rp.r, 5, C.correct, rp.life * 0.6);
-      }
-    }
-
-    // Count display
-    var displayNum = phase === 'zero' ? 0 : count;
-    var isZero = phase === 'zero';
-    var bounce = 1.0 + numBounce * 0.15;
-    var numSize = Math.floor(280 * bounce);
-    var numCol = isZero ? C.numZero : C.numCd;
-
-    if (isZero) {
-      game.draw.text('0', W / 2, H * 0.44 + 20, { size: numSize + 40, color: C.numZeroGlow, bold: true });
-    }
-    game.draw.text('' + displayNum, W / 2, H * 0.44 + 20, { size: numSize, color: numCol, bold: true });
-
-    // Window indicator for zero phase
-    if (phase === 'zero' && !answered) {
-      var wFrac = Math.max(0, 1 - zeroTimer / ZERO_WINDOW);
-      game.draw.rect(W / 2 - 200, H * 0.70, 400, 16, '#1a1a2a', 0.8);
-      game.draw.rect(W / 2 - 200, H * 0.70, 400 * wFrac, 16, C.numZero, 0.9);
-      game.draw.text('今タップ！', W / 2, H * 0.78, { size: 60, color: C.numZero, bold: true });
-    } else if (phase === 'counting' && !answered) {
-      game.draw.text('もうすぐ0...', W / 2, H * 0.70, { size: 40, color: C.text + '44' });
-    }
-
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, flashCol, flashAnim * 0.1);
-    if (resultTimer > 0) {
-      game.draw.text(resultText, W / 2, H * 0.84, { size: 56, color: flashCol, bold: true });
-    }
-
-    for (var ei = 0; ei < MAX_ERR; ei++) {
-      game.draw.circle(W / 2 - (MAX_ERR - 1) * 56 + ei * 112, H * 0.955, 22, ei < errors ? C.wrong : C.ui, 0.9);
-    }
-
-    game.draw.text(score + ' / ' + NEEDED, W / 2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft / 90);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 12, ratio > 0.3 ? C.correct : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(score + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var ei = 0; ei < MAX_ERR; ei++) game.draw.rect(snap(W / 2 + (ei - (MAX_ERR - 1) / 2) * 56) - 10, 224, 20, 20, ei < errors ? C.a : '#080810');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.04);
-    startCount();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
