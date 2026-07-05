@@ -1,242 +1,146 @@
 // 784-pressure-valve.js
-// プレッシャーバルブ — 上昇する圧力を連続タップで抑制せよ
-// 操作: 連続タップで圧力を下げる（タップ毎に-0.04）
-// 成功: 60秒間レッドゾーン（>0.85）に入らずに耐え切る  失敗: 3回レッドゾーン超過 or 70秒
+// プレッシャーバルブ — 上昇する圧力を連続タップで抑え、レッドゾーンから守れ
+// 操作: 連続タップで圧力を下げる（タップ毎に低下）
+// 成功: 16秒間 レッドゾーン超過なしで耐える  失敗: 3回 過圧 or 24秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#080508',
-    gauge:   '#0f0a0f',
-    safe:    '#22c55e',
-    warn:    '#f59e0b',
-    danger:  '#ef4444',
-    needle:  '#f1f5f9',
-    pipe:    '#1e293b',
-    steam:   '#94a3b8',
-    correct: '#22c55e',
-    wrong:   '#ef4444',
-    text:    '#f1f5f9',
-    ui:      '#080508'
-  };
+  // ── パレット（ネオンアーケード、蒸気機関） ──
+  var C = { bg:'#080508', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
+  var SAFE = '#00ff41', WARN = '#ffaa00', DANGER = '#ff2079', PIPE = '#1e2b45', STEAM = '#8494a8', NEEDLE = '#f1f5f9';
 
-  var pressure = 0.2; // 0 to 1
-  var RISE_SPEED = 0.12; // per second base
-  var TAP_REDUCE = 0.04;
-  var RED_ZONE = 0.85;
-  var WARN_ZONE = 0.65;
-
-  var overloads = 0;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'PRESSURE VALVE';
+  var HOW_TO_PLAY = 'TAP RAPIDLY TO BLEED PRESSURE · KEEP IT OUT OF THE RED ZONE';
+  var MAX_TIME    = 24;
+  var WIN_TIME    = 16;      // 修正2: 60 → 16
   var MAX_OVERLOADS = 3;
-  var overloadTimer = 0;
-  var inRedZone = false;
-  var redZoneTimer = 0;
-  var RED_ZONE_GRACE = 1.2; // seconds before counting as overload
+  var RISE_SPEED = 0.14, TAP_REDUCE = 0.05, RED_ZONE = 0.85, WARN_ZONE = 0.65, RED_GRACE = 1.2;
 
-  var done = false;
-  var gameTimer = 0; // counts up to WIN_TIME
-  var WIN_TIME = 60;
-  var timeLeft = 70;
-  var elapsed = 0;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var steamParticles = [];
-  var tapFlash = 0;
-  var flashAnim = 0, flashCol = C.correct;
-  var resultTimer = 0, resultText = '';
+  // ── ゲーム変数 ──
+  var pressure, overloads, inRed, redTimer, gameTimer, done, timeLeft, elapsed, steam, tapFlash, flash, flashCol, resultText, resultTimer;
 
-  game.onTap(function(tx, ty) {
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.f : '#0a070a');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function initGame() { pressure = 0.2; overloads = 0; inRed = false; redTimer = 0; gameTimer = 0; done = false; timeLeft = MAX_TIME; elapsed = 0; steam = []; tapFlash = 0; flash = 0; flashCol = C.b; resultText = ''; resultTimer = 0; }
+
+  function finish(success) {
     if (done) return;
-    pressure -= TAP_REDUCE;
-    if (pressure < 0) pressure = 0;
-    tapFlash = 0.12;
-    game.audio.play('se_tap', 0.05);
-    // Steam burst from valve
-    for (var i = 0; i < 3; i++) {
-      var pa = -Math.PI / 2 + (Math.random() - 0.5) * 1.2;
-      steamParticles.push({
-        x: W / 2 + (Math.random() - 0.5) * 60,
-        y: H * 0.32,
-        vx: Math.cos(pa) * (60 + Math.random() * 80),
-        vy: Math.sin(pa) * (80 + Math.random() * 100),
-        life: 0.5 + Math.random() * 0.3,
-        size: 16 + Math.random() * 20
-      });
+    done = true; resultSuccess = success;
+    finalScore = success ? (Math.round(gameTimer) * 300 + Math.ceil(timeLeft) * 120 + (overloads === 0 ? 3000 : 0)) : Math.floor(gameTimer) * 150;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawScene() {
+    game.draw.rect(snap(W * 0.1), snap(H * 0.38), snap(W * 0.8), 60, PIPE, 0.9); game.draw.rect(snap(W * 0.1), snap(H * 0.38), snap(W * 0.8), 8, '#3a4a6a', 0.6);
+    for (var bi = 0; bi < 6; bi++) { var bx = W * 0.1 + bi * W * 0.8 / 5; pc(bx, H * 0.38 + 30, 12, '#1e2b45', 0.9); pc(bx, H * 0.38 + 30, 6, '#0a0f1a', 0.9); }
+    var gx = snap(W / 2 - 160), gy = snap(H * 0.18), gw = 320, gh = 190;
+    game.draw.rect(gx, gy, gw, gh, '#0f0a0f', 0.95); game.draw.rect(gx, gy, gw, 6, '#2d3748', 0.7);
+    var barX = gx + 20, barY = gy + 50, barW = gw - 40, barH = 40;
+    game.draw.rect(barX, barY, barW * WARN_ZONE, barH, SAFE, 0.7); game.draw.rect(barX + barW * WARN_ZONE, barY, barW * (RED_ZONE - WARN_ZONE), barH, WARN, 0.7); game.draw.rect(barX + barW * RED_ZONE, barY, barW * (1 - RED_ZONE), barH, DANGER, 0.7);
+    var col = pressure >= RED_ZONE ? DANGER : (pressure >= WARN_ZONE ? WARN : SAFE), pulse = pressure >= RED_ZONE ? 1 + 0.1 * Math.sin(elapsed * 12) : 1;
+    game.draw.rect(barX, barY, snap(barW * pressure * pulse), barH, col, 0.9);
+    game.draw.rect(snap(barX + barW * pressure) - 4, barY - 10, 8, barH + 20, NEEDLE, 0.95);
+    txt('PRESSURE', W / 2, gy + 30, 30, C.g); txt(Math.round(pressure * 100) + '%', W / 2, gy + 130, 54, col); txt('RED LINE ' + Math.round(RED_ZONE * 100) + '%', W / 2, gy + 175, 26, DANGER);
+    for (var pp2 = 0; pp2 < steam.length; pp2++) { var sp = steam[pp2]; pc(sp.x, sp.y, sp.size * sp.life, STEAM, sp.life * 0.4); }
+    var valveY = snap(H * 0.32);
+    game.draw.rect(W / 2 - 50, valveY - 20, 100, 40, '#3a4a6a', 0.9); pc(W / 2, valveY, 28 + tapFlash * 20, tapFlash > 0 ? SAFE : '#4a5a6a', 0.9); pc(W / 2, valveY, 16, tapFlash > 0 ? C.g : '#64748b', 0.9);
+    txt('VALVE', W / 2, valveY + 60, 28, STEAM);
+    if (state === S.PLAYING) {
+      if (pressure >= RED_ZONE) { game.draw.rect(0, 0, W, H, DANGER, 0.04 + 0.04 * Math.sin(elapsed * 15)); txt('RED ZONE! TAP FAST!', W / 2, snap(H * 0.60), 48, DANGER); }
+      else txt('TAP TO RELEASE PRESSURE', W / 2, snap(H * 0.60), 36, C.e);
+      var gameRatio = Math.min(1, gameTimer / WIN_TIME);
+      game.draw.rect(snap(W * 0.1), snap(H * 0.66), snap(W * 0.8), 24, '#0a070a', 0.9); game.draw.rect(snap(W * 0.1), snap(H * 0.66), snap(W * 0.8 * gameRatio), 24, C.b, 0.85);
+      txt('HOLD  ' + Math.floor(gameTimer) + ' / ' + WIN_TIME + 's', W / 2, snap(H * 0.72), 36, C.g);
     }
+  }
+
+  // ── 入力 ──
+  game.onTap(function() {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    pressure = Math.max(0, pressure - TAP_REDUCE); tapFlash = 0.12; game.audio.play('se_tap', 0.05);
+    for (var i = 0; i < 3; i++) { var pa = -Math.PI / 2 + (Math.random() - 0.5) * 1.2; steam.push({ x: W / 2 + (Math.random() - 0.5) * 60, y: H * 0.32, vx: Math.cos(pa) * (60 + Math.random() * 80), vy: Math.sin(pa) * (80 + Math.random() * 100), life: 0.5 + Math.random() * 0.3, size: 16 + Math.random() * 18 }); }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (pressure === undefined) initGame(); background(); drawScene();
+      txt(GAME_TITLE, W / 2, H * 0.08, 74, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.125, 20, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) txt('► 100円 投入 ◄ TAP TO START', W / 2, H * 0.85, 40, C.a);
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'PRESSURE HELD!' : 'BOILER BURST', W / 2, H * 0.35, 54, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
-      timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
-      }
+      timeLeft -= dt; elapsed += dt;
+      if (timeLeft <= 0) { finish(gameTimer >= WIN_TIME); return; }
+      var riseMulti = 1 + Math.floor(gameTimer / 4) * 0.05;
+      pressure = Math.min(1, pressure + RISE_SPEED * riseMulti * dt);
+      if (pressure >= RED_ZONE) {
+        if (!inRed) { inRed = true; redTimer = 0; }
+        redTimer += dt;
+        if (redTimer >= RED_GRACE) { overloads++; inRed = false; redTimer = 0; pressure = 0.5; flash = 0.5; flashCol = C.a; resultText = 'OVERLOAD!'; resultTimer = 0.5; game.audio.play('se_failure', 0.5); for (var b = 0; b < 12; b++) { var ba = Math.random() * Math.PI * 2; steam.push({ x: W / 2, y: H * 0.32, vx: Math.cos(ba) * (150 + Math.random() * 200), vy: Math.sin(ba) * (150 + Math.random() * 200) - 100, life: 0.7, size: 26 }); } if (overloads >= MAX_OVERLOADS) { finish(false); return; } }
+      } else { inRed = false; redTimer = 0; }
+      gameTimer += dt; if (gameTimer >= WIN_TIME) { finish(true); return; }
+      if (tapFlash > 0) tapFlash -= dt * 4; if (flash > 0) flash -= dt * 2.5; if (resultTimer > 0) resultTimer -= dt;
+      for (var pp = steam.length - 1; pp >= 0; pp--) { var s2 = steam[pp]; s2.x += s2.vx * dt; s2.y += s2.vy * dt; s2.vy -= 40 * dt; s2.life -= dt * 1.8; if (s2.life <= 0) steam.splice(pp, 1); }
     }
 
-    // Pressure rises
-    var riseMulti = 1 + score_approx() * 0.03;
-    pressure += RISE_SPEED * riseMulti * dt;
-    if (pressure > 1) pressure = 1;
+    // ---- 描画 ----
+    background(); drawScene();
+    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.1);
+    if (resultTimer > 0) txt(resultText, W / 2, snap(H * 0.78), 52, flashCol);
 
-    // Check red zone
-    if (pressure >= RED_ZONE) {
-      if (!inRedZone) {
-        inRedZone = true;
-        redZoneTimer = 0;
-      }
-      redZoneTimer += dt;
-      if (redZoneTimer >= RED_ZONE_GRACE) {
-        // Overload!
-        overloads++;
-        inRedZone = false;
-        redZoneTimer = 0;
-        pressure = 0.5; // release valve
-        flashCol = C.wrong;
-        flashAnim = 0.5;
-        resultText = '過圧！！';
-        resultTimer = 0.5;
-        game.audio.play('se_failure', 0.5);
-        // Big steam burst
-        for (var b = 0; b < 12; b++) {
-          var ba = Math.random() * Math.PI * 2;
-          steamParticles.push({
-            x: W / 2, y: H * 0.32,
-            vx: Math.cos(ba) * (150 + Math.random() * 200),
-            vy: Math.sin(ba) * (150 + Math.random() * 200) - 100,
-            life: 0.7,
-            size: 28
-          });
-        }
-        if (overloads >= MAX_OVERLOADS && !done) {
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 600);
-          return;
-        }
-      }
-    } else {
-      inRedZone = false;
-      redZoneTimer = 0;
-    }
-
-    // Game timer (separate from timeLeft)
-    if (!done) {
-      gameTimer += dt;
-      if (gameTimer >= WIN_TIME && !done) {
-        done = true;
-        game.audio.play('se_success', 0.9);
-        var bonus = Math.max(0, timeLeft - (70 - WIN_TIME));
-        setTimeout(function() { game.end.success(Math.ceil(bonus) * 200 + overloads === 0 ? 5000 : 3000); }, 700);
-        return;
-      }
-    }
-
-    if (tapFlash > 0) tapFlash -= dt * 4;
-    if (flashAnim > 0) flashAnim -= dt * 2.5;
-    if (resultTimer > 0) resultTimer -= dt;
-
-    for (var pp = steamParticles.length - 1; pp >= 0; pp--) {
-      steamParticles[pp].x += steamParticles[pp].vx * dt;
-      steamParticles[pp].y += steamParticles[pp].vy * dt;
-      steamParticles[pp].vy -= 40 * dt;
-      steamParticles[pp].life -= dt * 1.8;
-      if (steamParticles[pp].life <= 0) steamParticles.splice(pp, 1);
-    }
-
-    // Draw
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Pipes
-    game.draw.rect(W * 0.1, H * 0.38, W * 0.8, 60, C.pipe, 0.9);
-    game.draw.rect(W * 0.1, H * 0.38, W * 0.8, 8, '#334155', 0.6);
-    // Pipe bolts
-    for (var bi = 0; bi < 6; bi++) {
-      var bx = W * 0.1 + bi * W * 0.8 / 5;
-      game.draw.circle(bx, H * 0.38 + 30, 12, '#1e293b', 0.9);
-      game.draw.circle(bx, H * 0.38 + 30, 6, '#0a0f1a', 0.9);
-    }
-
-    // Gauge background
-    var gx = W / 2 - 160;
-    var gy = H * 0.18;
-    var gw = 320;
-    var gh = 190;
-    game.draw.rect(gx, gy, gw, gh, C.gauge, 0.95);
-    game.draw.rect(gx, gy, gw, 6, '#2d3748', 0.7);
-
-    // Gauge colored zones (horizontal bar)
-    var barX = gx + 20;
-    var barY = gy + 50;
-    var barW = gw - 40;
-    var barH = 40;
-    game.draw.rect(barX, barY, barW * WARN_ZONE, barH, C.safe, 0.7);
-    game.draw.rect(barX + barW * WARN_ZONE, barY, barW * (RED_ZONE - WARN_ZONE), barH, C.warn, 0.7);
-    game.draw.rect(barX + barW * RED_ZONE, barY, barW * (1 - RED_ZONE), barH, C.danger, 0.7);
-
-    // Pressure indicator
-    var col = pressure >= RED_ZONE ? C.danger : (pressure >= WARN_ZONE ? C.warn : C.safe);
-    var pulse = pressure >= RED_ZONE ? 1 + 0.1 * Math.sin(elapsed * 12) : 1;
-    game.draw.rect(barX, barY, barW * pressure * pulse, barH, col, 0.9);
-
-    // Needle marker
-    var nx = barX + barW * pressure;
-    game.draw.rect(nx - 4, barY - 10, 8, barH + 20, C.needle, 0.95);
-
-    // Label
-    game.draw.text('圧力', W / 2, gy + 30, { size: 34, color: C.text });
-    var pct = Math.round(pressure * 100);
-    game.draw.text(pct + '%', W / 2, gy + 130, { size: 54, color: col, bold: true });
-    game.draw.text('危険ライン: ' + Math.round(RED_ZONE * 100) + '%', W / 2, gy + 175, { size: 28, color: C.danger + 'aa' });
-
-    // Steam particles
-    for (var pp2 = 0; pp2 < steamParticles.length; pp2++) {
-      var sp = steamParticles[pp2];
-      game.draw.circle(sp.x, sp.y, sp.size * sp.life, C.steam, sp.life * 0.4);
-    }
-
-    // Valve visual (tappable area)
-    var valveY = H * 0.32;
-    game.draw.rect(W / 2 - 50, valveY - 20, 100, 40, '#334155', 0.9);
-    game.draw.circle(W / 2, valveY, 28 + tapFlash * 20, tapFlash > 0 ? C.safe : '#4a5568', 0.9);
-    game.draw.circle(W / 2, valveY, 16, tapFlash > 0 ? '#fff' : '#64748b', 0.9);
-    game.draw.text('バルブ', W / 2, valveY + 55, { size: 30, color: C.steam + 'aa' });
-
-    // Red zone warning flash
-    if (pressure >= RED_ZONE) {
-      game.draw.rect(0, 0, W, H, C.danger, 0.04 + 0.04 * Math.sin(elapsed * 15));
-      game.draw.text('危険！タップ連打！', W / 2, H * 0.88, { size: 48, color: C.danger, bold: true });
-    } else {
-      game.draw.text('タップで圧力DOWN', W / 2, H * 0.88, { size: 38, color: C.text + '44' });
-    }
-
-    // Game timer bar (60s)
-    var gameRatio = Math.min(1, gameTimer / WIN_TIME);
-    game.draw.rect(0, H * 0.92, W * gameRatio, 16, C.safe, 0.5);
-    game.draw.text(Math.ceil(WIN_TIME - gameTimer) + 's耐えろ', W / 2, H * 0.907, { size: 30, color: C.safe + 'aa' });
-
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, flashCol, flashAnim * 0.1);
-    if (resultTimer > 0) {
-      game.draw.text(resultText, W / 2, H * 0.82, { size: 52, color: flashCol, bold: true });
-    }
-
-    // Overload indicators
-    for (var oi = 0; oi < MAX_OVERLOADS; oi++) {
-      game.draw.circle(W / 2 - (MAX_OVERLOADS - 1) * 80 + oi * 160, H * 0.955, 28, oi < overloads ? C.wrong : C.ui, 0.9);
-    }
-
-    var ratio = Math.max(0, timeLeft / 70);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 12, ratio > 0.3 ? C.correct : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(Math.floor(gameTimer) + ' / ' + WIN_TIME + 's', W / 2, 168, 48, C.b);
+    for (var oi = 0; oi < MAX_OVERLOADS; oi++) game.draw.rect(snap(W / 2 + (oi - (MAX_OVERLOADS - 1) / 2) * 56) - 10, 224, 20, 20, oi < overloads ? C.a : '#0a070a');
+    scanlines();
   });
-
-  function score_approx() { return Math.floor(gameTimer / 10); }
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.04);
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);

@@ -1,288 +1,156 @@
 // 782-shadow-match.js
-// シャドウマッチ — シルエットが示す形をタップで選べ
+// シャドウマッチ — シルエットが示す形を、4択から選んでタップせよ
 // 操作: タップ — 4択から正しいシルエットの正体を選ぶ
-// 成功: 25問正解  失敗: 8回ミス or 75秒
+// 成功: 10問 正解  失敗: 3回 ミス or 24秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#050508',
-    shadow:  '#0a0a14',
-    shadowHi:'#14142a',
-    panel:   '#0d1117',
-    panelHi: '#1a2233',
-    correct: '#22c55e',
-    wrong:   '#ef4444',
-    text:    '#f1f5f9',
-    ui:      '#080810',
-    reveal:  '#fbbf24'
-  };
+  // ── パレット（ネオンアーケード、形色は保持） ──
+  var C = { bg:'#050508', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
+  var SHADOW = '#0c0c1a', PANEL = '#0d1117', REVEAL = '#ffe600';
 
-  // Shape definitions: each shape is an array of [x, y] normalized to [-1, 1]
+  // ── 形の定義（色は保持、描画はピクセル） ──
   var SHAPES = [
-    { name: 'まる', color: '#38bdf8',
-      draw: function(cx, cy, r, alpha) {
-        game.draw.circle(cx, cy, r, '#38bdf8', alpha);
-      }
-    },
-    { name: 'さんかく', color: '#f97316',
-      draw: function(cx, cy, r, alpha) {
-        game.draw.circle(cx, cy - r * 0.3, r * 0.6, '#f97316', alpha);
-        game.draw.circle(cx - r * 0.7, cy + r * 0.5, r * 0.5, '#f97316', alpha);
-        game.draw.circle(cx + r * 0.7, cy + r * 0.5, r * 0.5, '#f97316', alpha);
-        game.draw.circle(cx, cy + r * 0.55, r * 0.65, '#f97316', alpha);
-      }
-    },
-    { name: 'しかく', color: '#a78bfa',
-      draw: function(cx, cy, r, alpha) {
-        game.draw.rect(cx - r, cy - r, r * 2, r * 2, '#a78bfa', alpha);
-      }
-    },
-    { name: 'ほし', color: '#fbbf24',
-      draw: function(cx, cy, r, alpha) {
-        for (var si = 0; si < 5; si++) {
-          var sa = si * Math.PI * 2 / 5 - Math.PI / 2;
-          var sx = cx + Math.cos(sa) * r;
-          var sy = cy + Math.sin(sa) * r;
-          game.draw.circle(sx, sy, r * 0.38, '#fbbf24', alpha);
-        }
-        game.draw.circle(cx, cy, r * 0.45, '#fbbf24', alpha);
-      }
-    },
-    { name: 'ひし形', color: '#34d399',
-      draw: function(cx, cy, r, alpha) {
-        game.draw.circle(cx, cy - r, r * 0.45, '#34d399', alpha);
-        game.draw.circle(cx - r * 0.7, cy, r * 0.45, '#34d399', alpha);
-        game.draw.circle(cx + r * 0.7, cy, r * 0.45, '#34d399', alpha);
-        game.draw.circle(cx, cy + r, r * 0.45, '#34d399', alpha);
-        game.draw.circle(cx, cy, r * 0.55, '#34d399', alpha);
-      }
-    },
-    { name: 'クロス', color: '#f472b6',
-      draw: function(cx, cy, r, alpha) {
-        game.draw.rect(cx - r * 0.22, cy - r, r * 0.44, r * 2, '#f472b6', alpha);
-        game.draw.rect(cx - r, cy - r * 0.22, r * 2, r * 0.44, '#f472b6', alpha);
-      }
-    },
-    { name: 'アーチ', color: '#fb923c',
-      draw: function(cx, cy, r, alpha) {
-        for (var ai = 0; ai < 12; ai++) {
-          var aa = ai * Math.PI / 11;
-          game.draw.circle(cx + Math.cos(Math.PI - aa) * r * 0.85, cy + Math.sin(Math.PI - aa) * r * 0.85 - r * 0.1, r * 0.25, '#fb923c', alpha);
-        }
-        game.draw.rect(cx - r * 0.88, cy - r * 0.1, r * 0.28, r * 0.8, '#fb923c', alpha);
-        game.draw.rect(cx + r * 0.6, cy - r * 0.1, r * 0.28, r * 0.8, '#fb923c', alpha);
-      }
-    },
-    { name: 'しずく', color: '#818cf8',
-      draw: function(cx, cy, r, alpha) {
-        game.draw.circle(cx, cy + r * 0.3, r * 0.7, '#818cf8', alpha);
-        for (var di = 0; di < 5; di++) {
-          var dt2 = di / 4;
-          var dr = r * 0.6 * (1 - dt2);
-          game.draw.circle(cx, cy - r * 0.5 * dt2, dr * 0.6, '#818cf8', alpha);
-        }
-      }
-    }
+    { name: 'CIRCLE',   color: '#00cfff', draw: function(cx, cy, r, col, al) { pc(cx, cy, r, col, al); } },
+    { name: 'TRIANGLE', color: '#ff6600', draw: function(cx, cy, r, col, al) { for (var t = 0; t < 10; t++) { var w = r * 1.6 * (t / 10), yy = cy - r * 0.8 + t * r * 0.16; game.draw.rect(snap(cx - w / 2), snap(yy), snap(w), snap(r * 0.18), col, al); } } },
+    { name: 'SQUARE',   color: '#a066ff', draw: function(cx, cy, r, col, al) { game.draw.rect(snap(cx - r), snap(cy - r), snap(r * 2), snap(r * 2), col, al); } },
+    { name: 'STAR',     color: '#ffe600', draw: function(cx, cy, r, col, al) { for (var si = 0; si < 5; si++) { var sa = si * Math.PI * 2 / 5 - Math.PI / 2; pc(cx + Math.cos(sa) * r * 0.9, cy + Math.sin(sa) * r * 0.9, r * 0.38, col, al); } pc(cx, cy, r * 0.5, col, al); } },
+    { name: 'DIAMOND',  color: '#00ff9f', draw: function(cx, cy, r, col, al) { for (var di = 0; di < 12; di++) { var dp = di / 12, dw = r * Math.sin(dp * Math.PI), dy = cy - r + di * r * 2 / 12; game.draw.rect(snap(cx - dw), snap(dy), snap(dw * 2), snap(r * 0.2), col, al); } } },
+    { name: 'CROSS',    color: '#ff2fa0', draw: function(cx, cy, r, col, al) { game.draw.rect(snap(cx - r * 0.24), snap(cy - r), snap(r * 0.48), snap(r * 2), col, al); game.draw.rect(snap(cx - r), snap(cy - r * 0.24), snap(r * 2), snap(r * 0.48), col, al); } },
+    { name: 'ARROW',    color: '#ff9933', draw: function(cx, cy, r, col, al) { for (var i = 0; i < r * 1.4; i += 12) { var w = r * 1.4 - i; game.draw.rect(snap(cx - w / 2), snap(cy - r * 0.7 + i), 12, 12, col, al); game.draw.rect(snap(cx + w / 2 - 12), snap(cy - r * 0.7 + i), 12, 12, col, al); } game.draw.rect(snap(cx - r * 0.18), snap(cy - r * 0.1), snap(r * 0.36), snap(r), col, al); } },
+    { name: 'DROP',     color: '#7788ff', draw: function(cx, cy, r, col, al) { pc(cx, cy + r * 0.3, r * 0.7, col, al); for (var di = 0; di < 5; di++) { var dt2 = di / 4, dr = r * 0.6 * (1 - dt2); pc(cx, cy - r * 0.5 * dt2, dr * 0.6, col, al); } } }
   ];
 
-  var currentShapeIdx = 0;
-  var choices = []; // [shapeIdx, ...]
-  var waitTimer = 0;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'SHADOW MATCH';
+  var HOW_TO_PLAY = 'A SILHOUETTE IS SHOWN · TAP THE MATCHING SHAPE FROM THE FOUR CHOICES';
+  var MAX_TIME = 24;
+  var NEEDED   = 10;         // 修正2: 25 → 10
+  var MAX_ERR  = 3;          // 修正2: 8 → 3
   var WAIT_DUR = 0.5;
-  var showReveal = false;
-  var revealTimer = 0;
-  var answered = false;
-  var lastResult = '';
 
-  var score = 0;
-  var NEEDED = 25;
-  var errors = 0;
-  var MAX_ERR = 8;
-  var done = false;
-  var timeLeft = 75;
-  var elapsed = 0;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var flashAnim = 0, flashCol = C.correct;
-  var resultTimer = 0, resultText = '';
+  // ── ゲーム変数 ──
+  var currentShapeIdx, choices, waitTimer, showReveal, revealTimer, answered, score, errors, done, timeLeft, elapsed, flash, flashCol, resultText, resultTimer;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.d : '#080810');
+  }
+
+  function background() { game.draw.clear(C.bg); }
 
   function newQuestion() {
-    currentShapeIdx = Math.floor(Math.random() * SHAPES.length);
-    // Build 4 choices, including the correct one
-    choices = [currentShapeIdx];
-    while (choices.length < 4) {
-      var r = Math.floor(Math.random() * SHAPES.length);
-      if (choices.indexOf(r) < 0) choices.push(r);
-    }
-    // Shuffle
-    for (var i = choices.length - 1; i > 0; i--) {
-      var j = Math.floor(Math.random() * (i + 1));
-      var tmp = choices[i]; choices[i] = choices[j]; choices[j] = tmp;
-    }
-    showReveal = false;
-    revealTimer = 0;
-    answered = false;
+    currentShapeIdx = Math.floor(Math.random() * SHAPES.length); choices = [currentShapeIdx];
+    while (choices.length < 4) { var r = Math.floor(Math.random() * SHAPES.length); if (choices.indexOf(r) < 0) choices.push(r); }
+    for (var i = choices.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), tmp = choices[i]; choices[i] = choices[j]; choices[j] = tmp; }
+    showReveal = false; revealTimer = 0; answered = false;
   }
 
-  // Layout: 2×2 grid for choices, bottom half
-  function getChoiceRect(idx) {
-    var col = idx % 2;
-    var row = Math.floor(idx / 2);
-    var cellW = W / 2;
-    var cellH = H * 0.22;
-    var startY = H * 0.57;
-    return {
-      x: col * cellW,
-      y: startY + row * cellH,
-      w: cellW,
-      h: cellH
-    };
+  function getChoiceRect(idx) { var col = idx % 2, row = Math.floor(idx / 2); return { x: col * W / 2, y: H * 0.57 + row * H * 0.19, w: W / 2, h: H * 0.19 }; }
+
+  function initGame() { score = 0; errors = 0; done = false; timeLeft = MAX_TIME; elapsed = 0; waitTimer = 0; flash = 0; flashCol = C.b; resultText = ''; resultTimer = 0; newQuestion(); }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (score * 500 + Math.ceil(timeLeft) * 120) : score * 150;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
   }
 
+  function drawScene() {
+    game.draw.rect(snap(W * 0.1), snap(H * 0.14), snap(W * 0.8), snap(H * 0.38), SHADOW, 0.95);
+    var shapeR = 130, sh = SHAPES[currentShapeIdx];
+    if (showReveal && revealTimer > 0) { sh.draw(W / 2, H * 0.32, shapeR, sh.color, 0.95); txt(sh.name, W / 2, snap(H * 0.49), 44, REVEAL); }
+    else { sh.draw(W / 2, H * 0.32, shapeR, '#000000', 0.9); if (state === S.PLAYING && !answered) txt('WHAT IS IT?', W / 2, snap(H * 0.50), 40, C.g); }
+    for (var ci = 0; ci < 4; ci++) {
+      var rect = getChoiceRect(ci), isCorrect = choices[ci] === currentShapeIdx, bgCol = (answered && isCorrect) ? '#0a2e14' : PANEL;
+      game.draw.rect(snap(rect.x + 8), snap(rect.y + 8), snap(rect.w - 16), snap(rect.h - 16), bgCol, 0.95);
+      var csx = rect.x + rect.w / 2, csy = rect.y + rect.h * 0.42;
+      SHAPES[choices[ci]].draw(csx, csy, 52, SHAPES[choices[ci]].color, 0.9);
+      txt(SHAPES[choices[ci]].name, csx, rect.y + rect.h * 0.85, 30, C.g);
+    }
+  }
+
+  // ── 入力 ──
   game.onTap(function(tx, ty) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
     if (done || answered || waitTimer > 0) return;
     for (var i = 0; i < 4; i++) {
       var r = getChoiceRect(i);
       if (tx >= r.x && tx <= r.x + r.w && ty >= r.y && ty <= r.y + r.h) {
         answered = true;
-        if (choices[i] === currentShapeIdx) {
-          score++;
-          flashCol = C.correct;
-          flashAnim = 0.22;
-          resultText = '正解！';
-          resultTimer = 0.4;
-          game.audio.play('se_success', 0.65);
-          if (score >= NEEDED && !done) {
-            done = true;
-            game.audio.play('se_success', 0.9);
-            setTimeout(function() { game.end.success(score * 400 + Math.ceil(timeLeft) * 120); }, 700);
-            return;
-          }
-        } else {
-          errors++;
-          flashCol = C.wrong;
-          flashAnim = 0.3;
-          resultText = 'ちがう！';
-          resultTimer = 0.4;
-          game.audio.play('se_failure', 0.3);
-          if (errors >= MAX_ERR && !done) {
-            done = true;
-            setTimeout(function() { game.end.failure(); }, 600);
-            return;
-          }
-        }
-        showReveal = true;
-        revealTimer = 0.35;
-        waitTimer = WAIT_DUR;
-        break;
+        if (choices[i] === currentShapeIdx) { score++; flash = 0.22; flashCol = C.b; resultText = 'CORRECT!'; resultTimer = 0.4; game.audio.play('se_success', 0.65); if (score >= NEEDED) { finish(true); return; } }
+        else { errors++; flash = 0.3; flashCol = C.a; resultText = 'WRONG!'; resultTimer = 0.4; game.audio.play('se_failure', 0.3); if (errors >= MAX_ERR) { finish(false); return; } }
+        showReveal = true; revealTimer = 0.35; waitTimer = WAIT_DUR; break;
       }
     }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!choices) initGame(); background(); drawScene();
+      txt(GAME_TITLE, W / 2, H * 0.06, 74, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.10, 20, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) txt('► 100円 投入 ◄ TAP TO START', W / 2, H * 0.955, 38, C.a);
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'SHARP EYES!' : 'FOOLED', W / 2, H * 0.35, 58, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
-      timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
-      }
+      timeLeft -= dt; elapsed += dt;
+      if (timeLeft <= 0) { finish(false); return; }
+      if (waitTimer > 0) { waitTimer -= dt; if (waitTimer <= 0) newQuestion(); }
+      if (revealTimer > 0) revealTimer -= dt; if (flash > 0) flash -= dt * 3; if (resultTimer > 0) resultTimer -= dt;
     }
 
-    if (waitTimer > 0) {
-      waitTimer -= dt;
-      if (waitTimer <= 0 && !done) newQuestion();
-    }
-    if (revealTimer > 0) revealTimer -= dt;
-    if (flashAnim > 0) flashAnim -= dt * 3;
-    if (resultTimer > 0) resultTimer -= dt;
+    // ---- 描画 ----
+    background(); drawScene();
+    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.09);
+    if (resultTimer > 0) txt(resultText, W / 2, snap(H * 0.545), 52, flashCol);
 
-    // Draw
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Shadow display area
-    game.draw.rect(W * 0.1, H * 0.14, W * 0.8, H * 0.38, C.shadow, 0.95);
-    game.draw.rect(W * 0.1, H * 0.14, W * 0.8, 4, C.shadowHi, 0.5);
-
-    // Draw shadow (all black/dark)
-    var shapeR = 120;
-    if (showReveal && revealTimer > 0) {
-      // Reveal true color briefly
-      SHAPES[currentShapeIdx].draw(W / 2, H * 0.32, shapeR, 0.95);
-      game.draw.text('→ ' + SHAPES[currentShapeIdx].name, W / 2, H * 0.49, { size: 40, color: C.reveal, bold: true });
-    } else {
-      // Shadow version
-      SHAPES[currentShapeIdx].draw(W / 2, H * 0.32, shapeR, 0);
-      // Draw silhouette using dark fill
-      for (var si2 = 0; si2 < 12; si2++) {
-        var sa2 = si2 * Math.PI * 2 / 12;
-        SHAPES[currentShapeIdx].draw(W / 2 + Math.cos(sa2) * 2, H * 0.32 + Math.sin(sa2) * 2, shapeR, 0);
-      }
-      // We draw the actual shape but in a very dark color
-      // Trick: draw it in the shadow color by using a rectangle as mask wouldn't work...
-      // Instead draw it dark, then redraw mask
-      game.draw.rect(W * 0.1, H * 0.14, W * 0.8, H * 0.38, C.shadow, 0.0);
-    }
-
-    // Actually for the shadow effect, let's just draw the shape shapes in near-black
-    if (!showReveal || revealTimer <= 0) {
-      // Redraw all shapes in silhouette (very dark blue-black)
-      // We call draw with near-zero alpha on the color but high alpha on shadow color
-      game.draw.rect(W * 0.1, H * 0.14, W * 0.8, H * 0.38, '#05050a', 0.0);
-      // Draw shape in silhouette color
-      var oldDraw = game.draw;
-      // Can't override, so just draw in near-black color manually
-      // Draw shape at the shape's native function but pretend it's black
-      // The shapes draw using game.draw.circle/rect with their color
-      // We need to neutralize this... Instead, just draw a solid-color overlay on top
-      // Hack: draw the shape in normal color first, then cover with semi-transparent dark rect
-      SHAPES[currentShapeIdx].draw(W / 2, H * 0.32, shapeR, 0.95);
-      game.draw.rect(W * 0.1, H * 0.14, W * 0.8, H * 0.38, '#03040a', 0.72);
-      // Now the shape is barely visible = shadow effect
-      SHAPES[currentShapeIdx].draw(W / 2, H * 0.32, shapeR, 0.15);
-    }
-
-    // Choice buttons 2×2
-    for (var ci = 0; ci < 4; ci++) {
-      var rect = getChoiceRect(ci);
-      var isCorrect = choices[ci] === currentShapeIdx;
-      var bgCol = C.panel;
-      if (answered && isCorrect) bgCol = '#0a2e14';
-      game.draw.rect(rect.x + 8, rect.y + 8, rect.w - 16, rect.h - 16, bgCol, 0.95);
-      game.draw.rect(rect.x + 8, rect.y + 8, rect.w - 16, 3, C.panelHi, 0.5);
-      // Mini shape preview
-      var sx = rect.x + rect.w / 2;
-      var sy = rect.y + rect.h * 0.45;
-      SHAPES[choices[ci]].draw(sx, sy, 52, 0.9);
-      game.draw.text(SHAPES[choices[ci]].name, sx, rect.y + rect.h * 0.82, { size: 34, color: C.text, bold: true });
-    }
-
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, flashCol, flashAnim * 0.09);
-    if (resultTimer > 0) {
-      game.draw.text(resultText, W / 2, H * 0.86, { size: 52, color: flashCol, bold: true });
-    }
-
-    if (!answered && !done) {
-      game.draw.text('これは？', W / 2, H * 0.52, { size: 42, color: C.text + '66' });
-    }
-
-    for (var ei = 0; ei < MAX_ERR; ei++) {
-      game.draw.circle(W / 2 - (MAX_ERR - 1) * 56 + ei * 112, H * 0.955, 22, ei < errors ? C.wrong : C.ui, 0.9);
-    }
-
-    game.draw.text(score + ' / ' + NEEDED, W / 2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft / 75);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 12, ratio > 0.3 ? C.correct : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(score + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var ei = 0; ei < MAX_ERR; ei++) game.draw.rect(snap(W / 2 + (ei - (MAX_ERR - 1) / 2) * 56) - 10, 224, 20, 20, ei < errors ? C.a : '#080810');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.04);
-    newQuestion();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
