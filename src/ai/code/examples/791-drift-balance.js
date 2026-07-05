@@ -1,251 +1,150 @@
 // 791-drift-balance.js
 // ドリフトバランス — 左右に傾く天秤を、タップで均衡を保ち続けろ
-// 操作: 左タップで左に重りを足す、右タップで右に重りを足す
-// 成功: 60秒間ゾーン内を維持  失敗: 4回転倒 or 70秒
+// 操作: 左タップで左へ、右タップで右へ力を加える（安全ゾーンを維持）
+// 成功: 16秒間 ゾーン内を維持  失敗: 3回 転倒 or 24秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#050810',
-    beam:    '#475569',
-    beamHi:  '#94a3b8',
-    pivot:   '#64748b',
-    left:    '#38bdf8',
-    right:   '#f97316',
-    zone:    '#22c55e',
-    danger:  '#ef4444',
-    correct: '#22c55e',
-    wrong:   '#ef4444',
-    text:    '#f1f5f9',
-    ui:      '#050810'
-  };
+  // ── パレット（ネオンアーケード、天秤） ──
+  var C = { bg:'#050810', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
+  var BEAM = '#4a5a6a', BEAM_HI = '#8494a8', PIVOT = '#64748b', LEFT = '#00cfff', RIGHT = '#ff6600', ZONE = '#00ff41';
 
-  var CX = W / 2;
-  var CY = H * 0.42;
-  var BEAM_LEN = W * 0.38;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'DRIFT BALANCE';
+  var HOW_TO_PLAY = 'TAP LEFT OR RIGHT TO NUDGE THE BEAM · KEEP IT INSIDE THE SAFE ZONE';
+  var MAX_TIME    = 24;
+  var WIN_TIME    = 16;      // 修正2: 60 → 16
+  var MAX_FALLS   = 3;       // 修正2: 4 → 3
+  var CX = W / 2, CY = snap(H * 0.42), BEAM_LEN = W * 0.38, DRIFT_ACCEL = 0.18, TAP_FORCE = 0.35, SAFE_ZONE = 0.35, DANGER_GRACE = 0.8;
 
-  var tilt = 0;        // -1 = full left, +1 = full right
-  var tiltVel = 0;
-  var DRIFT_ACCEL = 0.18; // random drift per second
-  var driftForce = 0;
-  var TAP_FORCE = 0.35;   // tilt correction per tap
-  var SAFE_ZONE = 0.35;   // tilt must stay within ±SAFE_ZONE
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var falls = 0;
-  var MAX_FALLS = 4;
-  var inDanger = false;
-  var dangerTimer = 0;
-  var DANGER_GRACE = 0.8;
+  // ── ゲーム変数 ──
+  var tilt, tiltVel, driftForce, falls, inDanger, dangerTimer, gameTimer, done, timeLeft, elapsed, particles, flash, flashCol, resultText, resultTimer, tapSide, tapTimer;
 
-  var gameTimer = 0;
-  var WIN_TIME = 60;
-  var done = false;
-  var timeLeft = 70;
-  var elapsed = 0;
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
 
-  var particles = [];
-  var flashAnim = 0, flashCol = C.correct;
-  var resultTimer = 0, resultText = '';
-  var tapSide = 0; // -1 left, 1 right, for visual feedback
-  var tapTimer = 0;
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
 
-  function updateDriftForce() {
-    driftForce = (Math.random() - 0.5) * DRIFT_ACCEL * (1 + falls * 0.15);
+  function arrow(cx, cy, size, dir, color) { cx = snap(cx); cy = snap(cy); var st = 12; for (var i = 0; i < size; i += st) { var w = size - i; if (dir === 'right') game.draw.rect(cx + i - size / 2, cy - w / 2, st, w, color, 0.95); else game.draw.rect(cx - i + size / 2 - st, cy - w / 2, st, w, color, 0.95); } }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  game.onTap(function(tx, ty) {
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.f : '#050810');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function updateDriftForce() { driftForce = (Math.random() - 0.5) * DRIFT_ACCEL * (1 + falls * 0.2); }
+
+  function initGame() { tilt = 0; tiltVel = 0; falls = 0; inDanger = false; dangerTimer = 0; gameTimer = 0; done = false; timeLeft = MAX_TIME; elapsed = 0; particles = []; flash = 0; flashCol = C.b; resultText = ''; resultTimer = 0; tapSide = 0; tapTimer = 0; updateDriftForce(); }
+
+  function finish(success) {
     if (done) return;
-    if (tx < W / 2) {
-      tiltVel -= TAP_FORCE;
-      tapSide = -1;
-      game.audio.play('se_tap', 0.06);
-    } else {
-      tiltVel += TAP_FORCE;
-      tapSide = 1;
-      game.audio.play('se_tap', 0.06);
+    done = true; resultSuccess = success;
+    finalScore = success ? (Math.round(gameTimer) * 300 + Math.ceil(timeLeft) * 200 - falls * 400) : Math.floor(gameTimer) * 150;
+    if (finalScore < 0) finalScore = 0;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawScene() {
+    var angle = tilt * Math.PI * 0.3, cos = Math.cos(angle), sin = Math.sin(angle);
+    var safeAngle = SAFE_ZONE * Math.PI * 0.3;
+    for (var ai = -30; ai <= 30; ai++) { var a = (ai / 30) * Math.PI * 0.35, inSafe2 = Math.abs(a) <= safeAngle; game.draw.rect(snap(CX + Math.cos(a - Math.PI / 2) * 180) - 4, snap(CY + Math.sin(a - Math.PI / 2) * 180) - 4, 8, 8, inSafe2 ? ZONE : C.a, 0.3); }
+    var lx = CX - cos * BEAM_LEN, ly = CY - sin * BEAM_LEN, rx = CX + cos * BEAM_LEN, ry = CY + sin * BEAM_LEN;
+    game.draw.line(lx, ly, rx, ry, BEAM, 18); game.draw.line(lx, ly, rx, ry, BEAM_HI, 6);
+    pc(CX, CY, 22, PIVOT, 0.9); pc(CX, CY, 12, C.g, 0.4);
+    pc(lx, ly, 36, LEFT, 0.9); pc(rx, ry, 36, RIGHT, 0.9);
+    var inSafe = Math.abs(tilt) <= SAFE_ZONE, tiltCol = inSafe ? ZONE : C.a;
+    if (!inSafe) game.draw.rect(0, 0, W, H, C.a, 0.03 + (dangerTimer / DANGER_GRACE) * 0.06);
+    var gameRatio = Math.min(1, gameTimer / WIN_TIME);
+    game.draw.rect(snap(W * 0.08), snap(H * 0.78), snap(W * 0.84), 20, '#0a1520', 0.9); game.draw.rect(snap(W * 0.08), snap(H * 0.78), snap(W * 0.84 * gameRatio), 20, ZONE, 0.7);
+    txt('HOLD  ' + Math.floor(gameTimer) + ' / ' + WIN_TIME + 's', W / 2, snap(H * 0.75), 34, C.g);
+    game.draw.rect(snap(W * 0.08), snap(H * 0.68), snap(W * 0.84), 14, '#0a1520', 0.8); var normTilt = (tilt + 1) / 2; game.draw.rect(snap(W * 0.08), snap(H * 0.68), snap(W * 0.84 * normTilt), 14, tiltCol, 0.9);
+    game.draw.rect(snap(W * 0.08 + W * 0.84 * (0.5 - SAFE_ZONE / 2)) - 3, snap(H * 0.68) - 4, 6, 22, ZONE, 0.8); game.draw.rect(snap(W * 0.08 + W * 0.84 * (0.5 + SAFE_ZONE / 2)) - 3, snap(H * 0.68) - 4, 6, 22, ZONE, 0.8);
+    if (state === S.PLAYING) {
+      if (tapTimer > 0) pc(tapSide < 0 ? W * 0.2 : W * 0.8, snap(H * 0.87), 40 + tapTimer * 30, tapSide < 0 ? LEFT : RIGHT, tapTimer * 0.4);
+      arrow(W * 0.2, snap(H * 0.87), 36, 'left', LEFT); arrow(W * 0.8, snap(H * 0.87), 36, 'right', RIGHT);
     }
-    tapTimer = 0.15;
+  }
+
+  // ── 入力 ──
+  game.onTap(function(tx) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    if (tx < W / 2) { tiltVel -= TAP_FORCE; tapSide = -1; } else { tiltVel += TAP_FORCE; tapSide = 1; }
+    tapTimer = 0.15; game.audio.play('se_tap', 0.06);
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (tilt === undefined) initGame(); background(); drawScene();
+      txt(GAME_TITLE, W / 2, H * 0.10, 74, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.145, 20, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) txt('► 100円 投入 ◄ TAP TO START', W / 2, H * 0.93, 40, C.a);
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'STEADY HAND!' : 'TOPPLED', W / 2, H * 0.35, 54, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
-      timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
-      }
+      timeLeft -= dt; elapsed += dt;
+      if (timeLeft <= 0) { finish(gameTimer >= WIN_TIME); return; }
+      if (Math.random() < dt * 0.8) updateDriftForce();
+      tiltVel += driftForce * dt; tilt += tiltVel * dt; tiltVel *= Math.pow(0.85, dt * 60);
+      if (tilt > 1) { tilt = 1; tiltVel = 0; } if (tilt < -1) { tilt = -1; tiltVel = 0; }
+      if (Math.abs(tilt) > SAFE_ZONE) {
+        if (!inDanger) { inDanger = true; dangerTimer = 0; }
+        dangerTimer += dt;
+        if (dangerTimer >= DANGER_GRACE) { falls++; inDanger = false; dangerTimer = 0; tilt = 0; tiltVel = 0; flash = 0.4; flashCol = C.a; resultText = 'FALL!'; resultTimer = 0.5; game.audio.play('se_failure', 0.45); for (var p = 0; p < 8; p++) { var pa = Math.random() * Math.PI * 2; particles.push({ x: CX, y: CY, vx: Math.cos(pa) * 200, vy: Math.sin(pa) * 200, life: 0.5, col: C.a }); } if (falls >= MAX_FALLS) { finish(false); return; } }
+      } else { inDanger = false; dangerTimer = 0; }
+      gameTimer += dt; if (gameTimer >= WIN_TIME) { finish(true); return; }
+      if (tapTimer > 0) tapTimer -= dt * 4; if (flash > 0) flash -= dt * 2.5; if (resultTimer > 0) resultTimer -= dt;
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p2 = particles[pp]; p2.x += p2.vx * dt; p2.y += p2.vy * dt; p2.vy += 350 * dt; p2.life -= dt * 2; if (p2.life <= 0) particles.splice(pp, 1); }
     }
 
-    // Random drift changes
-    if (Math.random() < dt * 0.8) updateDriftForce();
+    // ---- 描画 ----
+    background(); drawScene();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) { var p3 = particles[pp2]; game.draw.rect(snap(p3.x) - 5, snap(p3.y) - 5, 10, 10, p3.col, p3.life * 2); }
+    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.1);
+    if (resultTimer > 0) txt(resultText, W / 2, snap(H * 0.20), 52, flashCol);
 
-    // Physics
-    tiltVel += driftForce * dt;
-    tilt += tiltVel * dt;
-    tiltVel *= Math.pow(0.85, dt * 60); // damping
-
-    // Clamp
-    if (tilt > 1) { tilt = 1; tiltVel = 0; }
-    if (tilt < -1) { tilt = -1; tiltVel = 0; }
-
-    // Check danger zone
-    if (Math.abs(tilt) > SAFE_ZONE) {
-      if (!inDanger) {
-        inDanger = true;
-        dangerTimer = 0;
-      }
-      dangerTimer += dt;
-      if (dangerTimer >= DANGER_GRACE) {
-        // Fell!
-        falls++;
-        inDanger = false;
-        dangerTimer = 0;
-        tilt = 0;
-        tiltVel = 0;
-        flashCol = C.wrong;
-        flashAnim = 0.4;
-        resultText = '転倒！';
-        resultTimer = 0.5;
-        game.audio.play('se_failure', 0.45);
-        // Scatter particles
-        for (var p = 0; p < 8; p++) {
-          var pa = Math.random() * Math.PI * 2;
-          particles.push({ x: CX, y: CY, vx: Math.cos(pa) * 200, vy: Math.sin(pa) * 200, life: 0.5, col: C.danger });
-        }
-        if (falls >= MAX_FALLS && !done) {
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 600);
-          return;
-        }
-      }
-    } else {
-      inDanger = false;
-      dangerTimer = 0;
-    }
-
-    // Win condition
-    if (!done) {
-      gameTimer += dt;
-      if (gameTimer >= WIN_TIME) {
-        done = true;
-        game.audio.play('se_success', 0.9);
-        setTimeout(function() { game.end.success(5000 + Math.ceil(timeLeft) * 200 - falls * 500); }, 700);
-        return;
-      }
-    }
-
-    if (tapTimer > 0) tapTimer -= dt * 4;
-    if (flashAnim > 0) flashAnim -= dt * 2.5;
-    if (resultTimer > 0) resultTimer -= dt;
-
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].vy += 350 * dt;
-      particles[pp].life -= dt * 2;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
-
-    // Draw
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Tilt angle
-    var angle = tilt * Math.PI * 0.3;
-    var cos = Math.cos(angle), sin = Math.sin(angle);
-
-    // Safe zone arc indicator
-    var safeAngle = SAFE_ZONE * Math.PI * 0.3;
-    for (var ai = -30; ai <= 30; ai++) {
-      var a = (ai / 30) * Math.PI * 0.35;
-      var inSafe = Math.abs(a) <= safeAngle;
-      var ax = CX + Math.cos(a - Math.PI / 2) * 180;
-      var ay = CY + Math.sin(a - Math.PI / 2) * 180;
-      game.draw.circle(ax, ay, 8, inSafe ? C.zone : C.danger, 0.3);
-    }
-
-    // Beam
-    var lx = CX - cos * BEAM_LEN;
-    var ly = CY - sin * BEAM_LEN;
-    var rx = CX + cos * BEAM_LEN;
-    var ry = CY + sin * BEAM_LEN;
-    game.draw.line(lx, ly, rx, ry, C.beam, 18);
-    game.draw.line(lx, ly, rx, ry, C.beamHi, 6);
-
-    // Pivot
-    game.draw.circle(CX, CY, 22, C.pivot, 0.9);
-    game.draw.circle(CX, CY, 12, '#fff', 0.4);
-
-    // Weights (circles at beam ends)
-    var wR = 36;
-    game.draw.circle(lx + 3, ly + 3, wR, '#000', 0.3);
-    game.draw.circle(lx, ly, wR, C.left, 0.9);
-    game.draw.circle(rx + 3, ry + 3, wR, '#000', 0.3);
-    game.draw.circle(rx, ry, wR, C.right, 0.9);
-
-    // Tilt indicator
-    var inSafe = Math.abs(tilt) <= SAFE_ZONE;
-    var tiltCol = inSafe ? C.zone : C.danger;
-
-    // Danger flash
-    if (!inSafe) {
-      var dangerPct = (dangerTimer / DANGER_GRACE);
-      game.draw.rect(0, 0, W, H, C.danger, 0.03 + dangerPct * 0.06);
-    }
-
-    // Tap hint
-    if (tapTimer > 0) {
-      if (tapSide < 0) {
-        game.draw.circle(W * 0.2, H * 0.85, 40 + tapTimer * 30, C.left, tapTimer * 0.4);
-      } else {
-        game.draw.circle(W * 0.8, H * 0.85, 40 + tapTimer * 30, C.right, tapTimer * 0.4);
-      }
-    }
-    game.draw.text('← 左', W * 0.22, H * 0.875, { size: 42, color: C.left + '88', bold: true });
-    game.draw.text('右 →', W * 0.78, H * 0.875, { size: 42, color: C.right + '88', bold: true });
-    game.draw.line(W / 2, H * 0.85, W / 2, H * 0.91, C.ui, 2);
-
-    // Game timer progress
-    var gameRatio = Math.min(1, gameTimer / WIN_TIME);
-    game.draw.rect(W * 0.08, H * 0.78, W * 0.84, 16, '#0a1520', 0.8);
-    game.draw.rect(W * 0.08, H * 0.78, W * 0.84 * gameRatio, 16, C.zone, 0.7);
-    game.draw.text(Math.ceil(WIN_TIME - gameTimer) + 's', W / 2, H * 0.76, { size: 32, color: C.zone + 'aa' });
-
-    // Tilt meter
-    game.draw.rect(W * 0.08, H * 0.68, W * 0.84, 14, '#0a1520', 0.8);
-    var normTilt = (tilt + 1) / 2;
-    game.draw.rect(W * 0.08, H * 0.68, W * 0.84 * normTilt, 14, tiltCol, 0.9);
-    var safeLeft = W * 0.08 + W * 0.84 * (0.5 - SAFE_ZONE / 2);
-    var safeRight = W * 0.08 + W * 0.84 * (0.5 + SAFE_ZONE / 2);
-    game.draw.rect(safeLeft - 3, H * 0.68 - 4, 6, 22, C.zone, 0.8);
-    game.draw.rect(safeRight - 3, H * 0.68 - 4, 6, 22, C.zone, 0.8);
-
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p2 = particles[pp2];
-      game.draw.circle(p2.x, p2.y, 10 * p2.life, p2.col, p2.life);
-    }
-
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, flashCol, flashAnim * 0.1);
-    if (resultTimer > 0) {
-      game.draw.text(resultText, W / 2, H * 0.18, { size: 52, color: flashCol, bold: true });
-    }
-
-    for (var fi = 0; fi < MAX_FALLS; fi++) {
-      game.draw.circle(W / 2 - (MAX_FALLS - 1) * 80 + fi * 160, H * 0.955, 28, fi < falls ? C.wrong : C.ui, 0.9);
-    }
-
-    var ratio = Math.max(0, timeLeft / 70);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 12, ratio > 0.3 ? C.correct : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(Math.floor(gameTimer) + ' / ' + WIN_TIME + 's', W / 2, 168, 48, C.b);
+    for (var fi = 0; fi < MAX_FALLS; fi++) game.draw.rect(snap(W / 2 + (fi - (MAX_FALLS - 1) / 2) * 56) - 10, 224, 20, 20, fi < falls ? C.a : '#050810');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.04);
-    updateDriftForce();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);

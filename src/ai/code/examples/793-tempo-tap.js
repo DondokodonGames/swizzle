@@ -1,235 +1,144 @@
 // 793-tempo-tap.js
 // テンポタップ — リズムに合わせてタップせよ。ビートを外すな
-// 操作: タップ — 点滅するビートに合わせてタップ（±0.18秒以内）
-// 成功: 30ビート完璧  失敗: 8回外す or 75秒
+// 操作: タップ — 脈打つビートに合わせてタップ（猶予は短い）
+// 成功: 10ビート 成功  失敗: 3回 外す or 24秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#060208',
-    beat:    '#a855f7',
-    beatGlow:'#7e22ce',
-    beatHi:  '#e879f9',
-    onBeat:  '#fbbf24',
-    correct: '#22c55e',
-    wrong:   '#ef4444',
-    text:    '#f1f5f9',
-    ui:      '#080410'
-  };
+  // ── パレット（ネオンアーケード、リズム） ──
+  var C = { bg:'#060208', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
+  var BEAT = '#a04dff', BEAT_GLOW = '#6622cc', BEAT_HI = '#e0a0ff', ONBEAT = '#ffe600';
 
-  var BPM = 90;
-  var beatInterval = 60 / BPM;
-  var beatTimer = 0;
-  var beatPhase = 0; // 0 to 1 within a beat cycle
-  var WINDOW = 0.18; // tap window in seconds
-  var beatCount = 0; // total beats so far
-  var lastBeatTime = 0;
-  var waitingForTap = false;
-  var beatAnswered = false;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'TEMPO TAP';
+  var HOW_TO_PLAY = 'TAP IN TIME WITH THE PULSING BEAT · KEEP YOUR RHYTHM LOCKED';
+  var MAX_TIME = 24;
+  var NEEDED   = 10;         // 修正2: 30 → 10
+  var MAX_ERR  = 3;          // 修正2: 8 → 3
+  var WINDOW = 0.18;
 
-  var score = 0;
-  var NEEDED = 30;
-  var errors = 0;
-  var MAX_ERR = 8;
-  var done = false;
-  var timeLeft = 75;
-  var elapsed = 0;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var rings = [];
-  var flashAnim = 0, flashCol = C.correct;
-  var resultTimer = 0, resultText = '';
-  var particles = [];
-  var hitAnim = 0;
-  var consecutiveHits = 0;
+  // ── ゲーム変数 ──
+  var bpm, beatInterval, beatTimer, beatPhase, beatCount, lastBeatTime, beatAnswered, score, errors, done, timeLeft, elapsed, rings, particles, flash, flashCol, resultText, resultTimer, hitAnim, combo;
 
-  game.onTap(function(tx, ty) {
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function ring(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) { var d = qx * qx + qy * qy; if (d <= r * r && d >= (r - 12) * (r - 12)) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); } }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.d : '#080410');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function initGame() { bpm = 90; beatInterval = 60 / bpm; beatTimer = 0; beatPhase = 0; beatCount = 0; lastBeatTime = 0; beatAnswered = false; score = 0; errors = 0; done = false; timeLeft = MAX_TIME; elapsed = 0; rings = []; particles = []; flash = 0; flashCol = C.b; resultText = ''; resultTimer = 0; hitAnim = 0; combo = 0; }
+
+  function finish(success) {
     if (done) return;
-    // Check if within beat window
-    var timeSinceBeat = elapsed - lastBeatTime;
-    var inWindow = timeSinceBeat <= WINDOW || (beatInterval - timeSinceBeat) <= WINDOW;
-    // Actually check proximity to nearest beat
-    var timeToNextBeat = beatInterval - (elapsed % beatInterval);
-    var timeFromLastBeat = elapsed % beatInterval;
-    var nearestBeatDist = Math.min(timeFromLastBeat, timeToNextBeat);
+    done = true; resultSuccess = success;
+    finalScore = success ? (score * 450 + combo * 100 + Math.ceil(timeLeft) * 120) : score * 150;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
 
+  function drawScene() {
+    var CX = W / 2, CY = snap(H * 0.44), beatPulse = Math.sin(beatPhase * Math.PI), mainR = 120 * (1 + beatPulse * 0.15);
+    pc(CX, CY, mainR + 60 * beatPulse, BEAT_GLOW, beatPulse * 0.2); pc(CX, CY, mainR, BEAT, 0.5 + beatPulse * 0.4); pc(CX, CY, mainR * 0.6, BEAT_HI, 0.3 + beatPulse * 0.6); pc(CX, CY, mainR * 0.25, C.g, beatPulse * 0.8);
+    if (hitAnim > 0) ring(CX, CY, mainR * (1 + hitAnim * 0.5), ONBEAT, hitAnim * 0.4);
+    for (var ri2 = 0; ri2 < rings.length; ri2++) ring(CX, CY, rings[ri2].r, C.b, rings[ri2].life * 0.7);
+    var windowFrac = WINDOW / beatInterval;
+    for (var ai = 0; ai < 32; ai++) { var af = ai / 32; if (!(af < windowFrac || af > 1 - windowFrac)) continue; var aa = af * Math.PI * 2 - Math.PI / 2; pc(CX + Math.cos(aa) * 180, CY + Math.sin(aa) * 180, 8, C.b, 0.3); }
+    var curA = beatPhase * Math.PI * 2 - Math.PI / 2; pc(CX + Math.cos(curA) * 180, CY + Math.sin(curA) * 180, 14, ONBEAT, 0.9);
+    if (combo >= 3) txt('x' + combo, W / 2, snap(H * 0.72), 48, ONBEAT);
+    txt(Math.round(bpm) + ' BPM', W / 2, snap(H * 0.79), 34, BEAT);
+    if (state === S.PLAYING) txt('TAP ON THE BEAT', W / 2, snap(H * 0.22), 38, C.g);
+  }
+
+  // ── 入力 ──
+  game.onTap(function() {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    var timeToNextBeat = beatInterval - (elapsed % beatInterval), timeFromLastBeat = elapsed % beatInterval, nearestBeatDist = Math.min(timeFromLastBeat, timeToNextBeat);
     if (nearestBeatDist <= WINDOW) {
-      // On beat!
       if (!beatAnswered) {
-        score++;
-        consecutiveHits++;
-        beatAnswered = true;
-        hitAnim = 0.4;
-        var combo = consecutiveHits >= 5 ? '🔥' + consecutiveHits + 'コンボ！' : (consecutiveHits >= 3 ? consecutiveHits + 'コンボ！' : 'ビート！');
-        flashCol = C.correct;
-        flashAnim = 0.18;
-        resultText = combo;
-        resultTimer = 0.35;
-        game.audio.play('se_tap', 0.1);
-        for (var p = 0; p < 5; p++) {
-          var pa = Math.random() * Math.PI * 2;
-          particles.push({ x: W / 2, y: H * 0.44, vx: Math.cos(pa) * 140, vy: Math.sin(pa) * 140, life: 0.35, col: C.onBeat });
-        }
-        rings.push({ r: 60, maxR: 320, life: 1.0 });
-        if (score >= NEEDED && !done) {
-          done = true;
-          game.audio.play('se_success', 0.9);
-          setTimeout(function() { game.end.success(score * 350 + consecutiveHits * 100 + Math.ceil(timeLeft) * 120); }, 700);
-        }
+        score++; combo++; beatAnswered = true; hitAnim = 0.4; flash = 0.18; flashCol = C.b; resultText = combo >= 5 ? 'FIRE x' + combo : (combo >= 3 ? combo + ' COMBO!' : 'BEAT!'); resultTimer = 0.35; game.audio.play('se_tap', 0.1);
+        for (var p = 0; p < 5; p++) { var pa = Math.random() * Math.PI * 2; particles.push({ x: W / 2, y: H * 0.44, vx: Math.cos(pa) * 140, vy: Math.sin(pa) * 140, life: 0.35, col: ONBEAT }); }
+        rings.push({ r: 60, life: 1.0 });
+        if (score >= NEEDED) { finish(true); return; }
       }
     } else {
-      // Off beat
-      errors++;
-      consecutiveHits = 0;
-      flashCol = C.wrong;
-      flashAnim = 0.28;
-      resultText = 'ズレた！';
-      resultTimer = 0.4;
-      game.audio.play('se_failure', 0.28);
-      if (errors >= MAX_ERR && !done) {
-        done = true;
-        setTimeout(function() { game.end.failure(); }, 600);
-      }
+      errors++; combo = 0; flash = 0.28; flashCol = C.a; resultText = 'OFF BEAT!'; resultTimer = 0.4; game.audio.play('se_failure', 0.28);
+      if (errors >= MAX_ERR) { finish(false); return; }
     }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (bpm === undefined) initGame(); background(); drawScene();
+      txt(GAME_TITLE, W / 2, H * 0.10, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.145, 20, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) txt('► 100円 投入 ◄ TAP TO START', W / 2, H * 0.90, 40, C.a);
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'RHYTHM MASTER!' : 'OUT OF TIME', W / 2, H * 0.35, 54, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
-      timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
-      }
+      timeLeft -= dt; elapsed += dt;
+      if (timeLeft <= 0) { finish(false); return; }
+      bpm = Math.min(160, 90 + score * 3); beatInterval = 60 / bpm;
+      beatTimer += dt; beatPhase = (elapsed % beatInterval) / beatInterval;
+      if (beatTimer >= beatInterval) { beatTimer -= beatInterval; beatCount++; lastBeatTime = elapsed; beatAnswered = false; game.audio.play('se_tap', 0.03); }
+      for (var ri = rings.length - 1; ri >= 0; ri--) { rings[ri].r += 500 * dt; rings[ri].life = 1 - rings[ri].r / 320; if (rings[ri].life <= 0) rings.splice(ri, 1); }
+      if (hitAnim > 0) hitAnim -= dt * 3; if (flash > 0) flash -= dt * 4; if (resultTimer > 0) resultTimer -= dt;
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt * 3; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    // BPM increases with score
-    BPM = Math.min(160, 90 + score * 1.5);
-    beatInterval = 60 / BPM;
+    // ---- 描画 ----
+    background(); drawScene();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) { var p2 = particles[pp2]; game.draw.rect(snap(p2.x) - 5, snap(p2.y) - 5, 10, 10, p2.col, p2.life * 2.5); }
+    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.09);
+    if (resultTimer > 0) txt(resultText, W / 2, snap(H * 0.855), 48, flashCol);
 
-    beatTimer += dt;
-    beatPhase = (elapsed % beatInterval) / beatInterval;
-
-    // On each beat
-    if (beatTimer >= beatInterval) {
-      beatTimer -= beatInterval;
-      beatCount++;
-      lastBeatTime = elapsed;
-      beatAnswered = false;
-      game.audio.play('se_tap', 0.03);
-    }
-
-    // Check if beat was missed (window passed with no tap)
-    if (!beatAnswered) {
-      var timeFromBeat = elapsed - lastBeatTime;
-      if (timeFromBeat > WINDOW + 0.05 && lastBeatTime > 0 && beatCount > 0) {
-        if (timeFromBeat < beatInterval - WINDOW) {
-          // This is valid "missed" territory
-          // Only count once per beat
-        }
-      }
-    }
-
-    // Update rings
-    for (var ri = rings.length - 1; ri >= 0; ri--) {
-      rings[ri].r += 500 * dt;
-      rings[ri].life = 1 - rings[ri].r / rings[ri].maxR;
-      if (rings[ri].life <= 0) rings.splice(ri, 1);
-    }
-
-    if (hitAnim > 0) hitAnim -= dt * 3;
-    if (flashAnim > 0) flashAnim -= dt * 4;
-    if (resultTimer > 0) resultTimer -= dt;
-
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt * 3;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
-
-    // Draw
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Beat pulse: main circle
-    var CX = W / 2;
-    var CY = H * 0.44;
-    var beatPulse = Math.sin(beatPhase * Math.PI); // 0→1→0 each beat
-    var pulse = 1 + beatPulse * 0.15;
-    var mainR = 120 * pulse;
-
-    // Glow
-    game.draw.circle(CX, CY, mainR + 60 * beatPulse, C.beatGlow, beatPulse * 0.2);
-    game.draw.circle(CX, CY, mainR, C.beat, 0.5 + beatPulse * 0.4);
-    game.draw.circle(CX, CY, mainR * 0.6, C.beatHi, 0.3 + beatPulse * 0.6);
-    game.draw.circle(CX, CY, mainR * 0.25, '#fff', beatPulse * 0.8);
-
-    // Hit animation
-    if (hitAnim > 0) {
-      game.draw.circle(CX, CY, mainR * (1 + hitAnim * 0.5), C.onBeat, hitAnim * 0.25);
-    }
-
-    // Expanding rings
-    for (var ri2 = 0; ri2 < rings.length; ri2++) {
-      var rg = rings[ri2];
-      for (var rj = 0; rj < 24; rj++) {
-        if (rj % 3 === 2) continue;
-        var ra = rj * Math.PI * 2 / 24;
-        game.draw.circle(CX + Math.cos(ra) * rg.r, CY + Math.sin(ra) * rg.r, 7 * rg.life, C.correct, rg.life * 0.7);
-      }
-    }
-
-    // Beat window indicator (arc)
-    var windowFrac = WINDOW / beatInterval;
-    for (var ai = 0; ai < 32; ai++) {
-      var af = ai / 32;
-      var inWindow2 = af < windowFrac || af > 1 - windowFrac;
-      if (!inWindow2) continue;
-      var aa = af * Math.PI * 2 - Math.PI / 2;
-      game.draw.circle(CX + Math.cos(aa) * 180, CY + Math.sin(aa) * 180, 8, C.correct, 0.3);
-    }
-
-    // Current position on beat ring
-    var curA = beatPhase * Math.PI * 2 - Math.PI / 2;
-    game.draw.circle(CX + Math.cos(curA) * 180, CY + Math.sin(curA) * 180, 14, C.onBeat, 0.9);
-
-    // Combo display
-    if (consecutiveHits >= 3) {
-      game.draw.text('×' + consecutiveHits, W / 2, H * 0.72, { size: 48, color: C.onBeat, bold: true });
-    }
-
-    // BPM display
-    game.draw.text(Math.round(BPM) + ' BPM', W / 2, H * 0.79, { size: 34, color: C.beat + 'aa' });
-
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p2 = particles[pp2];
-      game.draw.circle(p2.x, p2.y, 9 * p2.life, p2.col, p2.life);
-    }
-
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, flashCol, flashAnim * 0.09);
-    if (resultTimer > 0) {
-      game.draw.text(resultText, W / 2, H * 0.855, { size: 48, color: flashCol, bold: true });
-    }
-
-    if (!done) {
-      game.draw.text('ビートでタップ！', W / 2, H * 0.22, { size: 38, color: C.text + '44' });
-    }
-
-    for (var ei = 0; ei < MAX_ERR; ei++) {
-      game.draw.circle(W / 2 - (MAX_ERR - 1) * 56 + ei * 112, H * 0.955, 22, ei < errors ? C.wrong : C.ui, 0.9);
-    }
-
-    game.draw.text(score + ' / ' + NEEDED, W / 2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft / 75);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 12, ratio > 0.3 ? C.correct : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(score + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var ei = 0; ei < MAX_ERR; ei++) game.draw.rect(snap(W / 2 + (ei - (MAX_ERR - 1) / 2) * 56) - 10, 224, 20, 20, ei < errors ? C.a : '#080410');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.08);
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
