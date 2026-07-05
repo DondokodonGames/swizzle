@@ -12,11 +12,17 @@ export interface CodeValidationResult {
 
 const KNOWN_API_METHODS = new Set([
   'game.onStart', 'game.onUpdate', 'game.onTap', 'game.onSwipe', 'game.onHold',
+  'game.onPress', 'game.onRelease', 'game.onMove',
   'game.draw.clear', 'game.draw.image', 'game.draw.rect', 'game.draw.circle',
-  'game.draw.text', 'game.draw.line',
+  'game.draw.text', 'game.draw.line', 'game.draw.sprite', 'game.draw.gradient',
   'game.audio.play', 'game.audio.bgm', 'game.audio.stopBgm',
+  'game.audio.tone', 'game.audio.melody',
+  'game.fx.burst', 'game.fx.popup', 'game.fx.flash', 'game.fx.shake',
+  'game.feedback.good', 'game.feedback.bad',
+  'game.hit.circle', 'game.hit.rect',
   'game.end.success', 'game.end.failure',
-  'game.random', 'game.canvas', 'game.time',
+  'game.random', 'game.canvas', 'game.time', 'game.best',
+  'game.input', 'game.touches',
 ]);
 
 const FORBIDDEN_PATTERNS: Array<{ pattern: RegExp; code: string; message: string }> = [
@@ -30,6 +36,7 @@ const FORBIDDEN_PATTERNS: Array<{ pattern: RegExp; code: string; message: string
   { pattern: /\bwindow\.\w/,               code: 'FORBIDDEN_API',   message: 'window APIはサンドボックス内でアクセスできません（gameオブジェクトを使ってください）' },
   { pattern: /\beval\s*\(/,                code: 'FORBIDDEN_API',   message: 'eval()は禁止されています' },
   { pattern: /import\s+|require\s*\(/,     code: 'FORBIDDEN_API',   message: 'import/requireは使用できません（全APIはgameオブジェクト経由）' },
+  { pattern: /\bnew\s+(webkit)?AudioContext\b/, code: 'FORBIDDEN_API', message: 'AudioContextの直接生成は禁止です（game.audio.tone/melodyを使ってください）' },
 ];
 
 export class CodeGameValidator {
