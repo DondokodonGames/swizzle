@@ -1,32 +1,10 @@
 import { describe, it, expect } from 'vitest';
+import * as fs from 'fs';
+import * as path from 'path';
 import { CodeQualityScorer } from '../CodeQualityScorer';
 import type { CodeValidationResult } from '../CodeGameValidator';
-import type { GameConcept } from '../../v2/types';
 
 const scorer = new CodeQualityScorer();
-
-function makeConcept(overrides?: Partial<GameConcept['selfEvaluation']>): GameConcept {
-  return {
-    title: 'テスト',
-    titleEn: 'Test',
-    description: 'test game',
-    duration: 10,
-    theme: 'test',
-    visualStyle: 'simple',
-    playerGoal: 'tap',
-    playerOperation: 'tap screen',
-    successCondition: '3 taps',
-    failureCondition: '10s elapsed',
-    selfEvaluation: {
-      goalClarity: 10,
-      operationClarity: 10,
-      judgmentClarity: 10,
-      acceptance: 10,
-      reasoning: 'test',
-      ...overrides,
-    },
-  } as GameConcept;
-}
 
 function noErrors(): CodeValidationResult {
   return { valid: true, errors: [], warnings: [] };
@@ -48,178 +26,181 @@ function withWarnings(n: number): CodeValidationResult {
   };
 }
 
-describe('CodeQualityScorer – concept スコア', () => {
-  it('selfEval 全10 → breakdown.concept = 25', () => {
-    const r = scorer.score('', makeConcept(), noErrors());
-    expect(r.breakdown.concept).toBe(25);
-  });
-
-  it('selfEval 全8 → breakdown.concept = 20', () => {
-    const r = scorer.score('', makeConcept({ goalClarity: 8, operationClarity: 8, judgmentClarity: 8, acceptance: 8 }), noErrors());
-    expect(r.breakdown.concept).toBe(20);
-  });
-
-  it('selfEval 全5 → breakdown.concept = 13 (Math.round(12.5))', () => {
-    const r = scorer.score('', makeConcept({ goalClarity: 5, operationClarity: 5, judgmentClarity: 5, acceptance: 5 }), noErrors());
-    expect(r.breakdown.concept).toBe(13);
-  });
-});
-
-describe('CodeQualityScorer – codeStructure スコア', () => {
-  it('エラー0 → breakdown.codeStructure = 25', () => {
-    const r = scorer.score('', makeConcept(), withErrors(0));
-    expect(r.breakdown.codeStructure).toBe(25);
-  });
-
-  it('エラー1 → breakdown.codeStructure = 20', () => {
-    const r = scorer.score('', makeConcept(), withErrors(1));
-    expect(r.breakdown.codeStructure).toBe(20);
-  });
-
-  it('エラー5 → breakdown.codeStructure = 0（下限）', () => {
-    const r = scorer.score('', makeConcept(), withErrors(5));
-    expect(r.breakdown.codeStructure).toBe(0);
-  });
-
-  it('エラー10 → breakdown.codeStructure = 0（下限厳守）', () => {
-    const r = scorer.score('', makeConcept(), withErrors(10));
-    expect(r.breakdown.codeStructure).toBe(0);
-  });
-});
-
-describe('CodeQualityScorer – playability スコア', () => {
-  const fullCode = [
-    'game.onUpdate(function(dt){',
-    '  game.draw.clear("#000");',
-    '  if (elapsed > 10) game.end.failure();',
-    '});',
-    'game.onTap(function(x, y) { game.end.success(1); });',
-  ].join('\n');
-
-  it('onUpdate + 入力ハンドラ + 成功&失敗 → breakdown.playability = 25', () => {
-    const r = scorer.score(fullCode, makeConcept(), noErrors());
-    expect(r.breakdown.playability).toBe(25);
-  });
-
-  it('onUpdate のみ → breakdown.playability = 10', () => {
-    const r = scorer.score('game.onUpdate(function(dt){});', makeConcept(), noErrors());
-    expect(r.breakdown.playability).toBe(10);
-  });
-
-  it('onTap + 成功&失敗 (onUpdate なし) → breakdown.playability = 15', () => {
-    const code = 'game.onTap(function(x,y){ game.end.success(1); });\ngame.end.failure();';
-    const r = scorer.score(code, makeConcept(), noErrors());
-    expect(r.breakdown.playability).toBe(15);
-  });
-
-  it('onSwipe も入力ハンドラとして認識される', () => {
-    const code = 'game.onUpdate(function(dt){});\ngame.onSwipe(function(dir){});\ngame.end.success();\ngame.end.failure();';
-    const r = scorer.score(code, makeConcept(), noErrors());
-    expect(r.breakdown.playability).toBe(25);
-  });
-
-  it('成功のみ（失敗なし）は +7 を得ない', () => {
-    const code = 'game.onUpdate(function(dt){});\ngame.onTap(function(x,y){});\ngame.end.success();';
-    const r = scorer.score(code, makeConcept(), noErrors());
-    expect(r.breakdown.playability).toBe(18);
-  });
-});
-
-describe('CodeQualityScorer – apiRichness スコア', () => {
-  it('draw 5種 + audio → breakdown.apiRichness = 25', () => {
+describe('CodeQualityScorer v2 – actionFeedback', () => {
+  it('全ハンドラがフィードバック+分岐+good/bad → 25', () => {
     const code = [
-      'game.draw.image("bg", 0, 0, 100, 100);',
-      'game.draw.rect(0, 0, 100, 100, "#fff");',
-      'game.draw.circle(50, 50, 20, "#f00");',
-      'game.draw.text("hello", 100, 100, {});',
-      'game.draw.line(0, 0, 100, 100, "#0f0");',
-      'game.audio.play("se_tap");',
-    ].join('\n');
-    const r = scorer.score(code, makeConcept(), noErrors());
-    expect(r.breakdown.apiRichness).toBe(25);
-  });
-
-  it('draw 1種のみ → breakdown.apiRichness = 4', () => {
-    const r = scorer.score('game.draw.rect(0, 0, 100, 100, "#fff");', makeConcept(), noErrors());
-    expect(r.breakdown.apiRichness).toBe(4);
-  });
-
-  it('audio のみ（draw なし）→ breakdown.apiRichness = 5', () => {
-    const r = scorer.score('game.audio.play("tap");', makeConcept(), noErrors());
-    expect(r.breakdown.apiRichness).toBe(5);
-  });
-
-  it('何もなし → breakdown.apiRichness = 0', () => {
-    const r = scorer.score('', makeConcept(), noErrors());
-    expect(r.breakdown.apiRichness).toBe(0);
-  });
-
-  it('apiRichness は 25 を超えない', () => {
-    const code = [
-      'game.draw.image("bg", 0, 0, 100, 100);',
-      'game.draw.rect(0, 0, 100, 100, "#fff");',
-      'game.draw.circle(50, 50, 20, "#f00");',
-      'game.draw.text("hello", 100, 100, {});',
-      'game.draw.line(0, 0, 100, 100, "#0f0");',
-      'game.audio.play("se_tap");',
-      'game.audio.bgm("bgm_main");',
-    ].join('\n');
-    const r = scorer.score(code, makeConcept(), noErrors());
-    expect(r.breakdown.apiRichness).toBeLessThanOrEqual(25);
-  });
-});
-
-describe('CodeQualityScorer – total スコア', () => {
-  it('全項目満点 → total = 100', () => {
-    const perfectCode = [
-      'game.onUpdate(function(dt){',
-      '  game.draw.image("bg", 0, 0, 1080, 1920);',
-      '  game.draw.rect(0, 0, 100, 100, "#fff");',
-      '  game.draw.circle(50, 50, 20, "#f00");',
-      '  game.draw.text("score", 100, 100, {});',
-      '  game.draw.line(0, 0, 100, 100, "#0f0");',
-      '  game.audio.play("se_tap");',
-      '  if (elapsed > 10) game.end.failure();',
+      'game.onTap(function(x, y) {',
+      '  if (hit) { game.feedback.good(x, y); } else { game.feedback.bad(x, y); }',
       '});',
-      'game.onTap(function(x, y) { game.end.success(1); });',
     ].join('\n');
-    const r = scorer.score(perfectCode, makeConcept(), noErrors());
-    expect(r.total).toBe(100);
+    const r = scorer.score(code, null, noErrors());
+    expect(r.breakdown.actionFeedback).toBe(25);
   });
 
+  it('フィードバックのないハンドラは減点され、ヒントが出る', () => {
+    const code = 'game.onTap(function(x, y) { count++; });';
+    const r = scorer.score(code, null, noErrors());
+    expect(r.breakdown.actionFeedback).toBe(0);
+    expect(r.hints.some((h) => h.includes('フィードバック'))).toBe(true);
+  });
+
+  it('2ハンドラ中1つだけフィードバック → 部分点', () => {
+    const code = [
+      'game.onTap(function(x, y) { if (ok) game.feedback.good(x, y); });',
+      'game.onSwipe(function(dir) { moved = dir; });',
+    ].join('\n');
+    const r = scorer.score(code, null, noErrors());
+    // 15 * (1/2) = 8 (round) + branch(1/2切上げ=1本以上でOK) 5 = 13, good/badペアなし
+    expect(r.breakdown.actionFeedback).toBeGreaterThan(5);
+    expect(r.breakdown.actionFeedback).toBeLessThan(20);
+  });
+
+  it('名前付きハンドラ関数も解析できる', () => {
+    const code = [
+      'function handleTap(x, y) {',
+      '  if (hit) game.feedback.good(x, y); else game.feedback.bad(x, y);',
+      '}',
+      'game.onTap(handleTap);',
+    ].join('\n');
+    const r = scorer.score(code, null, noErrors());
+    expect(r.breakdown.actionFeedback).toBe(25);
+  });
+
+  it('入力ハンドラなし → 0 とヒント', () => {
+    const r = scorer.score('game.onUpdate(function(dt){});', null, noErrors());
+    expect(r.breakdown.actionFeedback).toBe(0);
+    expect(r.hints.some((h) => h.includes('入力ハンドラ'))).toBe(true);
+  });
+});
+
+describe('CodeQualityScorer v2 – audioVisual', () => {
+  it('melody + SE4種 + sprite + gradient → 20 (満点)', () => {
+    const code = [
+      "game.audio.melody([['C4',1]], { loop: true });",
+      "game.audio.play('se_tap'); game.audio.play('se_good');",
+      "game.audio.play('se_success'); game.audio.play('se_failure');",
+      "game.draw.sprite(ART, PAL, 0, 0, 8);",
+      "game.draw.gradient(0, 1920, ['#001', '#113']);",
+    ].join('\n');
+    const r = scorer.score(code, null, noErrors());
+    expect(r.breakdown.audioVisual).toBe(20);
+  });
+
+  it('bgm はmelodyより低い加点', () => {
+    const melody = scorer.score("game.audio.melody([['C4',1]]);", null, noErrors());
+    const bgm = scorer.score("game.audio.bgm('bgm_main');", null, noErrors());
+    expect(melody.breakdown.audioVisual).toBeGreaterThan(bgm.breakdown.audioVisual);
+  });
+
+  it('音なし・sprite なしはヒントが出る', () => {
+    const r = scorer.score('game.draw.rect(0,0,1,1,"#fff");', null, noErrors());
+    expect(r.breakdown.audioVisual).toBe(0);
+    expect(r.hints.some((h) => h.includes('BGM'))).toBe(true);
+    expect(r.hints.some((h) => h.includes('sprite'))).toBe(true);
+  });
+});
+
+describe('CodeQualityScorer v2 – layout (縦3ゾーン)', () => {
+  it('上・中・下すべて使用 → 15', () => {
+    const code = [
+      'game.draw.text("score", W/2, H * 0.06, {});',
+      'game.draw.circle(W/2, H * 0.5, 50, "#f00");',
+      'game.draw.rect(0, H * 0.85, W, 100, "#333");',
+    ].join('\n');
+    const r = scorer.score(code, null, noErrors());
+    expect(r.breakdown.layout).toBe(15);
+  });
+
+  it('上半分しか使わない → 減点とヒント', () => {
+    const code = [
+      'game.draw.text("t", W/2, H * 0.1, {});',
+      'game.draw.circle(W/2, H * 0.3, 50, "#f00");',
+    ].join('\n');
+    const r = scorer.score(code, null, noErrors());
+    expect(r.breakdown.layout).toBeLessThanOrEqual(10);
+    expect(r.hints.some((h) => h.includes('下部'))).toBe(true);
+  });
+
+  it('H - n 形式も下部使用と判定する', () => {
+    const code = 'game.draw.rect(0, H - 100, W, 100, "#333"); game.draw.text("m", 0, H * 0.5, {});';
+    const r = scorer.score(code, null, noErrors());
+    expect(r.breakdown.layout).toBeGreaterThanOrEqual(10);
+  });
+});
+
+describe('CodeQualityScorer v2 – goalEndings', () => {
+  it('勝敗演出差+進捗+best+milestone → 15 (満点)', () => {
+    const code = [
+      "txt(resultSuccess ? 'CLEAR!' : 'GAME OVER', W/2, H*0.4, 54, col);",
+      "txt(score + ' / ' + NEEDED, W/2, 40, 30, '#fff');",
+      "txt('HI ' + game.best, W/2, 90, 24, '#ff0');",
+      "game.fx.popup('1000m!', W/2, H*0.2);",
+    ].join('\n');
+    const r = scorer.score(code, null, noErrors());
+    expect(r.breakdown.goalEndings).toBe(15);
+  });
+
+  it('結果演出・進捗なし → ヒントが出る', () => {
+    const r = scorer.score('game.onTap(function(){});', null, noErrors());
+    expect(r.breakdown.goalEndings).toBe(0);
+    expect(r.hints.some((h) => h.includes('GAME OVER'))).toBe(true);
+    expect(r.hints.some((h) => h.includes('game.best'))).toBe(true);
+  });
+});
+
+describe('CodeQualityScorer v2 – structure', () => {
+  it('エラー0 + ATTRACT/RESULT → 15', () => {
+    const code = 'var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };';
+    const r = scorer.score(code, null, noErrors());
+    expect(r.breakdown.structure).toBe(15);
+  });
+
+  it('エラー1件につき-4(状態機械なしは+5なし)', () => {
+    const r = scorer.score('', null, withErrors(1));
+    expect(r.breakdown.structure).toBe(6);
+  });
+
+  it('エラー3件以上で構造点は0', () => {
+    const r = scorer.score('', null, withErrors(3));
+    expect(r.breakdown.structure).toBe(0);
+  });
+});
+
+describe('CodeQualityScorer v2 – runtime', () => {
+  it('未実行 → 中立5点', () => {
+    const r = scorer.score('', null, noErrors());
+    expect(r.breakdown.runtime).toBe(5);
+  });
+
+  it('スモーク合格 → 10', () => {
+    const r = scorer.score('', null, noErrors(), { passed: true });
+    expect(r.breakdown.runtime).toBe(10);
+  });
+
+  it('スモーク不合格 → 0', () => {
+    const r = scorer.score('', null, noErrors(), { passed: false });
+    expect(r.breakdown.runtime).toBe(0);
+  });
+});
+
+describe('CodeQualityScorer v2 – total / メタ情報', () => {
   it('total は 100 を超えない', () => {
-    const overloadCode = [
-      'game.onUpdate(function(dt){});',
-      'game.onTap(function(x,y){});',
-      'game.end.success();',
-      'game.end.failure();',
-      'game.draw.image("i",0,0,1,1);',
-      'game.draw.rect(0,0,1,1,"#fff");',
-      'game.draw.circle(0,0,1,"#fff");',
-      'game.draw.text("t",0,0,{});',
-      'game.draw.line(0,0,1,1,"#fff");',
-      'game.audio.play("s");',
-    ].join('\n');
-    const r = scorer.score(overloadCode, makeConcept(), noErrors());
+    const fixture = fs.readFileSync(
+      path.resolve(__dirname, '../../../services/code-game/__tests__/fixtures/api-v2-fixture.js'),
+      'utf-8'
+    );
+    const r = scorer.score(fixture, null, noErrors(), { passed: true });
     expect(r.total).toBeLessThanOrEqual(100);
-  });
-});
-
-describe('CodeQualityScorer – validationErrors / validationWarnings', () => {
-  it('エラー数を validationErrors に反映する', () => {
-    const r = scorer.score('', makeConcept(), withErrors(3));
-    expect(r.validationErrors).toBe(3);
+    expect(r.total).toBeGreaterThanOrEqual(80); // フィクスチャは基準v2準拠の見本
   });
 
-  it('警告数を validationWarnings に反映する', () => {
-    const r = scorer.score('', makeConcept(), withWarnings(2));
-    expect(r.validationWarnings).toBe(2);
+  it('エラー/警告数を反映する', () => {
+    expect(scorer.score('', null, withErrors(3)).validationErrors).toBe(3);
+    expect(scorer.score('', null, withWarnings(2)).validationWarnings).toBe(2);
   });
-});
 
-describe('CodeQualityScorer – report()', () => {
   it('report() は throw しない', () => {
-    const r = scorer.score('', makeConcept(), noErrors());
+    const r = scorer.score('', null, noErrors());
     expect(() => scorer.report(r)).not.toThrow();
   });
 });

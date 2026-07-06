@@ -22,6 +22,10 @@ interface GameScore {
   points: number;
   time: number;
   success: boolean;
+  /** 端末ローカルのベストスコア(今回の記録を反映済み) */
+  best?: number;
+  /** 既存ベストを更新した場合 true */
+  isNewRecord?: boolean;
 }
 
 interface BridgeScreenProps {
@@ -442,6 +446,35 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
                 }}>
                   {(score.points || 0).toLocaleString()}
                 </div>
+                {score.isNewRecord && (
+                  <div style={{
+                    display: 'inline-block',
+                    marginTop: '8px',
+                    padding: '4px 14px',
+                    background: '#FF3B1F',
+                    color: '#ffffff',
+                    fontFamily: "'Space Grotesk', 'Inter', sans-serif",
+                    fontWeight: 700,
+                    fontSize: '13px',
+                    letterSpacing: '2px',
+                    textTransform: 'uppercase',
+                  }}>
+                    ★ New Record
+                  </div>
+                )}
+                {typeof score.best === 'number' && score.best > 0 && !score.isNewRecord && (
+                  <div style={{
+                    marginTop: '8px',
+                    fontFamily: "'Space Grotesk', 'Inter', sans-serif",
+                    fontSize: '12px',
+                    letterSpacing: '2px',
+                    textTransform: 'uppercase',
+                    color: '#6b6b66',
+                    fontVariantNumeric: 'tabular-nums',
+                  }}>
+                    Best {score.best.toLocaleString()}
+                  </div>
+                )}
               </div>
             )}
           </div>

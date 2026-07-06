@@ -21,9 +21,25 @@ npx tsc --noEmit --skipLibCheck   # Type check only
 npm run ai:v2:1       # Generate 1 game
 npm run ai:neta:1     # Generate 1 game from neta idea list
 npm run ai:status     # Generation progress & quality stats
+npm run ai:neta:trend # Convert pasted SNS trends (trend-sources.json) into netas
 DRY_RUN=true npm run ai:v2:1          # Skip LLM/asset API calls
 SKIP_UPLOAD=true npm run ai:neta:1    # Skip Supabase upload
+
+# Code games (the 800 examples)
+npm run games:smoke   # Runtime smoke test + screenshot contact sheet (Playwright)
+npm run ai:upload:examples            # Upload examples (OVERWRITE=true to update, PRICE_SYNC=true for tier pricing)
 ```
+
+### Code-game quality standard v2
+
+The 800 code games (`src/ai/code/examples/*.js`) target **quality standard v2**. The canon:
+- `docs/specifications/GAME_QUALITY_STANDARD_V2.md` — pass bar (scorer ≥80 + smoke PASS)
+- `docs/specifications/SANDBOX_API_V2.md` — the full `game.*` API (WebAudio chiptune synth, `game.feedback.good/bad`, multi-touch, sprites) + recipes
+- `docs/specifications/MECHANICS_CATALOG_V2.md` — 40 mechanics with API mapping (use for neta assignment / `@mechanic` headers)
+- `docs/specifications/ARCADE_ART_DIRECTION.md` — in-game art direction (era style packs, coin-op feel)
+- `docs/work-plans/56-quality-v2-batch-template.md` — fill-in prompt for batch rewrite sessions
+
+The sandbox engine is `src/services/code-game/iframeTemplate.ts` (ships with the app bundle — engine changes apply to all uploaded games without re-upload). Missing `se_*`/`bgm_*` audio assets fall back to synthesized presets, so games are never silent.
 
 ---
 

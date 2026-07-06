@@ -6,9 +6,11 @@ interface Props {
   project: CodeGameProject;
   onEnd: (result: GameResult) => void;
   onError?: (message: string) => void;
+  /** ベストスコア保存キー(user_games行ID推奨)。省略時は project.id */
+  gameId?: string;
 }
 
-export const CodeGamePlayer: React.FC<Props> = ({ project, onEnd, onError }) => {
+export const CodeGamePlayer: React.FC<Props> = ({ project, onEnd, onError, gameId }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const runnerRef = useRef<CodeGameRunner | null>(null);
 
@@ -26,13 +28,13 @@ export const CodeGamePlayer: React.FC<Props> = ({ project, onEnd, onError }) => 
 
     const runner = new CodeGameRunner();
     runnerRef.current = runner;
-    runner.launch(project, containerRef.current, handleEnd, handleError);
+    runner.launch(project, containerRef.current, handleEnd, handleError, { gameId });
 
     return () => {
       runner.stop();
       runnerRef.current = null;
     };
-  }, [project, handleEnd, handleError]);
+  }, [project, handleEnd, handleError, gameId]);
 
   return (
     <div

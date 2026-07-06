@@ -1,52 +1,202 @@
 import { GameConcept } from '../v2/types.js';
 import { CodeValidationResult } from './CodeGameValidator.js';
 
+/**
+ * CodeQualityScorer v2 — GAME_QUALITY_STANDARD_V2 に対応した静的採点。
+ *
+ * v1(文字列マッチ4x25)から、品質基準v2の軸へ刷新:
+ *   actionFeedback 25 : 全入力ハンドラが「行動の結果」を返しているか
+ *                       (feedback/fx/audio呼び出し + 結果分岐)
+ *   audioVisual    20 : BGM(melody/bgm)・SEの多様性・sprite・gradient
+ *   layout         15 : 縦画面3ゾーン(上/中/下)を使っているか(静的近似。
+ *                       正確な判定は games:smoke のスクリーンショット監査)
+ *   goalEndings    15 : CLEAR/GAME OVERの演出差・進捗表示・game.best・
+ *                       走行中マイルストーン
+ *   structure      15 : バリデーションエラー + ATTRACT/RESULT状態機械
+ *   runtime        10 : スモークハーネス結果(未実行時は中立5点)
+ *
+ * concept(LLM自己評価)はv2では採点に使わない — 成果物そのものを測る。
+ * 引数互換のため受け取りは維持している。
+ */
+
 export interface CodeQualityScore {
   total: number;
   breakdown: {
-    concept: number;       // 0–25
-    codeStructure: number; // 0–25
-    playability: number;   // 0–25
-    apiRichness: number;   // 0–25
+    actionFeedback: number; // 0–25
+    audioVisual: number;    // 0–20
+    layout: number;         // 0–15
+    goalEndings: number;    // 0–15
+    structure: number;      // 0–15
+    runtime: number;        // 0–10
   };
   validationErrors: number;
   validationWarnings: number;
+  /** 改善ポイントの短い指摘(バッチ書き換えセッションへのヒント) */
+  hints: string[];
 }
 
-const DRAW_METHODS = ['game.draw.image', 'game.draw.rect', 'game.draw.circle', 'game.draw.text', 'game.draw.line'];
-const INPUT_HANDLERS = ['game.onTap', 'game.onSwipe', 'game.onHold'];
-const AUDIO_METHODS = ['game.audio.play', 'game.audio.bgm'];
+export interface RuntimeCheckResult {
+  passed: boolean;
+}
+
+const INPUT_HANDLER_RE = /game\.on(Tap|Swipe|Hold|Press|Release|Move)\s*\(/g;
+const FEEDBACK_CALLS = ['game.feedback.', 'game.fx.', 'game.audio.play', 'game.audio.tone'];
+
+/** `openIndex` 位置の '{' から対応する '}' までを返す(見つからなければ null) */
+function extractBraceBlock(code: string, openIndex: number): string | null {
+  let depth = 0;
+  for (let i = openIndex; i < code.length; i++) {
+    const ch = code[i];
+    if (ch === '{') depth++;
+    else if (ch === '}') {
+      depth--;
+      if (depth === 0) return code.slice(openIndex, i + 1);
+    }
+  }
+  return null;
+}
+
+/** 入力ハンドラの関数本体を抽出(インライン関数 or 同ファイル内の名前付き関数) */
+function extractHandlerBodies(code: string): string[] {
+  const bodies: string[] = [];
+  let m: RegExpExecArray | null;
+  INPUT_HANDLER_RE.lastIndex = 0;
+  while ((m = INPUT_HANDLER_RE.exec(code)) !== null) {
+    const argStart = m.index + m[0].length;
+    const rest = code.slice(argStart, argStart + 200);
+
+    // インライン: function(...) { / (...) => { / x => {
+    const inline = /^\s*(?:function\s*\([^)]*\)|\([^)]*\)\s*=>|[\w$]+\s*=>)\s*\{/.exec(rest);
+    if (inline) {
+      const body = extractBraceBlock(code, argStart + inline[0].length - 1);
+      if (body) { bodies.push(body); continue; }
+    }
+
+    // 名前付き参照: game.onTap(handleTap)
+    const named = /^\s*([\w$]+)\s*\)/.exec(rest);
+    if (named) {
+      const defRe = new RegExp(
+        '(?:function\\s+' + named[1] + '\\s*\\([^)]*\\)|(?:var|let|const)\\s+' + named[1] + '\\s*=\\s*(?:function\\s*\\([^)]*\\)|\\([^)]*\\)\\s*=>))\\s*\\{'
+      );
+      const def = defRe.exec(code);
+      if (def) {
+        const body = extractBraceBlock(code, def.index + def[0].length - 1);
+        if (body) { bodies.push(body); continue; }
+      }
+    }
+
+    // 抽出失敗はハンドラとしてだけカウント(フィードバックなし扱い)
+    bodies.push('');
+  }
+  return bodies;
+}
 
 export class CodeQualityScorer {
-  score(code: string, concept: GameConcept, validationResult: CodeValidationResult): CodeQualityScore {
-    const se = concept.selfEvaluation;
-    const conceptScore = Math.round(
-      ((se.goalClarity + se.operationClarity + se.judgmentClarity + se.acceptance) / 4) * 2.5
+  score(
+    code: string,
+    _concept: GameConcept | null,
+    validationResult: CodeValidationResult,
+    runtime?: RuntimeCheckResult | null
+  ): CodeQualityScore {
+    const hints: string[] = [];
+
+    // ── actionFeedback (25) ──────────────────────────────────────────────
+    const bodies = extractHandlerBodies(code);
+    let actionFeedback = 0;
+    if (bodies.length > 0) {
+      const withFeedback = bodies.filter(
+        (b) => b && FEEDBACK_CALLS.some((c) => b.includes(c))
+      ).length;
+      const withBranch = bodies.filter(
+        (b) => b && (/\bif\s*\(/.test(b) || b.includes('?'))
+      ).length;
+      actionFeedback += Math.round((withFeedback / bodies.length) * 15);
+      if (code.includes('game.feedback.good') && code.includes('game.feedback.bad')) {
+        actionFeedback += 5;
+      } else {
+        hints.push('game.feedback.good/bad で行動の正否を提示する');
+      }
+      if (withBranch >= Math.ceil(bodies.length / 2)) actionFeedback += 5;
+      if (withFeedback < bodies.length) {
+        hints.push('全入力ハンドラで即時フィードバック(feedback/fx/audio)を返す');
+      }
+    } else {
+      hints.push('入力ハンドラがありません');
+    }
+    actionFeedback = Math.min(25, actionFeedback);
+
+    // ── audioVisual (20) ─────────────────────────────────────────────────
+    let audioVisual = 0;
+    if (code.includes('game.audio.melody(')) audioVisual += 8;
+    else if (code.includes('game.audio.bgm(')) audioVisual += 6;
+    else hints.push('BGM(game.audio.melody か bgm)を鳴らす');
+    const distinctSe = new Set(code.match(/se_[a-z_]+/g) || []).size;
+    audioVisual += Math.min(4, distinctSe);
+    if (distinctSe < 2) hints.push('イベント別のSE(se_*)を増やす');
+    if (code.includes('game.draw.sprite(')) audioVisual += 5;
+    else hints.push('キャラ/モチーフを game.draw.sprite で描く');
+    if (code.includes('game.draw.gradient(')) audioVisual += 3;
+    else hints.push('背景に game.draw.gradient を使う(黒一色回避)');
+    audioVisual = Math.min(20, audioVisual);
+
+    // ── layout (15) — 縦3ゾーンの静的近似 ────────────────────────────────
+    const factors: number[] = [];
+    const factorRe = /(?:H|game\.canvas\.height)\s*\*\s*(0?\.\d+|1(?:\.0*)?)/g;
+    let fm: RegExpExecArray | null;
+    while ((fm = factorRe.exec(code)) !== null) factors.push(parseFloat(fm[1]));
+    const usesTop = factors.some((f) => f <= 0.28);
+    const usesMiddle = factors.some((f) => f > 0.28 && f < 0.72);
+    const usesBottom = factors.some((f) => f >= 0.72) || /\bH\s*-\s*\d/.test(code);
+    let layout = (usesTop ? 5 : 0) + (usesMiddle ? 5 : 0) + (usesBottom ? 5 : 0);
+    if (!usesBottom) hints.push('画面下部(親指ゾーン/H*0.72以深)を使う');
+    if (!usesMiddle) hints.push('プレイフィールド(画面中央帯)に遊びを配置する');
+    layout = Math.min(15, layout);
+
+    // ── goalEndings (15) ─────────────────────────────────────────────────
+    let goalEndings = 0;
+    const hasWinText = /(CLEAR|SUCCESS|COMPLETE|WIN|やった|クリア)/i.test(code);
+    const hasLoseText = /(GAME OVER|GAMEOVER|FAILED|TIME UP|TIMEUP|LOSE|しっぱい|ゲームオーバー)/i.test(code);
+    if (hasWinText && hasLoseText) goalEndings += 5;
+    else hints.push('CLEARとGAME OVERで異なる結果演出を出す');
+    const hasProgress =
+      /['"]\s*\/\s*['"]/.test(code) ||              // "3 / 10" カウンタ表示
+      /timeLeft\s*\//.test(code) ||                  // 残時間バー
+      code.includes('timeBar') || code.includes('progress');
+    if (hasProgress) goalEndings += 4;
+    else hints.push('進捗バーか達成カウンタを常時表示する');
+    if (code.includes('game.best')) goalEndings += 3;
+    else hints.push('ATTRACTやRESULTで game.best(実ベスト)を表示する');
+    if (code.includes('game.fx.popup') || /milestone/i.test(code)) goalEndings += 3;
+    else hints.push('走行中のマイルストーン演出(fx.popup)を入れる');
+    goalEndings = Math.min(15, goalEndings);
+
+    // ── structure (15) ───────────────────────────────────────────────────
+    let structure = Math.max(0, 10 - validationResult.errors.length * 4);
+    if (/ATTRACT/.test(code) && /RESULT/.test(code)) structure += 5;
+    else hints.push('ATTRACT/PLAYING/RESULT の状態機械を使う');
+    structure = Math.min(15, structure);
+
+    // ── runtime (10) ─────────────────────────────────────────────────────
+    const runtimeScore = runtime == null ? 5 : runtime.passed ? 10 : 0;
+
+    const total = Math.min(
+      100,
+      actionFeedback + audioVisual + layout + goalEndings + structure + runtimeScore
     );
 
-    const codeStructureScore = Math.max(0, 25 - validationResult.errors.length * 5);
-
-    let playability = 0;
-    if (code.includes('game.onUpdate')) playability += 10;
-    if (INPUT_HANDLERS.some(h => code.includes(h))) playability += 8;
-    if (code.includes('game.end.success') && code.includes('game.end.failure')) playability += 7;
-
-    const uniqueDrawCalls = DRAW_METHODS.filter(m => code.includes(m)).length;
-    const hasAudio = AUDIO_METHODS.some(m => code.includes(m));
-    const apiRichnessScore = Math.min(25, uniqueDrawCalls * 4 + (hasAudio ? 5 : 0));
-
-    const total = conceptScore + codeStructureScore + playability + apiRichnessScore;
-
     return {
-      total: Math.min(100, total),
+      total,
       breakdown: {
-        concept: conceptScore,
-        codeStructure: codeStructureScore,
-        playability,
-        apiRichness: apiRichnessScore,
+        actionFeedback,
+        audioVisual,
+        layout,
+        goalEndings,
+        structure,
+        runtime: runtimeScore,
       },
       validationErrors: validationResult.errors.length,
       validationWarnings: validationResult.warnings.length,
+      hints,
     };
   }
 
@@ -54,15 +204,20 @@ export class CodeQualityScorer {
     const { total, breakdown } = score;
     const grade = total >= 80 ? '🟢' : total >= 60 ? '🟡' : '🔴';
     console.log(`   ${grade} 品質スコア: ${total}/100`);
-    console.log(`      コンセプト: ${breakdown.concept}/25`);
-    console.log(`      コード構造: ${breakdown.codeStructure}/25`);
-    console.log(`      遊びやすさ: ${breakdown.playability}/25`);
-    console.log(`      API多様性:  ${breakdown.apiRichness}/25`);
+    console.log(`      行動フィードバック: ${breakdown.actionFeedback}/25`);
+    console.log(`      音・視覚:           ${breakdown.audioVisual}/20`);
+    console.log(`      縦画面レイアウト:   ${breakdown.layout}/15`);
+    console.log(`      ゴール・結末:       ${breakdown.goalEndings}/15`);
+    console.log(`      構造:               ${breakdown.structure}/15`);
+    console.log(`      ランタイム:         ${breakdown.runtime}/10`);
     if (score.validationErrors > 0) {
       console.log(`      ⚠️  バリデーションエラー: ${score.validationErrors}件`);
     }
     if (score.validationWarnings > 0) {
       console.log(`      ⚠️  警告: ${score.validationWarnings}件`);
+    }
+    for (const h of score.hints.slice(0, 6)) {
+      console.log(`      💡 ${h}`);
     }
   }
 }

@@ -11,6 +11,7 @@ import { DESIGN_TOKENS } from '../constants/DesignSystem';
 import { track, startSession } from '../services/analytics/Analytics';
 import { CodeGameRunner } from '../services/code-game/CodeGameRunner';
 import { CodeGameProject } from '../types/code-game/SwizzleGameAPI';
+import { personalizeOrder, markPlayed } from '../social/services/FeedShuffleService';
 
 /**
  * GameSequence.tsx - 完全レスポンシブ版（スマホ対応）
@@ -32,6 +33,10 @@ interface GameScore {
   points: number;
   time: number;
   success: boolean;
+  /** 端末ローカルのベストスコア(今回の記録を反映済み) */
+  best?: number;
+  /** 既存ベストを更新した場合 true */
+  isNewRecord?: boolean;
 }
 
 interface GameSequenceProps {
@@ -171,8 +176,14 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
           return;
         }
 
+        // 発見性: 端末シード+日付の決定的シャッフル → 未プレイ優先 →
+        // 同一カテゴリ連続回避。ユーザーごと・日ごとに異なる出会いを作る。
+        const orderedGames = personalizeOrder(initialResult.games, {
+          keyFn: (g) => g.category,
+        });
+
         // Step 2: 最初のゲームの project_data を取得してから開始
-        const firstGame = initialResult.games[0];
+        const firstGame = orderedGames[0];
         const firstProject = await GameLoadingService.loadPublishedProject(firstGame.id);
 
         if (!firstProject) {
@@ -184,7 +195,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
         const initialGame: PublicGame = { ...firstGame, projectData: firstProject };
 
         // 一覧は project_data なしで保持（再生時にオンデマンド取得）
-        setAllValidGames(initialResult.games);
+        setAllValidGames(orderedGames);
         setPublicGames([initialGame]);
         setUsedGameIds(new Set([initialGame.id]));
         setCurrentIndex(0);
@@ -215,8 +226,11 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
 
     if (gamesToChooseFrom.length === 0) return;
 
-    const randomIndex = Math.floor(Math.random() * gamesToChooseFrom.length);
-    const candidate = gamesToChooseFrom[randomIndex];
+    // allValidGames はパーソナライズ済みの並びなので、未消化の先頭が
+    // 「このユーザーの今日の次の1本」。全消化後のみランダムに戻す。
+    const candidate = availableGames.length > 0
+      ? gamesToChooseFrom[0]
+      : gamesToChooseFrom[Math.floor(Math.random() * gamesToChooseFrom.length)];
 
     // project_data をバックグラウンドで先読み
     if (!candidate.projectData) {
@@ -340,10 +354,11 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
         : (currentGame.projectData.settings?.duration?.seconds || 15);
       setGameDuration(duration);
 
-      // プレイ開始を計測
+      // プレイ開始を計測 + ローカルプレイ履歴(未プレイ優先の材料)に記録
       track('play_start', { gameId: currentGame.id, index: currentIndex });
+      markPlayed(currentGame.id);
 
-      const onGameEnd = (result: { success?: boolean; score?: number; timeElapsed?: number }) => {
+      const onGameEnd = (result: { success?: boolean; score?: number; timeElapsed?: number; best?: number; isNewRecord?: boolean }) => {
         setGameStartTime(null);
         track('play_end', {
           gameId: currentGame.id,
@@ -354,7 +369,9 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
         setCurrentScore({
           points: result.score || 0,
           time: result.timeElapsed || 0,
-          success: result.success || false
+          success: result.success || false,
+          best: result.best,
+          isNewRecord: result.isNewRecord,
         });
         currentGameRef.current = null;
         setGameState('bridge');
@@ -368,13 +385,14 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
           runner.launch(
             currentGame.projectData as unknown as CodeGameProject,
             canvasRef.current!,
-            (r) => onGameEnd({ success: r.result === 'success', score: r.score }),
+            (r) => onGameEnd({ success: r.result === 'success', score: r.score, best: r.best, isNewRecord: r.isNewRecord }),
             (errMsg) => {
               console.error(`❌ コードゲームエラー: "${currentGame.title}"`, errMsg);
               codeRunnerRef.current = null;
               currentGameRef.current = null;
               setTimeout(() => handleNextGame(), 2000);
-            }
+            },
+            { gameId: currentGame.id }
           );
         } else {
           await bridge.launchFullGame(

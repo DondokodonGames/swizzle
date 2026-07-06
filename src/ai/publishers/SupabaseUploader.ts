@@ -66,6 +66,12 @@ export interface UploadOptions {
    * project_data・コード・メタ情報のみ差し替える。
    */
   overwrite?: boolean;
+  /** 主メカニクスID（MECHANICS_CATALOG_V2。フィードの多様性制御に使用） */
+  mechanic?: string;
+  /** 世界観テーマ（フィードの多様性制御に使用） */
+  theme?: string;
+  /** SNSトレンド由来ネタの元ネタ識別子（ai:neta:trend が付与） */
+  trendSource?: string;
 }
 
 /**
@@ -270,6 +276,9 @@ export class SupabaseUploader {
       ai_generated: true,
       ai_quality_score: qualityScore,
       ...(options.imageScore !== undefined ? { ai_image_score: options.imageScore } : {}),
+      ...(options.mechanic ? { mechanic: options.mechanic } : {}),
+      ...(options.theme ? { theme: options.theme } : {}),
+      ...(options.trendSource ? { trend_source: options.trendSource } : {}),
       game_type: options.gameType ?? 'rules',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
@@ -476,6 +485,30 @@ export class SupabaseUploader {
     }
   }
   
+  /**
+   * 1プレイ価格(円)を game_payment_config に upsert する。
+   * price_yen のみを更新し、既存の payment_link_id / payment_link_url は保持する
+   * (Stripe Payment Link の発行は人間/別工程)。
+   */
+  async syncPriceYen(gameId: string, priceYen: number): Promise<boolean> {
+    try {
+      const { error } = await this.supabase
+        .from('game_payment_config')
+        .upsert(
+          { game_id: gameId, price_yen: priceYen },
+          { onConflict: 'game_id' }
+        );
+
+      if (error) {
+        throw new Error(`Price sync error: ${error.message}`);
+      }
+      return true;
+    } catch (error) {
+      console.error('Price sync error:', error);
+      return false;
+    }
+  }
+
   /**
    * ゲーム情報の取得
    */

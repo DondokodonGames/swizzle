@@ -1,0 +1,13 @@
+{
+  "comment": "SNSトレンド→ゲーム化パイプラインの入力ファイル。X/TikTok/ニュース等で見つけたバズ・話題をここに貼り、`npm run ai:neta:trend` を実行すると LLM がゲーム化可能なネタ(neta-trend.json)に変換する。外部APIによる自動収集は承認後のPhase 2(現状は手動投入)。processed は実行時に自動で true になる。",
+  "sources": [
+    {
+      "id": "trend_sample_capybara_onsen",
+      "topic": "カピバラ温泉の入浴シーンがバズる",
+      "context": "冬の風物詩としてカピバラが柚子湯に浸かる動画が毎年SNSで数百万再生される。気持ちよさそうに目を細める瞬間が人気。",
+      "url": "",
+      "addedAt": "2026-07-05",
+      "processed": false
+    }
+  ]
+}

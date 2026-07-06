@@ -17,3 +17,7 @@ output/
 src/ai/v2/neta-progress.json
 src/ai/v2/neta-generate-progress.json
 src/ai/batch/batch-progress.json
+
+# コードゲーム スモークテスト出力
+smoke-output/
+src/ai/v2/neta-trend.json
