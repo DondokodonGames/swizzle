@@ -20,6 +20,7 @@ const ProfilePage = React.lazy(() => import('./pages/ProfilePage'));
 const TermsPage = React.lazy(() => import('./pages/TermsPage').then(module => ({ default: module.TermsPage })));
 const PrivacyPage = React.lazy(() => import('./pages/PrivacyPage').then(module => ({ default: module.PrivacyPage })));
 const AboutPage = React.lazy(() => import('./pages/AboutPage'));
+const NotFoundPage = React.lazy(() => import('./pages/NotFoundPage'));
 
 // ゲームプレイページの遅延読み込み
 const PlayGamePage = React.lazy(() =>
@@ -823,7 +824,14 @@ function App() {
           } />
 
           {/* メインアプリ: 既存のmode-based */}
-          <Route path="/*" element={<SocialIntegratedApp />} />
+          <Route path="/" element={<SocialIntegratedApp />} />
+
+          {/* 未知のURL: 404ページ */}
+          <Route path="*" element={
+            <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>Loading...</div>}>
+              <NotFoundPage />
+            </Suspense>
+          } />
         </Routes>
       </AppWithAuth>
     </BrowserRouter>

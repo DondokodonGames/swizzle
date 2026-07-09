@@ -47,5 +47,30 @@
       "unknownError": "未知错误"
     },
     "close": "关闭"
+  },
+  "playGame": {
+    "hintExchanging": "正在确认付款...",
+    "hintValidating": "正在验证访问权限...",
+    "hintLoading": "加载中...",
+    "back": "返回",
+    "limitReachedTitle": "已达到游玩次数上限",
+    "limitReachedHint": "此票券的游玩次数已全部用完。",
+    "buyAgain": "再次购买",
+    "paymentRequiredHint": "需要付款才能游玩",
+    "payToPlay": "支付 ¥{{price}} 开始游玩",
+    "finishedTitle": "游戏结束！",
+    "playsRemaining": "还可游玩 {{count}} 次",
+    "playAgain": "再玩一次",
+    "ticketUsedUp": "此票券的游玩次数已全部用完",
+    "playsRemainingBadge": "剩余 {{count}} 次",
+    "errors": {
+      "gameIdMissing": "未指定游戏ID",
+      "gameNotFound": "未找到游戏",
+      "loadFailed": "加载失败",
+      "paymentConfirmFailed": "确认付款失败，请联系客服。",
+      "accessValidationFailed": "访问验证失败",
+      "launchFailed": "游戏启动失败",
+      "runtimeError": "游戏运行时发生错误"
+    }
   }
 }

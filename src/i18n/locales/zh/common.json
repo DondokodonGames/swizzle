@@ -93,5 +93,14 @@
     "framesAdded": "帧已添加",
     "objectsUploaded": "对象已上传",
     "projectImported": "项目导入成功！"
+  },
+  "notFound": {
+    "title": "页面未找到",
+    "message": "您要查找的页面不存在，或可能已被移动。",
+    "backToHome": "返回首页"
+  },
+  "errorBoundary": {
+    "title": "发生意外错误",
+    "reload": "重新加载页面"
   }
 }

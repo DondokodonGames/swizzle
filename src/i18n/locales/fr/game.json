@@ -47,5 +47,30 @@
       "unknownError": "Erreur inconnue"
     },
     "close": "Fermer"
+  },
+  "playGame": {
+    "hintExchanging": "Confirmation du paiement...",
+    "hintValidating": "Vérification de l'accès...",
+    "hintLoading": "Chargement...",
+    "back": "Retour",
+    "limitReachedTitle": "Limite de parties atteinte",
+    "limitReachedHint": "Vous avez utilisé toutes les parties de ce billet.",
+    "buyAgain": "Racheter",
+    "paymentRequiredHint": "Un paiement est requis pour jouer",
+    "payToPlay": "Jouer pour ¥{{price}}",
+    "finishedTitle": "Partie terminée !",
+    "playsRemaining": "Il vous reste {{count}} parties",
+    "playAgain": "Rejouer",
+    "ticketUsedUp": "Vous avez utilisé toutes les parties de ce billet",
+    "playsRemainingBadge": "{{count}} restantes",
+    "errors": {
+      "gameIdMissing": "Aucun identifiant de jeu spécifié",
+      "gameNotFound": "Jeu introuvable",
+      "loadFailed": "Échec du chargement",
+      "paymentConfirmFailed": "Échec de la confirmation du paiement. Veuillez contacter le support.",
+      "accessValidationFailed": "Échec de la validation de l'accès",
+      "launchFailed": "Échec du lancement du jeu",
+      "runtimeError": "Une erreur s'est produite pendant l'exécution du jeu"
+    }
   }
 }

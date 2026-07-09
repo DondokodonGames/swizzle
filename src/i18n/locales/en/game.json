@@ -47,5 +47,30 @@
       "copyFailed": "Failed to copy game",
       "unknownError": "Unknown error"
     }
+  },
+  "playGame": {
+    "hintExchanging": "Confirming payment...",
+    "hintValidating": "Checking access...",
+    "hintLoading": "Loading...",
+    "back": "Back",
+    "limitReachedTitle": "Play limit reached",
+    "limitReachedHint": "You've used up all the plays on this ticket.",
+    "buyAgain": "Buy again",
+    "paymentRequiredHint": "Payment is required to play",
+    "payToPlay": "Play for ¥{{price}}",
+    "finishedTitle": "Game over!",
+    "playsRemaining": "{{count}} plays remaining",
+    "playAgain": "Play again",
+    "ticketUsedUp": "You've used up all the plays on this ticket",
+    "playsRemainingBadge": "{{count}} plays left",
+    "errors": {
+      "gameIdMissing": "No game ID specified",
+      "gameNotFound": "Game not found",
+      "loadFailed": "Failed to load",
+      "paymentConfirmFailed": "Failed to confirm payment. Please contact support.",
+      "accessValidationFailed": "Failed to validate access",
+      "launchFailed": "Failed to launch game",
+      "runtimeError": "An error occurred while running the game"
+    }
   }
 }

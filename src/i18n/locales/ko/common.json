@@ -93,5 +93,14 @@
     "framesAdded": "프레임이 추가되었습니다",
     "objectsUploaded": "오브젝트가 업로드되었습니다",
     "projectImported": "프로젝트를 성공적으로 가져왔습니다!"
+  },
+  "notFound": {
+    "title": "페이지를 찾을 수 없습니다",
+    "message": "찾으시는 페이지가 존재하지 않거나 이동되었을 수 있습니다.",
+    "backToHome": "홈으로 돌아가기"
+  },
+  "errorBoundary": {
+    "title": "예기치 않은 오류가 발생했습니다",
+    "reload": "페이지 새로고침"
   }
 }

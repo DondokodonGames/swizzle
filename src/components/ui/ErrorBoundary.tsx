@@ -1,4 +1,5 @@
 import React from 'react';
+import i18n from '../../i18n';
 import { captureError } from '../../services/monitoring/Sentry';
 
 interface Props {
@@ -49,7 +50,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
             boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)'
           }}>
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>⚠️</div>
-            <h2 style={{ color: '#374151', marginBottom: '8px' }}>予期しないエラーが発生しました</h2>
+            <h2 style={{ color: '#374151', marginBottom: '8px' }}>{i18n.t('errorBoundary.title')}</h2>
             <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '24px' }}>
               {this.state.message}
             </p>
@@ -65,7 +66,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
                 fontSize: '16px'
               }}
             >
-              ページを再読み込み
+              {i18n.t('errorBoundary.reload')}
             </button>
           </div>
         </div>

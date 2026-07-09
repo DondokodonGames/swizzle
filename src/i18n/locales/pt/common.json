@@ -93,5 +93,14 @@
     "framesAdded": "Quadros adicionados",
     "objectsUploaded": "Objetos enviados",
     "projectImported": "Projeto importado com sucesso!"
+  },
+  "notFound": {
+    "title": "Página não encontrada",
+    "message": "A página que você procura não existe ou pode ter sido movida.",
+    "backToHome": "Voltar para o início"
+  },
+  "errorBoundary": {
+    "title": "Ocorreu um erro inesperado",
+    "reload": "Recarregar página"
   }
 }

@@ -93,5 +93,14 @@
     "framesAdded": "Images ajoutées",
     "objectsUploaded": "Objets téléchargés",
     "projectImported": "Projet importé avec succès !"
+  },
+  "notFound": {
+    "title": "Page introuvable",
+    "message": "La page que vous recherchez n'existe pas ou a peut-être été déplacée.",
+    "backToHome": "Retour à l'accueil"
+  },
+  "errorBoundary": {
+    "title": "Une erreur inattendue s'est produite",
+    "reload": "Recharger la page"
   }
 }

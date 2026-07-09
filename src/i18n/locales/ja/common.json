@@ -141,5 +141,14 @@
     "framesAdded": "フレームを追加しました",
     "objectsUploaded": "オブジェクトをアップロードしました",
     "projectImported": "プロジェクトをインポートしました！"
+  },
+  "notFound": {
+    "title": "ページが見つかりません",
+    "message": "お探しのページは存在しないか、移動した可能性があります。",
+    "backToHome": "ホームに戻る"
+  },
+  "errorBoundary": {
+    "title": "予期しないエラーが発生しました",
+    "reload": "ページを再読み込み"
   }
 }

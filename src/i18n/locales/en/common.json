@@ -93,5 +93,14 @@
     "framesAdded": "Frames added",
     "objectsUploaded": "Objects uploaded",
     "projectImported": "Project imported successfully!"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "message": "The page you're looking for doesn't exist or may have been moved.",
+    "backToHome": "Back to Home"
+  },
+  "errorBoundary": {
+    "title": "An unexpected error occurred",
+    "reload": "Reload page"
   }
 }

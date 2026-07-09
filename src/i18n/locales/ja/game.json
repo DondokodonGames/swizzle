@@ -47,5 +47,30 @@
       "copyFailed": "ゲームのコピーに失敗しました",
       "unknownError": "不明なエラー"
     }
+  },
+  "playGame": {
+    "hintExchanging": "決済を確認中...",
+    "hintValidating": "アクセスを確認中...",
+    "hintLoading": "読み込み中...",
+    "back": "戻る",
+    "limitReachedTitle": "プレイ回数の上限に達しました",
+    "limitReachedHint": "このチケットで遊べる回数をすべて使い切りました。",
+    "buyAgain": "もう一度購入する",
+    "paymentRequiredHint": "プレイするには決済が必要です",
+    "payToPlay": "¥{{price}} でプレイ",
+    "finishedTitle": "ゲーム終了！",
+    "playsRemaining": "あと {{count}} 回プレイできます",
+    "playAgain": "もう一度プレイ",
+    "ticketUsedUp": "このチケットのプレイ回数をすべて使いました",
+    "playsRemainingBadge": "残り {{count}} 回",
+    "errors": {
+      "gameIdMissing": "ゲームIDが指定されていません",
+      "gameNotFound": "ゲームが見つかりません",
+      "loadFailed": "読み込みに失敗しました",
+      "paymentConfirmFailed": "決済の確認に失敗しました。サポートにお問い合わせください。",
+      "accessValidationFailed": "アクセス検証に失敗しました",
+      "launchFailed": "ゲームの起動に失敗しました",
+      "runtimeError": "ゲームの実行中にエラーが発生しました"
+    }
   }
 }

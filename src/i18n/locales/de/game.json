@@ -47,5 +47,30 @@
       "unknownError": "Unbekannter Fehler"
     },
     "close": "Schließen"
+  },
+  "playGame": {
+    "hintExchanging": "Zahlung wird bestätigt...",
+    "hintValidating": "Zugriff wird geprüft...",
+    "hintLoading": "Lädt...",
+    "back": "Zurück",
+    "limitReachedTitle": "Spiellimit erreicht",
+    "limitReachedHint": "Du hast alle Spiele dieses Tickets aufgebraucht.",
+    "buyAgain": "Erneut kaufen",
+    "paymentRequiredHint": "Zum Spielen ist eine Zahlung erforderlich",
+    "payToPlay": "Für ¥{{price}} spielen",
+    "finishedTitle": "Spiel beendet!",
+    "playsRemaining": "Noch {{count}} Spiele übrig",
+    "playAgain": "Erneut spielen",
+    "ticketUsedUp": "Du hast alle Spiele dieses Tickets aufgebraucht",
+    "playsRemainingBadge": "Noch {{count}}",
+    "errors": {
+      "gameIdMissing": "Keine Spiel-ID angegeben",
+      "gameNotFound": "Spiel nicht gefunden",
+      "loadFailed": "Laden fehlgeschlagen",
+      "paymentConfirmFailed": "Zahlungsbestätigung fehlgeschlagen. Bitte kontaktiere den Support.",
+      "accessValidationFailed": "Zugriffsprüfung fehlgeschlagen",
+      "launchFailed": "Spielstart fehlgeschlagen",
+      "runtimeError": "Beim Ausführen des Spiels ist ein Fehler aufgetreten"
+    }
   }
 }

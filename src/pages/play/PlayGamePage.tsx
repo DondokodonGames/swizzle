@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabase';
 import EditorGameBridge from '../../services/editor/EditorGameBridge';
 import { GameProject } from '../../types/editor/GameProject';
@@ -129,6 +130,7 @@ const styles = {
 // =====================================================
 
 export function PlayGamePage() {
+  const { t } = useTranslation();
   const { gameId } = useParams<{ gameId: string }>();
   const [searchParams] = useSearchParams();
   const sessionId = searchParams.get('session_id');
@@ -166,7 +168,7 @@ export function PlayGamePage() {
   // =====================================================
   useEffect(() => {
     if (!gameId) {
-      setErrorMsg('ゲームIDが指定されていません');
+      setErrorMsg(t('playGame.errors.gameIdMissing'));
       setPageState('error');
       return;
     }
@@ -175,7 +177,7 @@ export function PlayGamePage() {
       const game = await GameLoadingService.loadPublishedGameWithMeta(gameId);
 
       if (!game) {
-        setErrorMsg('ゲームが見つかりません');
+        setErrorMsg(t('playGame.errors.gameNotFound'));
         setPageState('error');
         return;
       }
@@ -218,10 +220,10 @@ export function PlayGamePage() {
     };
 
     load().catch(() => {
-      setErrorMsg('読み込みに失敗しました');
+      setErrorMsg(t('playGame.errors.loadFailed'));
       setPageState('error');
     });
-  }, [gameId, sessionId, getStoredToken]);
+  }, [gameId, sessionId, getStoredToken, t]);
 
   // =====================================================
   // Step 2: session_id → token 引き換え
@@ -260,7 +262,7 @@ export function PlayGamePage() {
           }
           if (!cancelled) {
             console.error('Token exchange failed:', err);
-            setErrorMsg('決済の確認に失敗しました。サポートにお問い合わせください。');
+            setErrorMsg(t('playGame.errors.paymentConfirmFailed'));
             setPageState('error');
           }
           return;
@@ -270,7 +272,7 @@ export function PlayGamePage() {
 
     exchange();
     return () => { cancelled = true; };
-  }, [pageState, sessionId, gameId, TOKEN_KEY]);
+  }, [pageState, sessionId, gameId, TOKEN_KEY, t]);
 
   // =====================================================
   // Step 3: サーバーサイドトークン検証
@@ -302,7 +304,7 @@ export function PlayGamePage() {
             sessionStorage.removeItem(TOKEN_KEY);
             setPageState('payment_gate');
           } else {
-            setErrorMsg('アクセス検証に失敗しました');
+            setErrorMsg(t('playGame.errors.accessValidationFailed'));
             setPageState('error');
           }
           return;
@@ -330,7 +332,7 @@ export function PlayGamePage() {
 
     validate();
     return () => { cancelled = true; };
-  }, [pageState, gameId, getStoredToken, TOKEN_KEY]);
+  }, [pageState, gameId, getStoredToken, TOKEN_KEY, t]);
 
   // =====================================================
   // Step 4: ゲーム起動（rulesエンジンのみ）
@@ -357,7 +359,7 @@ export function PlayGamePage() {
       })
       .catch((err: unknown) => {
         console.error('Game launch error:', err);
-        setErrorMsg('ゲームの起動に失敗しました');
+        setErrorMsg(t('playGame.errors.launchFailed'));
         setPageState('error');
       });
 
@@ -374,9 +376,9 @@ export function PlayGamePage() {
 
   if (pageState === 'loading' || pageState === 'exchanging' || pageState === 'validating') {
     const hint =
-      pageState === 'exchanging' ? '決済を確認中...' :
-      pageState === 'validating' ? 'アクセスを確認中...' :
-      '読み込み中...';
+      pageState === 'exchanging' ? t('playGame.hintExchanging') :
+      pageState === 'validating' ? t('playGame.hintValidating') :
+      t('playGame.hintLoading');
     return (
       <div style={s.center}>
         <div style={s.spinner} />
@@ -389,7 +391,7 @@ export function PlayGamePage() {
     return (
       <div style={s.center}>
         <p style={{ color: '#f87171', fontSize: 16 }}>{errorMsg}</p>
-        <button style={s.btn} onClick={() => window.history.back()}>戻る</button>
+        <button style={s.btn} onClick={() => window.history.back()}>{t('playGame.back')}</button>
       </div>
     );
   }
@@ -398,11 +400,11 @@ export function PlayGamePage() {
     return (
       <div style={s.center}>
         <p style={{ fontSize: 40, marginBottom: 16 }}>🔒</p>
-        <p style={{ fontSize: 18, color: '#e2e8f0', marginBottom: 8 }}>プレイ回数の上限に達しました</p>
-        <p style={s.hint}>このチケットで遊べる回数をすべて使い切りました。</p>
+        <p style={{ fontSize: 18, color: '#e2e8f0', marginBottom: 8 }}>{t('playGame.limitReachedTitle')}</p>
+        <p style={s.hint}>{t('playGame.limitReachedHint')}</p>
         {config.payment_link_url && (
           <a href={config.payment_link_url} style={s.payBtn}>
-            もう一度購入する
+            {t('playGame.buyAgain')}
           </a>
         )}
       </div>
@@ -416,9 +418,9 @@ export function PlayGamePage() {
           <img src={thumbnailUrl} alt={gameTitle} style={s.thumbnail} />
         )}
         <h1 style={s.title}>{gameTitle}</h1>
-        <p style={s.hint}>プレイするには決済が必要です</p>
+        <p style={s.hint}>{t('playGame.paymentRequiredHint')}</p>
         <a href={config.payment_link_url!} style={s.payBtn}>
-          ¥{config.price_yen?.toLocaleString()} でプレイ
+          {t('playGame.payToPlay', { price: config.price_yen?.toLocaleString() })}
         </a>
       </div>
     );
@@ -428,23 +430,23 @@ export function PlayGamePage() {
     return (
       <div style={s.center}>
         <p style={{ fontSize: 40, marginBottom: 16 }}>🎉</p>
-        <p style={{ fontSize: 20, color: '#e2e8f0', marginBottom: 8 }}>ゲーム終了！</p>
+        <p style={{ fontSize: 20, color: '#e2e8f0', marginBottom: 8 }}>{t('playGame.finishedTitle')}</p>
         {validation && validation.plays_remaining > 0 && (
-          <p style={s.hint}>あと {validation.plays_remaining} 回プレイできます</p>
+          <p style={s.hint}>{t('playGame.playsRemaining', { count: validation.plays_remaining })}</p>
         )}
         {validation && validation.plays_remaining > 0 ? (
           <button
             style={{ ...s.btn, marginTop: 24 }}
             onClick={() => setPageState('validating')}
           >
-            もう一度プレイ
+            {t('playGame.playAgain')}
           </button>
         ) : (
           <>
-            <p style={s.hint}>このチケットのプレイ回数をすべて使いました</p>
+            <p style={s.hint}>{t('playGame.ticketUsedUp')}</p>
             {config.payment_link_url && (
               <a href={config.payment_link_url} style={{ ...s.payBtn, marginTop: 24 }}>
-                もう一度購入する
+                {t('playGame.buyAgain')}
               </a>
             )}
           </>
@@ -466,13 +468,13 @@ export function PlayGamePage() {
           }}
           onError={(msg) => {
             console.error('[CodeGame]', msg);
-            setErrorMsg('ゲームの実行中にエラーが発生しました');
+            setErrorMsg(t('playGame.errors.runtimeError'));
             setPageState('error');
           }}
         />
         {validation && (
           <div style={s.playsBadge}>
-            残り {validation.plays_remaining} 回
+            {t('playGame.playsRemainingBadge', { count: validation.plays_remaining })}
           </div>
         )}
       </div>
@@ -485,7 +487,7 @@ export function PlayGamePage() {
       <div ref={canvasRef} style={s.canvas} />
       {validation && (
         <div style={s.playsBadge}>
-          残り {validation.plays_remaining} 回
+          {t('playGame.playsRemainingBadge', { count: validation.plays_remaining })}
         </div>
       )}
     </div>

@@ -47,5 +47,30 @@
       "unknownError": "Erro desconhecido"
     },
     "close": "Fechar"
+  },
+  "playGame": {
+    "hintExchanging": "Confirmando pagamento...",
+    "hintValidating": "Verificando acesso...",
+    "hintLoading": "Carregando...",
+    "back": "Voltar",
+    "limitReachedTitle": "Limite de partidas atingido",
+    "limitReachedHint": "Você usou todas as partidas deste ticket.",
+    "buyAgain": "Comprar novamente",
+    "paymentRequiredHint": "É necessário pagamento para jogar",
+    "payToPlay": "Jogar por ¥{{price}}",
+    "finishedTitle": "Jogo terminado!",
+    "playsRemaining": "Restam {{count}} partidas",
+    "playAgain": "Jogar novamente",
+    "ticketUsedUp": "Você usou todas as partidas deste ticket",
+    "playsRemainingBadge": "{{count}} restantes",
+    "errors": {
+      "gameIdMissing": "Nenhum ID de jogo especificado",
+      "gameNotFound": "Jogo não encontrado",
+      "loadFailed": "Falha ao carregar",
+      "paymentConfirmFailed": "Falha ao confirmar o pagamento. Entre em contato com o suporte.",
+      "accessValidationFailed": "Falha ao validar o acesso",
+      "launchFailed": "Falha ao iniciar o jogo",
+      "runtimeError": "Ocorreu um erro ao executar o jogo"
+    }
   }
 }

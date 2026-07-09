@@ -93,5 +93,14 @@
     "framesAdded": "Bilder hinzugefügt",
     "objectsUploaded": "Objekte hochgeladen",
     "projectImported": "Projekt erfolgreich importiert!"
+  },
+  "notFound": {
+    "title": "Seite nicht gefunden",
+    "message": "Die gesuchte Seite existiert nicht oder wurde verschoben.",
+    "backToHome": "Zurück zur Startseite"
+  },
+  "errorBoundary": {
+    "title": "Ein unerwarteter Fehler ist aufgetreten",
+    "reload": "Seite neu laden"
   }
 }
