@@ -5,6 +5,17 @@
   "framework": "vite",
   "rewrites": [
     {
+      "source": "/play/:gameId",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(facebookexternalhit|Facebot|Twitterbot|Slackbot|Discordbot|LinkedInBot|WhatsApp|TelegramBot|Line\\/|Pinterest|redditbot|Googlebot|bingbot).*"
+        }
+      ],
+      "destination": "/api/og/:gameId"
+    },
+    {
       "source": "/((?!assets/).*)",
       "destination": "/index.html"
     }

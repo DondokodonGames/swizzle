@@ -150,7 +150,7 @@
 - [ ] P1-3 収益アナリティクス(Opus/S)
 - [ ] P1-4 返金・チャージバック(Opus/S-M)
 - [ ] P1-5 管理ダッシュボード(Opus/L)
-- [ ] P2-1 動的OGP(Opus/M)
+- [x] P2-1 動的OGP(Opus/M)
 - [x] P2-2 robots+sitemap(Sonnet/S)
 - [ ] P2-3 PWA(Sonnet/M)
 - [ ] P2-4 メール通知(Opus/M)
