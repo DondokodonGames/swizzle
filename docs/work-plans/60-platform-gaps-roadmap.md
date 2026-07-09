@@ -143,7 +143,7 @@
 - [x] P0-2 退会フロー(Opus/M)
 - [x] P0-3 通報・ブロック(Opus/M) — 通報のみ実装。ブロック(ユーザー間)は対象外
 - [x] P0-4 Sentry(Opus/S-M)
-- [ ] P0-5 スキーマドリフト+バックアップ(Opus+人間/M)
+- [x] P0-5 スキーマドリフト(Opus) — migration backfillは完了・検証済み。バックアップ/PITR方針は`docs/OPERATIONS.md`にTODOとして人間の判断待ち
 - [x] P0-6 404+課金画面i18n(Sonnet/S)
 - [ ] P1-1 Stripe webhook検証(人間/S・即時)
 - [ ] P1-2 AdSenseスロット(人間/S)

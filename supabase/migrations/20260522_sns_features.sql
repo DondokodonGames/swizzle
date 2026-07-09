@@ -4,7 +4,7 @@ ALTER TABLE user_games
 
 CREATE TABLE marketing_post_log (
   id            uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  game_id       uuid REFERENCES user_games(id) ON DELETE SET NULL,
+  game_id       text REFERENCES user_games(id) ON DELETE SET NULL,
   platform      text NOT NULL CHECK (platform IN ('twitter', 'instagram', 'tiktok')),
   success       boolean NOT NULL,
   post_id       text,

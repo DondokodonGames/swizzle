@@ -1,6 +1,6 @@
 CREATE TABLE nfc_spots (
   id          text PRIMARY KEY,
-  game_id     uuid REFERENCES user_games(id) ON DELETE SET NULL,
+  game_id     text REFERENCES user_games(id) ON DELETE SET NULL,
   name        text,
   created_by  uuid REFERENCES profiles(id),
   created_at  timestamptz DEFAULT now(),

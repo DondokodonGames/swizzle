@@ -57,10 +57,14 @@ export interface Database {
         }
       }
 
-      // ユーザー作成ゲームテーブル  
+      // ユーザー作成ゲームテーブル
+      // 注: この型は不完全（category/review_status/game_type/mechanic/theme/trend_source等、
+      // 後続migrationで追加された列が未反映）。WP60 P0-5 で id が UUID ではなく TEXT である
+      // ことが判明したため修正した（根拠: supabase/migrations/20260101_schema_drift_backfill.sql
+      // のコメント参照）。全列の完全な反映は別タスク。
       user_games: {
         Row: {
-          id: string                          // UUID主キー
+          id: string                          // TEXT主キー（UUID形式とは限らない）
           creator_id: string                  // 作成者ID（profiles.id参照）
           title: string                       // ゲームタイトル
           description: string | null          // ゲーム説明
@@ -71,6 +75,8 @@ export interface Database {
           is_featured: boolean                // 注目ゲームフラグ
           play_count: number                  // プレイ回数
           like_count: number                  // いいね数
+          ai_generated: boolean               // AI一括生成ゲームかどうか
+          ai_quality_score: number | null      // AI品質スコア
           created_at: string                  // 作成日時
           updated_at: string                  // 更新日時
         }
@@ -86,6 +92,8 @@ export interface Database {
           is_featured?: boolean
           play_count?: number
           like_count?: number
+          ai_generated?: boolean
+          ai_quality_score?: number | null
           created_at?: string
           updated_at?: string
         }
@@ -101,6 +109,8 @@ export interface Database {
           is_featured?: boolean
           play_count?: number
           like_count?: number
+          ai_generated?: boolean
+          ai_quality_score?: number | null
           created_at?: string
           updated_at?: string
         }
@@ -258,37 +268,6 @@ export interface Database {
           playlist_id?: string
           game_id?: string
           order_index?: number
-          created_at?: string
-        }
-      }
-
-      // ゲームスコア記録テーブル（将来実装用）
-      game_scores: {
-        Row: {
-          id: string                          // UUID主キー
-          user_id: string                     // ユーザーID（profiles.id参照）
-          game_id: string                     // ゲームID（user_games.id参照）
-          score: number                       // スコア
-          completed: boolean                  // クリア状態
-          play_time_seconds: number           // プレイ時間（秒）
-          created_at: string                  // 記録日時
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          game_id: string
-          score: number
-          completed?: boolean
-          play_time_seconds: number
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          game_id?: string
-          score?: number
-          completed?: boolean
-          play_time_seconds?: number
           created_at?: string
         }
       }
@@ -536,9 +515,6 @@ export type PlaylistUpdate = Database['public']['Tables']['playlists']['Update']
 
 export type PlaylistGame = Database['public']['Tables']['playlist_games']['Row']
 export type PlaylistGameInsert = Database['public']['Tables']['playlist_games']['Insert']
-
-export type GameScore = Database['public']['Tables']['game_scores']['Row']
-export type GameScoreInsert = Database['public']['Tables']['game_scores']['Insert']
 
 export type GameShare = Database['public']['Tables']['game_shares']['Row']
 export type GameShareInsert = Database['public']['Tables']['game_shares']['Insert']
