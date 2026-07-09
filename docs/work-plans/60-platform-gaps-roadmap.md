@@ -151,7 +151,7 @@
 - [ ] P1-4 返金・チャージバック(Opus/S-M)
 - [ ] P1-5 管理ダッシュボード(Opus/L)
 - [ ] P2-1 動的OGP(Opus/M)
-- [ ] P2-2 robots+sitemap(Sonnet/S)
+- [x] P2-2 robots+sitemap(Sonnet/S)
 - [ ] P2-3 PWA(Sonnet/M)
 - [ ] P2-4 メール通知(Opus/M)
 - [ ] P2-5 オンボーディング(Sonnet/S-M)
