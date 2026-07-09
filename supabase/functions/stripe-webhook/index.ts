@@ -227,6 +227,37 @@ serve(async (req) => {
 });
 
 /**
+ * 収益アナリティクスイベントを記録（WP60 P1-3）
+ * クライアント側計測が届かない経路（NFC/QR決済など）を可視化するため、
+ * webhook 成功時にサーバー側から直接 analytics_events へ記録する。
+ * 計測の失敗は決済処理そのものを失敗させない（ベストエフォート）。
+ */
+async function logRevenueEvent(
+  supabase: ReturnType<typeof createClient>,
+  params: {
+    userId?: string | null;
+    gameId?: string | null;
+    amountYen: number;
+    method: 'nfc' | 'wallet' | 'subscription';
+  }
+): Promise<void> {
+  try {
+    const { error } = await supabase.from('analytics_events').insert({
+      user_id: params.userId ?? null,
+      session_id: 'server:stripe-webhook',
+      event_type: 'purchase',
+      game_id: params.gameId ?? null,
+      properties: { amount_yen: params.amountYen, method: params.method },
+    });
+    if (error) {
+      console.error('[Analytics] Failed to log purchase event (non-fatal):', error);
+    }
+  } catch (err) {
+    console.error('[Analytics] Failed to log purchase event (non-fatal):', err);
+  }
+}
+
+/**
  * NFC/QR ゲーム課金完了時の処理
  * Payment Link の metadata.game_payment === 'true' のセッションが対象
  */
@@ -268,6 +299,8 @@ async function handleGamePaymentCompleted(
   }
 
   console.log(`[GamePayment] Access token issued: game=${gameId} amount=¥${amountYen}`);
+
+  await logRevenueEvent(supabase, { gameId, amountYen, method: 'nfc' });
 }
 
 /**
@@ -367,6 +400,10 @@ async function handleTopUpCompleted(
   }
 
   console.log(`TopUp completed: user=${userId} amount=${amountYen}¥`);
+
+  if (!existing) {
+    await logRevenueEvent(supabase, { userId, amountYen, method: 'wallet' });
+  }
 }
 
 /**
@@ -425,6 +462,12 @@ async function handleCheckoutCompleted(
   }
 
   console.log('Checkout completed for user:', userId);
+
+  await logRevenueEvent(supabase, {
+    userId,
+    amountYen: session.amount_total ?? 0,
+    method: 'subscription',
+  });
 }
 
 /**

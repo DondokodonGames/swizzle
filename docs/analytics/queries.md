@@ -22,6 +22,7 @@
 | `topup_open` | TopUpButton | `amountYen`, `games` |
 | `topup_complete` | ProfilePage（`?topup=success`） | `status` |
 | `subscribe` | SubscriptionSuccess | `status` |
+| `purchase` | `stripe-webhook`（サーバー側、決済成功時） | `amount_yen`, `method`(`nfc`/`wallet`/`subscription`), `game_id`(nfcのみ) |
 
 ---
 
@@ -217,4 +218,39 @@ SELECT
         / NULLIF(COUNT(*) FILTER (WHERE event_type = 'topup_open'), 0), 1) AS topup_conv_pct
 FROM public.analytics_events
 WHERE created_at >= NOW() - INTERVAL '30 days';
+```
+
+---
+
+## 7. ゲーム別売上ランキング（WP60 P1-3）
+
+`purchase` イベント(`stripe-webhook` から直接記録。`properties.method` = `nfc` | `wallet` | `subscription`)。
+NFC/QR課金は `game_id` が付くが、ウォレットチャージ・サブスクは特定ゲームに紐付かないため `game_id IS NULL` になる。
+
+```sql
+-- ゲーム別 売上ランキング（直近 30 日、NFC/QR課金のみ = game_id が付くイベント）
+SELECT
+  game_id,
+  COUNT(*)                                    AS purchase_count,
+  SUM((properties->>'amount_yen')::numeric)   AS revenue_yen
+FROM public.analytics_events
+WHERE event_type = 'purchase'
+  AND game_id IS NOT NULL
+  AND created_at >= NOW() - INTERVAL '30 days'
+GROUP BY game_id
+ORDER BY revenue_yen DESC
+LIMIT 50;
+```
+
+```sql
+-- 収益手段別の内訳（NFC / ウォレットチャージ / サブスク、直近30日）
+SELECT
+  properties->>'method'                       AS method,
+  COUNT(*)                                    AS purchase_count,
+  SUM((properties->>'amount_yen')::numeric)   AS revenue_yen
+FROM public.analytics_events
+WHERE event_type = 'purchase'
+  AND created_at >= NOW() - INTERVAL '30 days'
+GROUP BY 1
+ORDER BY revenue_yen DESC;
 ```

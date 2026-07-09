@@ -25,7 +25,8 @@ export type AnalyticsEventType =
   | 'signup'
   | 'topup_open'
   | 'topup_complete'
-  | 'subscribe';
+  | 'subscribe'
+  | 'purchase';
 
 interface QueuedEvent {
   session_id: string;
