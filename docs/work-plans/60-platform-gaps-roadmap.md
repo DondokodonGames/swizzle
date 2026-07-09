@@ -148,7 +148,7 @@
 - [ ] P1-1 Stripe webhook検証(人間/S・即時)
 - [ ] P1-2 AdSenseスロット(人間/S)
 - [x] P1-3 収益アナリティクス(Opus/S)
-- [ ] P1-4 返金・チャージバック(Opus/S-M)
+- [x] P1-4 返金・チャージバック(Opus/S-M)
 - [ ] P1-5 管理ダッシュボード(Opus/L)
 - [x] P2-1 動的OGP(Opus/M)
 - [x] P2-2 robots+sitemap(Sonnet/S)

@@ -159,6 +159,21 @@ serve(async (req) => {
           break;
         }
 
+        case 'charge.refunded': {
+          const charge = event.data.object as Stripe.Charge;
+          customerId = charge.customer as string;
+          const result = await handleChargeRefunded(supabase, stripe, charge);
+          userId = result?.userId;
+          break;
+        }
+
+        case 'charge.dispute.created': {
+          const dispute = event.data.object as Stripe.Dispute;
+          const result = await handleChargeDisputeCreated(supabase, stripe, dispute);
+          userId = result?.userId;
+          break;
+        }
+
         default:
           console.log('Unhandled event type:', event.type);
       }
@@ -667,4 +682,138 @@ async function handlePaymentFailed(
 
   console.log('Payment failed for user:', existingSub.user_id);
   return { userId: existingSub.user_id };
+}
+
+/**
+ * 返金時の処理（WP60 P1-4）
+ * NFC/QRゲーム課金の one_time_access トークンを失効させ、
+ * ウォレットチャージは残高を巻き戻し、payments テーブルを refunded に更新する。
+ * 二重配信対策: credit_purchases は status !== 'completed' なら巻き戻しをスキップする。
+ */
+async function handleChargeRefunded(
+  supabase: ReturnType<typeof createClient>,
+  stripe: Stripe,
+  charge: Stripe.Charge
+): Promise<{ userId?: string }> {
+  const paymentIntentId = charge.payment_intent as string | null;
+  if (!paymentIntentId) {
+    console.log('[Refund] No payment_intent on charge, skipping');
+    return {};
+  }
+
+  let userId: string | undefined;
+
+  // 1. NFC/QR ゲーム課金: one_time_access トークンを即時失効
+  try {
+    const sessions = await stripe.checkout.sessions.list({ payment_intent: paymentIntentId, limit: 1 });
+    const session = sessions.data[0];
+    if (session) {
+      const { error } = await supabase
+        .from('one_time_access')
+        .update({ expires_at: new Date(0).toISOString() })
+        .eq('stripe_session_id', session.id);
+      if (error) {
+        console.error('[Refund] Failed to revoke one_time_access:', error);
+      } else {
+        console.log(`[Refund] Revoked access token for session=${session.id}`);
+      }
+    }
+  } catch (err) {
+    console.error('[Refund] Failed to look up checkout session for refund:', err);
+  }
+
+  // 2. ウォレットチャージ: 残高を巻き戻し
+  const { data: purchase, error: purchaseError } = await supabase
+    .from('credit_purchases')
+    .select('id, user_id, amount_yen, status')
+    .eq('stripe_payment_intent_id', paymentIntentId)
+    .maybeSingle();
+
+  if (purchaseError) {
+    console.error('[Refund] Failed to look up credit_purchase:', purchaseError);
+  } else if (purchase && purchase.status === 'completed') {
+    userId = purchase.user_id;
+    const { error: walletError } = await supabase.rpc('add_wallet_balance', {
+      p_user_id: purchase.user_id,
+      p_amount_yen: -purchase.amount_yen,
+    });
+    if (walletError) {
+      console.error('[Refund] Failed to reverse wallet balance:', walletError);
+      throw new WebhookError(`Database error: ${walletError.message}`, true);
+    }
+    const { error: statusError } = await supabase
+      .from('credit_purchases')
+      .update({ status: 'refunded' })
+      .eq('id', purchase.id);
+    if (statusError) {
+      console.error('[Refund] Failed to mark credit_purchase refunded:', statusError);
+    }
+    console.log(`[Refund] Reversed wallet balance for user=${purchase.user_id} amount=${purchase.amount_yen}`);
+  }
+
+  // 3. payments 履歴テーブルを refunded に更新
+  const { error: paymentUpdateError } = await supabase
+    .from('payments')
+    .update({ status: 'refunded' })
+    .eq('stripe_payment_intent_id', paymentIntentId);
+  if (paymentUpdateError) {
+    console.error('[Refund] Failed to update payments table (non-fatal):', paymentUpdateError);
+  }
+
+  return { userId };
+}
+
+/**
+ * チャージバック（異議申し立て）発生時の処理（WP60 P1-4）
+ * 解決を待たず即座に one_time_access を失効させ、payments を disputed に更新する。
+ * ウォレット残高は資金が実際に取り戻されたか未確定のため、ここでは巻き戻さない
+ * （運用者が charge.dispute.closed の結果を見て手動判断する）。
+ */
+async function handleChargeDisputeCreated(
+  supabase: ReturnType<typeof createClient>,
+  stripe: Stripe,
+  dispute: Stripe.Dispute
+): Promise<{ userId?: string }> {
+  const paymentIntentId = dispute.payment_intent as string | null;
+  if (!paymentIntentId) {
+    console.log('[Dispute] No payment_intent on dispute, skipping');
+    return {};
+  }
+
+  try {
+    const sessions = await stripe.checkout.sessions.list({ payment_intent: paymentIntentId, limit: 1 });
+    const session = sessions.data[0];
+    if (session) {
+      const { error } = await supabase
+        .from('one_time_access')
+        .update({ expires_at: new Date(0).toISOString() })
+        .eq('stripe_session_id', session.id);
+      if (error) {
+        console.error('[Dispute] Failed to revoke one_time_access:', error);
+      } else {
+        console.log(`[Dispute] Revoked access token for session=${session.id}`);
+      }
+    }
+  } catch (err) {
+    console.error('[Dispute] Failed to look up checkout session for dispute:', err);
+  }
+
+  let userId: string | undefined;
+  const { data: purchase } = await supabase
+    .from('credit_purchases')
+    .select('user_id')
+    .eq('stripe_payment_intent_id', paymentIntentId)
+    .maybeSingle();
+  if (purchase) userId = purchase.user_id;
+
+  const { error: paymentUpdateError } = await supabase
+    .from('payments')
+    .update({ status: 'disputed' })
+    .eq('stripe_payment_intent_id', paymentIntentId);
+  if (paymentUpdateError) {
+    console.error('[Dispute] Failed to update payments table (non-fatal):', paymentUpdateError);
+  }
+
+  console.warn(`[Dispute] Chargeback created for payment_intent=${paymentIntentId}`);
+  return { userId };
 }

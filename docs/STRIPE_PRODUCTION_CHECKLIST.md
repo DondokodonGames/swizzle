@@ -40,6 +40,8 @@
   - `customer.subscription.deleted`
   - `invoice.payment_succeeded`
   - `invoice.payment_failed`
+  - `charge.refunded` (WP60 P1-4: 返金時に one_time_access / ウォレット残高 / payments を失効・巻き戻し)
+  - `charge.dispute.created` (WP60 P1-4: チャージバック発生時に one_time_access を即時失効)
 
 - [ ] **Webhook シークレットの取得**
   - `whsec_*`
