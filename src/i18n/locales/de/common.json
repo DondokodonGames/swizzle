@@ -102,5 +102,16 @@
   "errorBoundary": {
     "title": "Ein unerwarteter Fehler ist aufgetreten",
     "reload": "Seite neu laden"
+  },
+  "onboarding": {
+    "skip": "Überspringen",
+    "next": "Weiter",
+    "start": "Los geht's!",
+    "slide1Title": "Zum Spielen tippen",
+    "slide1Body": "Jedes Spiel dauert nur 5–30 Sekunden. Einfach antippen und loslegen.",
+    "slide2Title": "Wischen für das nächste Spiel",
+    "slide2Body": "Wische nach oben, um jederzeit zum nächsten Spiel zu wechseln.",
+    "slide3Title": "Du kannst auch selbst eins erstellen",
+    "slide3Body": "Baue dein eigenes Spiel in Minuten mit dem Editor — ohne Programmierkenntnisse."
   }
 }

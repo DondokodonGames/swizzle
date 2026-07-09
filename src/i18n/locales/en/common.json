@@ -102,5 +102,16 @@
   "errorBoundary": {
     "title": "An unexpected error occurred",
     "reload": "Reload page"
+  },
+  "onboarding": {
+    "skip": "Skip",
+    "next": "Next",
+    "start": "Let's go!",
+    "slide1Title": "Tap to play",
+    "slide1Body": "Every game is a quick 5-30 second round. Just tap to jump in.",
+    "slide2Title": "Swipe for the next one",
+    "slide2Body": "Swipe up to move on to the next game whenever you're ready.",
+    "slide3Title": "You can make one too",
+    "slide3Body": "Build your own game in minutes with the editor — no coding required."
   }
 }

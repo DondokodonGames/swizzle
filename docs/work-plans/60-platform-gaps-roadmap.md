@@ -154,7 +154,7 @@
 - [x] P2-2 robots+sitemap(Sonnet/S)
 - [x] P2-3 PWA(Sonnet/M)
 - [ ] P2-4 メール通知(Opus/M)
-- [ ] P2-5 オンボーディング(Sonnet/S-M)
+- [x] P2-5 オンボーディング(Sonnet/S-M)
 - [ ] P3(上表、随時)
 
 ## 全項目共通の受け入れ基準

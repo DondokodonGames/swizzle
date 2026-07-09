@@ -6,6 +6,7 @@ import './styles/theme.css';
 
 import { EditorGameBridge } from './services/editor/EditorGameBridge';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
+import { OnboardingOverlay, hasSeenOnboarding } from './components/onboarding/OnboardingOverlay';
 
 // ゲーム関連コンポーネントの遅延読み込み（問題30・31対応）
 const GameSequence = React.lazy(() => import('./components/GameSequence'));
@@ -303,7 +304,8 @@ const SplashScreen: React.FC = () => {
 function MainApp() {
   // ✅ スプラッシュ画面の表示状態（1.5秒間表示）
   const [showSplash, setShowSplash] = useState(true);
-  
+  const [showOnboarding, setShowOnboarding] = useState(() => !hasSeenOnboarding());
+
   const [mode, setMode] = useState<AppMode>('sequence');
   const [editorProjectId, setEditorProjectId] = useState<string | undefined>(undefined);
   const [_selectedFeedGame, setSelectedFeedGame] = useState<any>(null);
@@ -458,6 +460,9 @@ function MainApp() {
             />
           </Suspense>
         </ErrorBoundary>
+        {showOnboarding && (
+          <OnboardingOverlay onDone={() => setShowOnboarding(false)} />
+        )}
         {/* グローバルAuthModal */}
         {AuthModal && (
           <Suspense fallback={null}>

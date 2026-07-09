@@ -102,5 +102,16 @@
   "errorBoundary": {
     "title": "Une erreur inattendue s'est produite",
     "reload": "Recharger la page"
+  },
+  "onboarding": {
+    "skip": "Passer",
+    "next": "Suivant",
+    "start": "C'est parti !",
+    "slide1Title": "Touchez pour jouer",
+    "slide1Body": "Chaque jeu ne dure que 5 à 30 secondes. Touchez simplement pour commencer.",
+    "slide2Title": "Glissez pour passer au suivant",
+    "slide2Body": "Glissez vers le haut pour passer au jeu suivant quand vous le souhaitez.",
+    "slide3Title": "Vous pouvez aussi en créer un",
+    "slide3Body": "Créez votre propre jeu en quelques minutes avec l'éditeur, sans coder."
   }
 }

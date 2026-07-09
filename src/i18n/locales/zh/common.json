@@ -102,5 +102,16 @@
   "errorBoundary": {
     "title": "发生意外错误",
     "reload": "重新加载页面"
+  },
+  "onboarding": {
+    "skip": "跳过",
+    "next": "下一步",
+    "start": "开始吧！",
+    "slide1Title": "点击即可开玩",
+    "slide1Body": "每个游戏只需5-30秒。点一下就能立即开始。",
+    "slide2Title": "上滑切换下一个",
+    "slide2Body": "随时向上滑动即可切换到下一个游戏。",
+    "slide3Title": "你也可以自己做一个",
+    "slide3Body": "使用编辑器，几分钟内即可创建属于你自己的游戏，无需编程。"
   }
 }
