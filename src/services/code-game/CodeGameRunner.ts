@@ -1,6 +1,7 @@
 import { buildIframeHtml, IframeAsset } from './iframeTemplate';
 import { BestScoreStore } from './BestScoreStore';
 import { CodeGameProject, CodeGameAsset, CodeGameAudioAsset, GameEndStats } from '../../types/code-game/SwizzleGameAPI';
+import { captureError } from '../monitoring/Sentry';
 
 export type GameResult = {
   result: 'success' | 'failure';
@@ -115,6 +116,7 @@ export class CodeGameRunner {
 
       if (msg.type === 'ERROR') {
         console.error('[CodeGame]', msg.message);
+        captureError(new Error(`[CodeGame] ${msg.message}`), { gameId });
         this.onError?.(msg.message);
       }
     };

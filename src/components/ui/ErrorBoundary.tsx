@@ -1,4 +1,5 @@
 import React from 'react';
+import { captureError } from '../../services/monitoring/Sentry';
 
 interface Props {
   children: React.ReactNode;
@@ -25,6 +26,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
   componentDidCatch(error: unknown, info: React.ErrorInfo) {
     console.error('[ErrorBoundary]', error, info.componentStack);
+    captureError(error, { componentStack: info.componentStack });
   }
 
   render() {

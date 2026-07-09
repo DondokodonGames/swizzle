@@ -10,6 +10,7 @@ interface ImportMetaEnv {
   readonly VITE_ADSENSE_SLOT_GAME_BRIDGE: string;
   readonly VITE_ADSENSE_SLOT_GAME_LIST: string;
   readonly VITE_ADSENSE_SLOT_EDITOR: string;
+  readonly VITE_SENTRY_DSN?: string;
 }
 
 interface ImportMeta {

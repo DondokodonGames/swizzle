@@ -142,7 +142,7 @@
 - [ ] P0-1 特商法表記(人間+Sonnet/S)
 - [ ] P0-2 退会フロー(Opus/M)
 - [ ] P0-3 通報・ブロック(Opus/M)
-- [ ] P0-4 Sentry(Opus/S-M)
+- [x] P0-4 Sentry(Opus/S-M)
 - [ ] P0-5 スキーマドリフト+バックアップ(Opus+人間/M)
 - [ ] P0-6 404+課金画面i18n(Sonnet/S)
 - [ ] P1-1 Stripe webhook検証(人間/S・即時)

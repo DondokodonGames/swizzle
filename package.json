@@ -81,6 +81,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.91.1",
+    "@sentry/react": "^10.64.0",
     "@stripe/stripe-js": "^8.4.0",
     "@supabase/supabase-js": "^2.104.1",
     "@tabler/icons-react": "^3.34.1",
