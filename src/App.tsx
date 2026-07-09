@@ -43,6 +43,8 @@ const NfcSpotManagerPage = React.lazy(() =>
   import('./pages/admin/NfcSpotManagerPage').then(module => ({ default: module.NfcSpotManagerPage }))
 );
 const GameReportsPage = React.lazy(() => import('./pages/admin/GameReportsPage'));
+const AdminDashboardPage = React.lazy(() => import('./pages/admin/AdminDashboardPage'));
+const AdminUsersPage = React.lazy(() => import('./pages/admin/AdminUsersPage'));
 
 // マネタイズページの遅延読み込み
 const Pricing = React.lazy(() =>
@@ -833,6 +835,20 @@ function App() {
           <Route path="/admin/game-reports" element={
             <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>読み込み中...</div>}>
               <GameReportsPage />
+            </Suspense>
+          } />
+
+          {/* 管理ダッシュボード */}
+          <Route path="/admin/dashboard" element={
+            <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>読み込み中...</div>}>
+              <AdminDashboardPage />
+            </Suspense>
+          } />
+
+          {/* ユーザー管理 */}
+          <Route path="/admin/users" element={
+            <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>読み込み中...</div>}>
+              <AdminUsersPage />
             </Suspense>
           } />
 
