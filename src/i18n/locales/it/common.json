@@ -113,5 +113,18 @@
     "slide2Body": "Scorri verso l'alto per passare al gioco successivo quando vuoi.",
     "slide3Title": "Puoi crearne uno anche tu",
     "slide3Body": "Crea il tuo gioco in pochi minuti con l'editor, senza scrivere codice."
+  },
+  "report": {
+    "trigger": "Segnala questo gioco",
+    "title": "Segnala questo gioco",
+    "reasons": {
+      "inappropriate": "Contenuto inappropriato",
+      "copyright": "Violazione del copyright",
+      "spam": "Spam o ingannevole",
+      "other": "Altro"
+    },
+    "detailPlaceholder": "Aggiungi dettagli (opzionale)",
+    "submit": "Invia segnalazione",
+    "thanks": "Grazie per la segnalazione. Il nostro team la esaminerà."
   }
 }

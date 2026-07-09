@@ -113,5 +113,18 @@
     "slide2Body": "Wische nach oben, um jederzeit zum nächsten Spiel zu wechseln.",
     "slide3Title": "Du kannst auch selbst eins erstellen",
     "slide3Body": "Baue dein eigenes Spiel in Minuten mit dem Editor — ohne Programmierkenntnisse."
+  },
+  "report": {
+    "trigger": "Dieses Spiel melden",
+    "title": "Dieses Spiel melden",
+    "reasons": {
+      "inappropriate": "Unangemessener Inhalt",
+      "copyright": "Urheberrechtsverletzung",
+      "spam": "Spam oder irreführend",
+      "other": "Sonstiges"
+    },
+    "detailPlaceholder": "Details hinzufügen (optional)",
+    "submit": "Meldung senden",
+    "thanks": "Danke für deine Meldung. Unser Team wird sie prüfen."
   }
 }

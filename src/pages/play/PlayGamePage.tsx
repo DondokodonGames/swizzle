@@ -8,6 +8,7 @@ import { GameLoadingService } from '../../services/GameLoadingService';
 import { track } from '../../services/analytics/Analytics';
 import { CodeGamePlayer } from '../../components/code-game/CodeGamePlayer';
 import { CodeGameProject } from '../../types/code-game/SwizzleGameAPI';
+import { ReportGameButton } from '../../components/report/ReportGameButton';
 
 // =====================================================
 // 型定義
@@ -422,6 +423,7 @@ export function PlayGamePage() {
         <a href={config.payment_link_url!} style={s.payBtn}>
           {t('playGame.payToPlay', { price: config.price_yen?.toLocaleString() })}
         </a>
+        {gameId && <div style={{ marginTop: 24 }}><ReportGameButton gameId={gameId} /></div>}
       </div>
     );
   }
@@ -451,6 +453,7 @@ export function PlayGamePage() {
             )}
           </>
         )}
+        {gameId && <div style={{ marginTop: 24 }}><ReportGameButton gameId={gameId} /></div>}
       </div>
     );
   }

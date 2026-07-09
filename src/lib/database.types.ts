@@ -419,6 +419,43 @@ export interface Database {
           updated_at?: string
         }
       }
+
+      // UGC通報テーブル（WP60 P0-3）
+      game_reports: {
+        Row: {
+          id: string
+          game_id: string
+          reporter_id: string | null
+          reason: string
+          detail: string | null
+          status: 'open' | 'resolved' | 'dismissed'
+          created_at: string
+          resolved_at: string | null
+          resolved_by: string | null
+        }
+        Insert: {
+          id?: string
+          game_id: string
+          reporter_id?: string | null
+          reason: string
+          detail?: string | null
+          status?: 'open' | 'resolved' | 'dismissed'
+          created_at?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+        }
+        Update: {
+          id?: string
+          game_id?: string
+          reporter_id?: string | null
+          reason?: string
+          detail?: string | null
+          status?: 'open' | 'resolved' | 'dismissed'
+          created_at?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+        }
+      }
     }
     Views: {
       [_ in never]: never

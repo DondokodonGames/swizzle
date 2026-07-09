@@ -113,5 +113,18 @@
     "slide2Body": "위로 스와이프하면 언제든지 다음 게임으로 넘어갈 수 있어요.",
     "slide3Title": "직접 만들 수도 있어요",
     "slide3Body": "에디터를 사용하면 코딩 없이 몇 분 만에 나만의 게임을 만들 수 있어요."
+  },
+  "report": {
+    "trigger": "이 게임 신고하기",
+    "title": "이 게임 신고하기",
+    "reasons": {
+      "inappropriate": "부적절한 콘텐츠",
+      "copyright": "저작권 침해",
+      "spam": "스팸 또는 오해의 소지가 있는 내용",
+      "other": "기타"
+    },
+    "detailPlaceholder": "세부 내용 추가 (선택)",
+    "submit": "신고 제출",
+    "thanks": "신고해 주셔서 감사합니다. 운영팀이 검토할 예정입니다."
   }
 }

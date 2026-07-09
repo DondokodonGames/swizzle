@@ -113,5 +113,18 @@
     "slide2Body": "随时向上滑动即可切换到下一个游戏。",
     "slide3Title": "你也可以自己做一个",
     "slide3Body": "使用编辑器，几分钟内即可创建属于你自己的游戏，无需编程。"
+  },
+  "report": {
+    "trigger": "举报此游戏",
+    "title": "举报此游戏",
+    "reasons": {
+      "inappropriate": "内容不当",
+      "copyright": "侵犯版权",
+      "spam": "垃圾信息或误导性内容",
+      "other": "其他"
+    },
+    "detailPlaceholder": "补充说明（可选）",
+    "submit": "提交举报",
+    "thanks": "感谢您的举报，我们的团队会尽快审核。"
   }
 }

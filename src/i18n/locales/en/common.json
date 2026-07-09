@@ -113,5 +113,18 @@
     "slide2Body": "Swipe up to move on to the next game whenever you're ready.",
     "slide3Title": "You can make one too",
     "slide3Body": "Build your own game in minutes with the editor — no coding required."
+  },
+  "report": {
+    "trigger": "Report this game",
+    "title": "Report this game",
+    "reasons": {
+      "inappropriate": "Inappropriate content",
+      "copyright": "Copyright infringement",
+      "spam": "Spam or misleading",
+      "other": "Other"
+    },
+    "detailPlaceholder": "Add details (optional)",
+    "submit": "Submit report",
+    "thanks": "Thanks for the report. Our team will review it."
   }
 }
