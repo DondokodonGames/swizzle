@@ -42,6 +42,20 @@
     "loadError": "プロフィールの読み込みに失敗しました",
     "createdGames": "作成したゲーム",
     "noGamesYet": "まだゲームを公開していません",
-    "loggingOut": "ログアウト中..."
+    "loggingOut": "ログアウト中...",
+    "deleteAccount": {
+      "trigger": "アカウントを削除",
+      "step1Title": "アカウントを削除しますか？",
+      "step1Body": "あなたが公開したゲームはすべて非公開になり、アカウントは完全に削除されます。再ログインはできません。この操作は取り消せません。",
+      "step2Title": "本当によろしいですか？",
+      "step2Body": "アカウントを完全に削除するには、下にDELETEと入力してください。",
+      "confirmPlaceholder": "確認のためDELETEと入力",
+      "confirmWord": "DELETE",
+      "continue": "次へ",
+      "confirmDelete": "アカウントを削除する",
+      "deleting": "削除中...",
+      "cancel": "キャンセル",
+      "failed": "アカウントの削除に失敗しました。もう一度お試しいただくか、サポートにお問い合わせください。"
+    }
   }
 }

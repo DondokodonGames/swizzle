@@ -42,6 +42,20 @@
     "loadError": "Échec du chargement du profil",
     "createdGames": "Jeux créés",
     "noGamesYet": "Aucun jeu publié pour le moment",
-    "loggingOut": "Déconnexion..."
+    "loggingOut": "Déconnexion...",
+    "deleteAccount": {
+      "trigger": "Supprimer le compte",
+      "step1Title": "Supprimer votre compte ?",
+      "step1Body": "Cela dépubliera tous vos jeux et supprimera définitivement votre compte. Vous ne pourrez plus vous reconnecter. Cette action est irréversible.",
+      "step2Title": "Êtes-vous absolument sûr(e) ?",
+      "step2Body": "Tapez DELETE ci-dessous pour confirmer la suppression définitive du compte.",
+      "confirmPlaceholder": "Tapez DELETE pour confirmer",
+      "confirmWord": "DELETE",
+      "continue": "Continuer",
+      "confirmDelete": "Supprimer mon compte",
+      "deleting": "Suppression...",
+      "cancel": "Annuler",
+      "failed": "Échec de la suppression du compte. Veuillez réessayer ou contacter le support."
+    }
   }
 }

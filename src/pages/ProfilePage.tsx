@@ -14,6 +14,7 @@ import type { UserGame } from '../social/types/SocialTypes'
 import { supportedLanguages } from '../i18n'
 import { getErrorMessage } from '../utils/errorUtils'
 import { track } from '../services/analytics/Analytics'
+import { DeleteAccountModal } from '../components/profile/DeleteAccountModal'
 
 // 言語コードから表示名を取得するヘルパー関数
 const getLanguageDisplay = (code: string): string => {
@@ -44,6 +45,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ userId: propUserId }) 
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [isOwnProfile, setIsOwnProfile] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
   const [userGames, setUserGames] = useState<UserGame[]>([])
   const [gamesLoading, setGamesLoading] = useState(false)
@@ -330,9 +332,31 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ userId: propUserId }) 
               >
                 {loggingOut ? t('profile.loggingOut') : t('common.logout')}
               </button>
+              <button
+                onClick={() => setShowDeleteModal(true)}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: 'transparent',
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  border: '1px solid rgba(255, 255, 255, 0.4)',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '600'
+                }}
+              >
+                {t('profile.deleteAccount.trigger')}
+              </button>
             </div>
           )}
         </div>
+
+        {showDeleteModal && (
+          <DeleteAccountModal
+            onClose={() => setShowDeleteModal(false)}
+            onDeleted={() => navigate('/')}
+          />
+        )}
 
         {/* プロフィールカード */}
         <div style={{

@@ -42,6 +42,20 @@
     "loadError": "加载个人资料失败",
     "createdGames": "创建的游戏",
     "noGamesYet": "还没有发布任何游戏",
-    "loggingOut": "正在登出..."
+    "loggingOut": "正在登出...",
+    "deleteAccount": {
+      "trigger": "删除账号",
+      "step1Title": "删除您的账号？",
+      "step1Body": "这将取消发布您的所有游戏，并永久删除您的账号。您将无法再次登录。此操作无法撤销。",
+      "step2Title": "您确定要这样做吗？",
+      "step2Body": "请在下方输入 DELETE 以确认永久删除账号。",
+      "confirmPlaceholder": "输入 DELETE 以确认",
+      "confirmWord": "DELETE",
+      "continue": "继续",
+      "confirmDelete": "删除我的账号",
+      "deleting": "删除中...",
+      "cancel": "取消",
+      "failed": "删除账号失败，请重试或联系客服。"
+    }
   }
 }

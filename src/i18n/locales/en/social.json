@@ -42,6 +42,20 @@
     "loadError": "Failed to load profile",
     "createdGames": "Created Games",
     "noGamesYet": "No games published yet",
-    "loggingOut": "Logging out..."
+    "loggingOut": "Logging out...",
+    "deleteAccount": {
+      "trigger": "Delete account",
+      "step1Title": "Delete your account?",
+      "step1Body": "This will unpublish all your games and permanently delete your account. You won't be able to log back in. This can't be undone.",
+      "step2Title": "Are you absolutely sure?",
+      "step2Body": "Type DELETE below to confirm permanent account deletion.",
+      "confirmPlaceholder": "Type DELETE to confirm",
+      "confirmWord": "DELETE",
+      "continue": "Continue",
+      "confirmDelete": "Delete my account",
+      "deleting": "Deleting...",
+      "cancel": "Cancel",
+      "failed": "Failed to delete account. Please try again or contact support."
+    }
   }
 }

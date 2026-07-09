@@ -42,6 +42,20 @@
     "loadError": "Falha ao carregar perfil",
     "createdGames": "Jogos criados",
     "noGamesYet": "Nenhum jogo publicado ainda",
-    "loggingOut": "Saindo..."
+    "loggingOut": "Saindo...",
+    "deleteAccount": {
+      "trigger": "Excluir conta",
+      "step1Title": "Excluir sua conta?",
+      "step1Body": "Isso despublicará todos os seus jogos e excluirá sua conta permanentemente. Você não poderá fazer login novamente. Esta ação não pode ser desfeita.",
+      "step2Title": "Tem certeza absoluta?",
+      "step2Body": "Digite DELETE abaixo para confirmar a exclusão permanente da conta.",
+      "confirmPlaceholder": "Digite DELETE para confirmar",
+      "confirmWord": "DELETE",
+      "continue": "Continuar",
+      "confirmDelete": "Excluir minha conta",
+      "deleting": "Excluindo...",
+      "cancel": "Cancelar",
+      "failed": "Falha ao excluir a conta. Tente novamente ou entre em contato com o suporte."
+    }
   }
 }

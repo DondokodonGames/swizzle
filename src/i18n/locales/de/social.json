@@ -42,6 +42,20 @@
     "loadError": "Profil konnte nicht geladen werden",
     "createdGames": "Erstellte Spiele",
     "noGamesYet": "Noch keine Spiele veröffentlicht",
-    "loggingOut": "Wird abgemeldet..."
+    "loggingOut": "Wird abgemeldet...",
+    "deleteAccount": {
+      "trigger": "Konto löschen",
+      "step1Title": "Konto löschen?",
+      "step1Body": "Dadurch werden alle deine Spiele nicht mehr veröffentlicht und dein Konto endgültig gelöscht. Du kannst dich danach nicht mehr anmelden. Dies kann nicht rückgängig gemacht werden.",
+      "step2Title": "Bist du dir absolut sicher?",
+      "step2Body": "Gib unten DELETE ein, um die endgültige Kontolöschung zu bestätigen.",
+      "confirmPlaceholder": "Gib DELETE zur Bestätigung ein",
+      "confirmWord": "DELETE",
+      "continue": "Weiter",
+      "confirmDelete": "Mein Konto löschen",
+      "deleting": "Wird gelöscht...",
+      "cancel": "Abbrechen",
+      "failed": "Konto konnte nicht gelöscht werden. Bitte versuche es erneut oder kontaktiere den Support."
+    }
   }
 }
