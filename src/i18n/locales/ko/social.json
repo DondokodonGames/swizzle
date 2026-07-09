@@ -43,6 +43,7 @@
     "createdGames": "만든 게임",
     "noGamesYet": "아직 게임을 발행하지 않았습니다",
     "loggingOut": "로그아웃 중...",
+    "emailNotificationsToggle": "누군가 나를 팔로우하거나 내 게임에 좋아요를 누르면 이메일로 알림 받기",
     "deleteAccount": {
       "trigger": "계정 삭제",
       "step1Title": "계정을 삭제하시겠어요?",

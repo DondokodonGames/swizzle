@@ -502,6 +502,8 @@ export class NotificationService {
         metadata: { gameName, userName: fromUserName }
       }
     );
+
+    this.sendEmailNotification({ type: 'like', to_user_id: toUserId, from_user_name: fromUserName, game_title: gameName });
   }
 
   async notifyNewFollower(toUserId: string, fromUserId: string, fromUserName: string) {
@@ -517,6 +519,24 @@ export class NotificationService {
         metadata: { userName: fromUserName }
       }
     );
+
+    this.sendEmailNotification({ type: 'follow', to_user_id: toUserId, from_user_name: fromUserName });
+  }
+
+  /**
+   * メール通知はベストエフォート（失敗してもアプリ内通知のUXは壊さない）。
+   * 実際に送信されるかはサーバー側(send-notification-email)が
+   * RESEND_API_KEY の有無と profiles.email_notifications_enabled で判断する。
+   */
+  private sendEmailNotification(payload: {
+    type: 'follow' | 'like' | 'weekly_digest';
+    to_user_id: string;
+    from_user_name?: string;
+    game_title?: string;
+  }): void {
+    supabase.functions.invoke('send-notification-email', { body: payload }).catch((err) => {
+      console.warn('[NotificationService] email notification failed (non-fatal):', err);
+    });
   }
 
   async notifyTrendingRank(gameId: string, gameName: string, rank: number) {

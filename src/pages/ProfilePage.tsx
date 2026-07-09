@@ -516,6 +516,31 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ userId: propUserId }) 
             )}
           </div>
 
+          {isOwnProfile && (
+            <div style={{ marginTop: '24px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <input
+                type="checkbox"
+                id="email-notifications-toggle"
+                checked={!!profile.email_notifications_enabled}
+                onChange={async (e) => {
+                  const enabled = e.target.checked
+                  setProfile({ ...profile, email_notifications_enabled: enabled })
+                  const { error } = await supabase
+                    .from('profiles')
+                    .update({ email_notifications_enabled: enabled })
+                    .eq('id', profile.id)
+                  if (error) {
+                    console.error('Failed to update email notification setting:', error)
+                    setProfile({ ...profile, email_notifications_enabled: !enabled })
+                  }
+                }}
+              />
+              <label htmlFor="email-notifications-toggle" style={{ fontSize: '14px', color: '#374151' }}>
+                {t('profile.emailNotificationsToggle')}
+              </label>
+            </div>
+          )}
+
           {/* ユーザーの作成したゲーム一覧 */}
           <div style={{ marginTop: '40px' }}>
             <h3 style={{

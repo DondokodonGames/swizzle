@@ -43,6 +43,7 @@
     "createdGames": "Erstellte Spiele",
     "noGamesYet": "Noch keine Spiele veröffentlicht",
     "loggingOut": "Wird abgemeldet...",
+    "emailNotificationsToggle": "Per E-Mail benachrichtigen, wenn mir jemand folgt oder meine Spiele liked",
     "deleteAccount": {
       "trigger": "Konto löschen",
       "step1Title": "Konto löschen?",

@@ -28,6 +28,8 @@ export interface Database {
           language: string                    // 言語設定（デフォルト'en'）
           age: number | null                  // 年齢（COPPA対応）
           requires_parental_oversight: boolean // 13歳未満フラグ
+          is_admin: boolean                   // 管理者フラグ（20260512_profiles_is_admin.sql）
+          email_notifications_enabled: boolean // メール通知オプトイン（WP60 P2-4）
           created_at: string                  // 作成日時
           updated_at: string                  // 更新日時
         }
@@ -40,6 +42,8 @@ export interface Database {
           language?: string
           age?: number | null
           requires_parental_oversight?: boolean
+          is_admin?: boolean
+          email_notifications_enabled?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -52,6 +56,8 @@ export interface Database {
           language?: string
           age?: number | null
           requires_parental_oversight?: boolean
+          is_admin?: boolean
+          email_notifications_enabled?: boolean
           created_at?: string
           updated_at?: string
         }

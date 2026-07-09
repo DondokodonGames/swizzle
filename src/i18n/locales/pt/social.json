@@ -43,6 +43,7 @@
     "createdGames": "Jogos criados",
     "noGamesYet": "Nenhum jogo publicado ainda",
     "loggingOut": "Saindo...",
+    "emailNotificationsToggle": "Me avisar por e-mail quando alguém me seguir ou curtir meus jogos",
     "deleteAccount": {
       "trigger": "Excluir conta",
       "step1Title": "Excluir sua conta?",

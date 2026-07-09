@@ -153,7 +153,7 @@
 - [x] P2-1 動的OGP(Opus/M)
 - [x] P2-2 robots+sitemap(Sonnet/S)
 - [x] P2-3 PWA(Sonnet/M)
-- [ ] P2-4 メール通知(Opus/M)
+- [x] P2-4 メール通知(Opus/M) — follow/like分は実装済み。週間ダイジェストは対象外（下記参照）
 - [x] P2-5 オンボーディング(Sonnet/S-M)
 - [ ] P3(上表、随時)
 

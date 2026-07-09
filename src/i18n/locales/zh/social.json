@@ -43,6 +43,7 @@
     "createdGames": "创建的游戏",
     "noGamesYet": "还没有发布任何游戏",
     "loggingOut": "正在登出...",
+    "emailNotificationsToggle": "当有人关注我或给我的游戏点赞时，通过邮件通知我",
     "deleteAccount": {
       "trigger": "删除账号",
       "step1Title": "删除您的账号？",

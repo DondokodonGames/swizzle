@@ -43,6 +43,7 @@
     "createdGames": "作成したゲーム",
     "noGamesYet": "まだゲームを公開していません",
     "loggingOut": "ログアウト中...",
+    "emailNotificationsToggle": "フォローされた時・ゲームにいいねされた時にメールで通知を受け取る",
     "deleteAccount": {
       "trigger": "アカウントを削除",
       "step1Title": "アカウントを削除しますか？",
