@@ -666,6 +666,8 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ userId: propUserId }) 
         }}
         mode="edit"
         title={t('profile.editProfile')}
+        profile={profile}
+        onProfileUpdated={setProfile}
       />
     </div>
   )

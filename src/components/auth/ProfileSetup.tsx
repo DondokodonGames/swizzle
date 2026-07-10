@@ -1,10 +1,9 @@
 // src/components/auth/ProfileSetup.tsx
 // プロフィール設定・編集画面（モダンデザイン版）
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useAuth } from '../../hooks/useAuth'
-import { storage } from '../../lib/supabase'
+import { database, storage } from '../../lib/supabase'
 import type { Profile } from '../../lib/database.types'
 import { supportedLanguages } from '../../i18n'
 import { getErrorMessage } from '../../utils/errorUtils'
@@ -14,16 +13,68 @@ interface ProfileSetupProps {
   onClose: () => void
   mode?: 'setup' | 'edit'
   title?: string
+  /** 編集対象のプロフィール。useAuth() コンテキストに依存せず、呼び出し元(ProfilePage)から渡す */
+  profile: Profile | null
+  /** 保存成功時に呼び出し元へ更新後のプロフィールを渡す */
+  onProfileUpdated?: (profile: Profile) => void
 }
 
 const ProfileSetup: React.FC<ProfileSetupProps> = ({
   isOpen,
   onClose,
   mode = 'setup',
-  title
+  title,
+  profile,
+  onProfileUpdated
 }) => {
   const { t, i18n } = useTranslation()
-  const { profile, updateProfile, checkUsernameAvailable, loading, error, clearError } = useAuth()
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const clearError = useCallback(() => setError(null), [])
+
+  const updateProfile = useCallback(async (updates: Partial<Profile>) => {
+    if (!profile) {
+      throw new Error('User not authenticated')
+    }
+
+    setLoading(true)
+    setError(null)
+
+    try {
+      if (updates.username && updates.username !== profile.username) {
+        const usernameAvailable = await database.profiles.checkUsernameAvailable(updates.username, profile.id)
+        if (!usernameAvailable) {
+          throw new Error('Username already taken')
+        }
+      }
+
+      const updatedProfile = await database.profiles.upsert({
+        ...profile,
+        ...updates,
+        updated_at: new Date().toISOString()
+      })
+
+      if (updates.language && updates.language !== profile.language) {
+        i18n.changeLanguage(updates.language)
+      }
+
+      setLoading(false)
+      onProfileUpdated?.(updatedProfile)
+    } catch (err) {
+      setLoading(false)
+      setError(getErrorMessage(err as Error))
+      throw err
+    }
+  }, [profile, i18n, onProfileUpdated])
+
+  const checkUsernameAvailable = useCallback(async (username: string): Promise<boolean> => {
+    try {
+      return await database.profiles.checkUsernameAvailable(username, profile?.id)
+    } catch (err) {
+      console.error('Check username error:', err)
+      return false
+    }
+  }, [profile?.id])
 
   const [formData, setFormData] = useState({
     username: '',
