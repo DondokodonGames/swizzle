@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
-import { useAuth } from '../../hooks/useAuth';
+import { useSupabaseUser } from '../../hooks/useSupabaseUser';
 import { useIsAdmin } from '../../hooks/useIsAdmin';
 
 interface AdminUserRow {
@@ -69,7 +69,7 @@ const s = {
 };
 
 export const AdminUsersPage: React.FC = () => {
-  const { user } = useAuth();
+  const { user } = useSupabaseUser();
   const { isAdmin, adminLoading } = useIsAdmin(user);
   const [query, setQuery] = useState('');
   const [users, setUsers] = useState<AdminUserRow[]>([]);

@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabase';
-import { useAuth } from '../../hooks/useAuth';
+import { useSupabaseUser } from '../../hooks/useSupabaseUser';
 
 const REASONS = ['inappropriate', 'copyright', 'spam', 'other'] as const;
 
 export const ReportGameButton: React.FC<{ gameId: string }> = ({ gameId }) => {
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { user } = useSupabaseUser();
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState<(typeof REASONS)[number]>('inappropriate');
   const [detail, setDetail] = useState('');
