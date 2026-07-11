@@ -27,17 +27,21 @@ SKIP_UPLOAD=true npm run ai:neta:1    # Skip Supabase upload
 
 # Code games (the 800 examples)
 npm run games:smoke   # Runtime smoke test + screenshot contact sheet (Playwright)
+npm run games:ledger  # Regenerate per-game ledger (docs/work-plans/ledger/, measurements + summary)
 npm run ai:upload:examples            # Upload examples (OVERWRITE=true to update, PRICE_SYNC=true for tier pricing)
 ```
 
-### Code-game quality standard v2
+### Code-game quality standard v2.1 / play grammar v3
 
-The 800 code games (`src/ai/code/examples/*.js`) target **quality standard v2**. The canon:
+The 800 code games (`src/ai/code/examples/*.js`) target **quality standard v2.1 + play grammar v3** (textless rule communication). The canon:
+- `docs/specifications/PLAY_GRAMMAR_V3.md` — **v3 canon**: textless techniques (ghost-hand demo, telegraph, hit-stop), duration bands per mechanic family, SE mapping, text whitelist
 - `docs/specifications/GAME_QUALITY_STANDARD_V2.md` — pass bar (scorer ≥80 + smoke PASS)
 - `docs/specifications/SANDBOX_API_V2.md` — the full `game.*` API (WebAudio chiptune synth, `game.feedback.good/bad`, multi-touch, sprites) + recipes
 - `docs/specifications/MECHANICS_CATALOG_V2.md` — 40 mechanics with API mapping (use for neta assignment / `@mechanic` headers)
-- `docs/specifications/ARCADE_ART_DIRECTION.md` — in-game art direction (era style packs, coin-op feel)
-- `docs/work-plans/56-quality-v2-batch-template.md` — fill-in prompt for batch rewrite sessions
+- `docs/specifications/ARCADE_ART_DIRECTION.md` — in-game art direction (era style packs, symbol grammar, coin-op feel)
+- `docs/work-plans/56-quality-v2-batch-template.md` — fill-in prompt for batch rewrite sessions (ledger-driven)
+- `docs/work-plans/ledger/` — per-game ledger: `game-ledger.csv` (measurements, regenerate via `games:ledger`, never hand-edit) + `game-assignments.csv` (theme/style/duration/wave assignments + progress, hand-edited) + `mechanic-overrides.json` (human-confirmed slug→mechanic). Column dictionary: `docs/work-plans/61-800-games-ledger.md`
+- Engine fix work order: `docs/work-plans/62-engine-v2_1-fixes.md` / scorer+smoke v3: `docs/work-plans/63-scorer-smoke-v3.md`
 
 The sandbox engine is `src/services/code-game/iframeTemplate.ts` (ships with the app bundle — engine changes apply to all uploaded games without re-upload). Missing `se_*`/`bgm_*` audio assets fall back to synthesized presets, so games are never silent.
 
