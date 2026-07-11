@@ -41,7 +41,7 @@ The 800 code games (`src/ai/code/examples/*.js`) target **quality standard v2.1 
 - `docs/specifications/ARCADE_ART_DIRECTION.md` — in-game art direction (era style packs, symbol grammar, coin-op feel)
 - `docs/work-plans/56-quality-v2-batch-template.md` — fill-in prompt for batch rewrite sessions (ledger-driven)
 - `docs/work-plans/ledger/` — per-game ledger: `game-ledger.csv` (measurements, regenerate via `games:ledger`, never hand-edit) + `game-assignments.csv` (theme/style/duration/wave assignments + progress, hand-edited) + `mechanic-overrides.json` (human-confirmed slug→mechanic). Column dictionary: `docs/work-plans/61-800-games-ledger.md`
-- Engine fix work order: `docs/work-plans/62-engine-v2_1-fixes.md` / scorer+smoke v3: `docs/work-plans/63-scorer-smoke-v3.md`
+- Engine fix work order: `docs/work-plans/62-engine-v2_1-fixes.md` / scorer+smoke v3: `docs/work-plans/63-scorer-smoke-v3.md` / new-game generation v3 alignment (rotating few-shot instead of the fixed pair): `docs/work-plans/64-generation-v3-alignment.md`
 
 The sandbox engine is `src/services/code-game/iframeTemplate.ts` (ships with the app bundle — engine changes apply to all uploaded games without re-upload). Missing `se_*`/`bgm_*` audio assets fall back to synthesized presets, so games are never silent.
 

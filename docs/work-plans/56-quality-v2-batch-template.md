@@ -46,6 +46,16 @@ needed_current,needed_action,priority,wave,batch,fix_items,keep_items,status,sco
 4. `docs/specifications/ARCADE_ART_DIRECTION.md` — スタイルパックと記号文法
 5. 参考実装: `src/services/code-game/__tests__/fixtures/api-v2-fixture.js`(全API見本) + `<<ゴールドスタンダード例: Wave 0 確定後に記入>>`
 
+### 進め方 — 1本ずつ個別に作る(MUST)
+
+**共通テンプレートを先に作って10本へスタンプする進め方を禁止する**(前回リファクタが
+ワンパターン化した根本原因)。必ず1本ずつ完結させる:
+
+```
+1本のサイクル: assignments行を読む → hook×themeから世界観1行を書く(コンセプト決め)
+  → 実装 → ゲート(validator/scorer/smoke) → 次のゲームへ(前のゲームのコードは見ない)
+```
+
 ### 各ゲームで必ずやること(PLAY_GRAMMAR_V3 §2 の技法カタログ準拠)
 
 1. **テキストレス化**: `HOW_TO_PLAY` 変数と指導文を全廃。表示テキストはホワイトリスト(§3)のみ
@@ -55,13 +65,15 @@ needed_current,needed_action,priority,wave,batch,fix_items,keep_items,status,sco
 5. **失敗の因果提示**: hit-stop 0.3〜0.6秒+当たった物のハイライト→RESULT
 6. **テーマ注入**: 割当テーマ(theme_jp)で世界観を作る。主役を `game.draw.sprite`(顔つき、2〜4フレーム)に置換。背景は `gradient`+遠景。`// スタイル: <style_pack>` を宣言し、そのパレットで統一
 6b. **フックの増幅と変化軸**: hook 列の固有要素を演出の主役に残す。variation(難易度カーブの型)と spice(得点の山場)を実装する(PLAY_GRAMMAR_V3 §2.8)
-7. **音**: SEマッピング表(§6.1)準拠で distinct 3種以上。BGMは bgm_direction 列に従う(melody固有化が第一候補)。`game.feedback.good/bad` を配線
+7. **音**: SEマッピング表(§6.1)準拠で distinct 3種以上。BGMは **melody固有化を標準**とし、プリセット(bgm_tense等)は例外(使う場合は notes に理由を記録)。`game.feedback.good/bad` を配線
 8. **尺と難易度**: `MAX_TIME` → duration_target、`NEEDED` → needed_action の指示通り。`// 修正` ナーフ注釈は削除
 9. **偽HI-SCORE除去**: ハードコードの HI-SCORE 数字を `game.best` の実値に置換
 10. **縦3ゾーンレイアウト**(v2 §2)と**マイルストーン演出**(fx.popup + se_milestone)を維持・追加
 11. **ヘッダー更新**: 1〜4行目の規約(ファイル名/タイトル—説明/操作/成功失敗)は維持しつつ、
     `// @mechanic: <assignments の mechanic>` と `// @theme: <assignments の theme>` を追記。
-    2行目のタイトル—説明はテーマ注入後の内容に書き直す(アップロード時のDBメタデータになる)
+    2行目のタイトル—説明はテーマ注入後の内容に書き直す(アップロード時のDBメタデータになる)。
+    さらに `// 世界観: <誰が何を目指す話か1行>` を必ず書く(hook×themeの具体化。
+    PLAY_GRAMMAR_V3 §2.8 — 「1本ずつ作った」ことの検収指標)
 12. **ニアミス演出**: 惜しい失敗に「あと◯◯!」(fx.popup)
 
 ### 守ること
@@ -103,8 +115,9 @@ npm run games:smoke -- --files <<file1>> <<file2>> <<file3>>
 
 ### 完了報告(セッション末尾に出力)
 
-- 各ゲームの表: score before → after / テーマ / スタイルパック / 尺・NEEDED の変更
+- 各ゲームの表: score before → after / 世界観1行 / スタイルパック / 尺・NEEDED の変更
 - `npm run games:smoke -- --files <担当全部>` の PASS/FAIL(attract_motion 含む)
+- **自己申告**: バッチ内で実装・演出が似てしまった点(なければ「なし」と明記)
 - 判断に迷った点・基準の曖昧箇所(PLAY_GRAMMAR_V3 へのフィードバック)
 
 ---
@@ -120,4 +133,7 @@ npm run games:smoke -- --files <<file1>> <<file2>> <<file3>>
   計測列の before/after diff を確認 → `OVERWRITE=true npm run ai:upload:examples` で再公開
   (`play_count`/`like_count` は保持される)。価格連動は `PRICE_SYNC=true`(@tier があるゲームのみ)
 - **多様性監視**: `docs/work-plans/ledger/game-ledger-summary.md` のスタイルパック/テーマ/メカニクス分布
-- few-shot原型3本(`dodge-balls.js` / `swipe-direction.js` / `tap-target.js`)は**全Wave不変**(生成パイプラインの挙動維持。v3化は別WPで判断)
+- few-shot原型3本(`dodge-balls.js` / `swipe-direction.js` / `tap-target.js`)は**全Wave不変**(生成パイプラインの挙動維持)
+- **新規生成側の均質化対策は WP64**: 生成パイプラインは現状「固定few-shot 2本+v1のみのAPI仕様」で
+  新作を作るため、Wave 0 のゴールド凍結後に `docs/work-plans/64-generation-v3-alignment.md` を実施する
+  (書き換え済みゲームをメカニクス連動でfew-shotローテーション)

@@ -108,7 +108,9 @@ npm run games:ledger -- --reassign # assignments再生成(進捗が消える。W
 ```
 
 - Wave末の検収: `games:ledger` 再生成 → git diff で ledger.csv の計測列
-  (distinct_se / uses_sprite / how_to_play / score_total 等)が改善方向に動いたことを確認
+  (distinct_se / uses_sprite / how_to_play / score_total 等)が改善方向に動いたことを確認。
+  **世界観カバレッジ**(summary「世界観コメントあり」: 開始時91 → 全数797が目標)は
+  「テンプレのスタンプでなく1本ずつ作った」ことの代理指標(WP56の世界観1行義務)
 - 尺帯域(`DURATION_BAND`)を変更する場合は PLAY_GRAMMAR_V3 §4 と必ず同期
 
 ## スコープ外(この台帳が扱わないもの)
