@@ -399,10 +399,38 @@ function consolidateMechanics(rows: GameRow[], overrides: Record<string, string>
 }
 
 // ── 割当(assignments) ────────────────────────────────────────────────────
+// 同一メカニクス内の変化軸(PLAY_GRAMMAR_V3 §2.8 と同期を保つこと)。
+// メカニクス分類は管理ラベルであって「教科書形への均し」ではない — 同メカニクスの
+// ゲームはフック(hook列)+プレッシャー型+スパイス+尺+テーマで必ず差別化する。
+const PRESSURE_VARIATIONS = [
+  '加速型(テンポが徐々に上がる)',
+  '物量型(対象の数が増えていく)',
+  '精度型(判定幅/隙間が狭まっていく)',
+  'フェイント型(偽の予兆・ダミーが混ざる)',
+  '変拍子型(間隔・速度が不規則に揺れる)',
+];
+const SPICE_VARIATIONS = [
+  'コンボ倍率(連続成功でx2→x4→x8)',
+  'フィーバータイム(中盤数秒の得点倍増)',
+  '黄金ターゲット(稀に高得点のレアが出る)',
+  'サドンデス演出(達成目前の1ミスの緊張を煽る)',
+  '二重課題(終盤たまに2つ同時に来る)',
+  '逆転ボーナス(残り3秒は得点2倍)',
+];
+
+// 帯域内で尺を散らす候補値(15秒一極集中の解消)
+function bandCandidates([min, max]: [number, number]): number[] {
+  const span = max - min;
+  const c = [min, min + Math.round(span / 3), min + Math.round((span * 2) / 3), max];
+  return [...new Set(c)];
+}
+
 interface Assignment {
   id: number;
   filename: string;
   slug: string;
+  title: string;
+  hook: string;
   mechanic: string;
   family: string;
   theme: string;
@@ -410,6 +438,8 @@ interface Assignment {
   themeSource: string;
   stylePack: string;
   bgmDirection: string;
+  variation: string;
+  spice: string;
   durationCurrent: number | null;
   durationTarget: number | string;
   neededCurrent: number | null;
@@ -428,51 +458,134 @@ interface Assignment {
 
 function buildAssignments(rows: GameRow[]): Assignment[] {
   const numbered = rows.filter((r) => r.id !== null).sort((a, b) => a.id! - b.id!);
+  const famOf = (r: GameRow) => MECHANIC_FAMILY[r.mechGuess] || 'A';
+  const computePriority = (r: GameRow): 'P1' | 'P2' | 'P3' =>
+    (r.needed === 1 && !ONE_SHOT_OK.has(r.mechGuess)) || r.scoreTotal < 50 || r.dupSize > 1 ? 'P1'
+      : r.scoreTotal < 70 ? 'P2' : 'P3';
+  const prioVal = (p: string) => (p === 'P1' ? 0 : p === 'P2' ? 1 : 2);
 
-  // テーマ割当: 族ごとのカウンタでプールを巡回。dupGroup 内は id 順に連番で必ず別テーマ。
-  // 既存の世界観コメントがあるゲームはキーワード一致するテーマがあれば採用、無ければ custom。
-  const familyCounter: Record<string, number> = {};
-  const themeOf = new Map<number, { theme: ThemeDef | null; source: string; note: string }>();
-  const byFamilySorted = new Map<string, GameRow[]>();
-  for (const r of numbered) {
-    const fam = MECHANIC_FAMILY[r.mechGuess] || 'A';
-    if (!byFamilySorted.has(fam)) byFamilySorted.set(fam, []);
-    byFamilySorted.get(fam)!.push(r);
+  // ── Wave 0 パイロット: A〜F 各2本(優先度順)。NEEDED=1 / 長尺(≥30s) / 重複slug を含める ──
+  const pilot = new Set<number>();
+  for (const fam of ['A', 'B', 'C', 'D', 'E', 'F']) {
+    const cands = numbered.filter((r) => famOf(r) === fam)
+      .sort((x, y) => prioVal(computePriority(x)) - prioVal(computePriority(y)) || x.scoreTotal - y.scoreTotal);
+    if (cands[0]) pilot.add(cands[0].id!);
+    const second = cands.slice(1).find((r) =>
+      !pilot.has(r.id!) && (
+        (r.needed === 1 && !ONE_SHOT_OK.has(r.mechGuess)) ||
+        (r.maxTime !== null && r.maxTime >= 30) ||
+        r.dupSize > 1
+      )
+    ) || cands.find((r) => !pilot.has(r.id!));
+    if (second) pilot.add(second.id!);
   }
-  for (const [fam, games] of byFamilySorted) {
-    // dupGroup 単位で隣接させ、プール巡回で group 内テーマの重複を構造的に防ぐ
-    games.sort((a, b) => (a.slug === b.slug ? a.id! - b.id! : a.slug < b.slug ? -1 : 1));
-    for (const r of games) {
-      if (r.worldview) {
-        const matched = THEMES.find((t) => t.kw.test(r.worldview));
-        themeOf.set(r.id!, { theme: matched || null, source: 'existing', note: r.worldview });
-        continue;
+  const gCand = numbered.find((r) => famOf(r) === 'G' && !pilot.has(r.id!));
+  if (gCand) pilot.add(gCand.id!);
+  const longCand = numbered.find((r) => !pilot.has(r.id!) && r.maxTime !== null && r.maxTime >= 30);
+  if (longCand) pilot.add(longCand.id!);
+
+  // ── バッチ編成: 全ゲームをメカニクス比率で均等分散(fraction-spread)して10本刻み ──
+  // 同メカニクス・同slugを1バッチに固めると書き換えセッションがクローンを量産するため、
+  // 各メカニクス内の j 番目に (j+0.5)/N のキーを与えて全体ソート → どのバッチも
+  // 約8〜10種のメカニクス混成になる(バリエーション保証。PLAY_GRAMMAR_V3 §2.8)。
+  // メカニクス内は優先度順に並べるため、先頭バッチほど P1 が濃くなる。
+  interface Batch { name: string; games: GameRow[]; p1: number; avgScore: number }
+  const pilotBatch: GameRow[] = numbered.filter((r) => pilot.has(r.id!));
+  const rest = numbered.filter((r) => !pilot.has(r.id!));
+  const byMech = new Map<string, GameRow[]>();
+  for (const r of rest) {
+    if (!byMech.has(r.mechGuess)) byMech.set(r.mechGuess, []);
+    byMech.get(r.mechGuess)!.push(r);
+  }
+  const spreadKey = new Map<number, number>();
+  for (const group of byMech.values()) {
+    group.sort((x, y) => prioVal(computePriority(x)) - prioVal(computePriority(y)) || x.id! - y.id!);
+    group.forEach((r, j) => spreadKey.set(r.id!, (j + 0.5) / group.length));
+  }
+  const ordered = [...rest].sort((x, y) => spreadKey.get(x.id!)! - spreadKey.get(y.id!)! || x.id! - y.id!);
+  const chunks: GameRow[][] = [];
+  for (let i = 0; i < ordered.length; i += 10) chunks.push(ordered.slice(i, i + 10));
+
+  // 同slugが同一バッチに2本入った場合、後続バッチと入れ替えて解消(決定的な後処理)
+  for (let bi = 0; bi < chunks.length; bi++) {
+    const b = chunks[bi];
+    for (let gi = 1; gi < b.length; gi++) {
+      if (!b.some((g, k) => k < gi && g.slug === b[gi].slug)) continue;
+      outer: for (let bj = bi + 1; bj < chunks.length; bj++) {
+        const c = chunks[bj];
+        for (let gj = 0; gj < c.length; gj++) {
+          const bSlugs = b.filter((_, k) => k !== gi).map((g) => g.slug);
+          const cSlugs = c.filter((_, k) => k !== gj).map((g) => g.slug);
+          if (!bSlugs.includes(c[gj].slug) && !cSlugs.includes(b[gi].slug)) {
+            const tmp = b[gi]; b[gi] = c[gj]; c[gj] = tmp;
+            break outer;
+          }
+        }
       }
-      const i = familyCounter[fam] = (familyCounter[fam] || 0) + 1;
-      themeOf.set(r.id!, { theme: THEMES[i % THEMES.length], source: 'assigned', note: '' });
     }
   }
 
-  // スタイルパック: テーマの親和packsをテーマごとのカウンタで巡回。custom は全pack巡回
-  const packCounter: Record<string, number> = {};
+  const batches: Batch[] = chunks.map((chunk, i) => ({
+    name: `B${String(i + 1).padStart(2, '0')}`,
+    games: chunk,
+    p1: chunk.filter((r) => computePriority(r) === 'P1').length,
+    avgScore: chunk.reduce((s, r) => s + r.scoreTotal, 0) / chunk.length,
+  }));
+  batches.sort((x, y) => y.p1 - x.p1 || x.avgScore - y.avgScore);
+
+  // ── バッチ順に テーマ/スタイル/尺/変化軸 を割当(バッチ内・同slug内の重複を構造的に排除) ──
+  const themeCounter: Record<string, number> = {};   // テーマプール巡回(全体で1カウンタ)
+  const packCounter: Record<string, number> = {};    // テーマごとの親和パック巡回
+  const mechCounter: Record<string, number> = {};    // メカニクスごとの尺/変化軸巡回
+  const usedByDup = new Map<string, Set<string>>();  // slug → 使用済みテーマ
+
   const packOf = (themeId: string, packs: string[]): string => {
     const i = packCounter[themeId] = (packCounter[themeId] || 0) + 1;
     return packs[i % packs.length];
   };
 
   const assignments: Assignment[] = [];
-  for (const r of numbered) {
+  const buildOne = (r: GameRow, wave: number, batchName: string, batchThemes: Set<string>): void => {
     const mech = r.mechGuess;
-    const fam = MECHANIC_FAMILY[mech] || 'A';
-    const t = themeOf.get(r.id!)!;
-    const themeId = t.theme ? t.theme.id : 'custom';
-    const themeJp = t.theme ? t.theme.jp : `(既存世界観: ${t.note.slice(0, 24)})`;
-    const stylePack = t.theme ? packOf(themeId, t.theme.packs) : packOf('custom', ALL_PACKS);
+    const fam = famOf(r);
+    if (!usedByDup.has(r.slug)) usedByDup.set(r.slug, new Set());
+    const dupUsed = usedByDup.get(r.slug)!;
 
+    // テーマ: 既存世界観は尊重。それ以外は族カウンタで巡回し、同slug/同バッチ内の重複をスキップ
+    let theme: ThemeDef | null = null;
+    let themeSource = 'assigned';
+    let note = '';
+    if (r.worldview) {
+      theme = THEMES.find((t) => t.kw.test(r.worldview)) || null;
+      themeSource = 'existing';
+      note = r.worldview;
+    } else {
+      for (let tries = 0; tries < THEMES.length * 2; tries++) {
+        const i = themeCounter.all = (themeCounter.all || 0) + 1;
+        const cand = THEMES[i % THEMES.length];
+        if (!dupUsed.has(cand.id) && !batchThemes.has(cand.id)) { theme = cand; break; }
+        if (tries === THEMES.length * 2 - 1) theme = cand; // 安全弁(理論上ほぼ到達しない)
+      }
+    }
+    const themeId = theme ? theme.id : 'custom';
+    dupUsed.add(themeId);
+    batchThemes.add(themeId);
+    const themeJp = theme ? theme.jp : `(既存世界観: ${note.slice(0, 24)})`;
+    const stylePack = theme ? packOf(themeId, theme.packs) : packOf('custom', ALL_PACKS);
+
+    // 尺: 帯域内の候補値をメカニクスごとに巡回して分散(15秒一極集中の解消)
     const band = DURATION_BAND_OVERRIDE[mech] || DURATION_BAND[fam];
+    const mi = mechCounter[mech] = (mechCounter[mech] || 0) + 1;
     let durationTarget: number | string;
     if (r.maxTime === null) durationTarget = `目視(${band[0]}-${band[1]}s)`;
-    else durationTarget = Math.min(band[1], Math.max(band[0], Math.round(r.maxTime)));
+    else {
+      const cands = bandCandidates(band);
+      durationTarget = cands[mi % cands.length];
+    }
+
+    // 変化軸: プレッシャー型×スパイスをメカニクスごとに巡回(5×6=30通りで同メカ内を差別化)
+    const variation = PRESSURE_VARIATIONS[mi % PRESSURE_VARIATIONS.length];
+    const spice = SPICE_VARIATIONS[mi % SPICE_VARIATIONS.length];
 
     let neededAction = '維持';
     if (r.needed === 1 && !ONE_SHOT_OK.has(mech)) neededAction = '再調整(1→尺10秒あたり3〜8アクション)';
@@ -491,83 +604,40 @@ function buildAssignments(rows: GameRow[]): Assignment[] {
     }
     if (neededAction !== '維持') fix.push(`NEEDED(${r.needed})`);
 
-    const keep = ['メカニクス', '勝敗条件', '筐体骨格', 'slug/ファイル名'];
-    if (t.source === 'existing') keep.push('既存世界観');
-
-    const priority: 'P1' | 'P2' | 'P3' =
-      (r.needed === 1 && !ONE_SHOT_OK.has(mech)) || r.scoreTotal < 50 || r.dupSize > 1 ? 'P1'
-        : r.scoreTotal < 70 ? 'P2' : 'P3';
+    const keep = ['メカニクス', '勝敗条件', '固有フック(hook列)', '筐体骨格', 'slug/ファイル名'];
+    if (themeSource === 'existing') keep.push('既存世界観');
 
     assignments.push({
-      id: r.id!, filename: r.filename, slug: r.slug, mechanic: mech, family: fam,
-      theme: themeId, themeJp, themeSource: t.source, stylePack,
+      id: r.id!, filename: r.filename, slug: r.slug,
+      title: r.title, hook: r.desc,
+      mechanic: mech, family: fam,
+      theme: themeId, themeJp, themeSource, stylePack,
       bgmDirection: bgmDirection(mech, themeId),
+      variation, spice,
       durationCurrent: r.maxTime, durationTarget,
       neededCurrent: r.needed, neededAction,
-      priority, wave: -1, batch: '',
+      priority: computePriority(r), wave, batch: batchName,
       fixItems: fix.join(' '), keepItems: keep.join('/'),
       status: 'todo', scoreBefore: r.scoreTotal, scoreAfter: '', styleActual: '',
-      notes: t.source === 'existing' ? t.note : '',
+      notes: themeSource === 'existing' ? note : '',
     });
-  }
+  };
 
-  // Wave 0 パイロット: A〜F 各2本(優先度順)。重複slug≥2 / NEEDED=1≥1 / 長尺(≥30s)≥1 を含める
-  const pilot = new Set<number>();
-  const prioVal = (p: string) => (p === 'P1' ? 0 : p === 'P2' ? 1 : 2);
-  for (const fam of ['A', 'B', 'C', 'D', 'E', 'F']) {
-    const cands = assignments.filter((a) => a.family === fam).sort((x, y) => prioVal(x.priority) - prioVal(y.priority) || x.scoreBefore - y.scoreBefore);
-    // 1本目: 族の最優先。2本目: 制約(dup/NEEDED=1/長尺)を満たすものを優先
-    if (cands[0]) pilot.add(cands[0].id);
-    const wantDup = [...pilot].filter((id) => assignments.find((a) => a.id === id)!.fixItems.includes('NEEDED')).length < 1;
-    const second = cands.slice(1).find((a) =>
-      !pilot.has(a.id) && (
-        (wantDup && a.neededAction !== '維持') ||
-        (a.durationCurrent !== null && a.durationCurrent >= 30) ||
-        rowsDupSize(a, assignments) > 1
-      )
-    ) || cands.find((a) => !pilot.has(a.id));
-    if (second) pilot.add(second.id);
-  }
-  // 残り2枠: G系があれば1本 + 長尺1本
-  const gCand = assignments.filter((a) => a.family === 'G' && !pilot.has(a.id))[0];
-  if (gCand) pilot.add(gCand.id);
-  const longCand = assignments.filter((a) => !pilot.has(a.id) && a.durationCurrent !== null && a.durationCurrent >= 30)[0];
-  if (longCand) pilot.add(longCand.id);
-  for (const a of assignments) if (pilot.has(a.id)) { a.wave = 0; a.batch = 'W0'; }
+  // 既存世界観のゲームを各バッチで先に処理し、そのテーマをバッチ使用済みに登録してから
+  // 残りを割当てる(既存テーマとの衝突回避)
+  const inWorldviewFirst = (games: GameRow[]): GameRow[] =>
+    [...games.filter((r) => r.worldview), ...games.filter((r) => !r.worldview)];
 
-  // 本番バッチ: 族ごとに(dupGroup隣接・優先度順)10本刻み → バッチをP1比率順に Wave 1..N(10バッチ/Wave)
-  interface Batch { name: string; ids: number[]; p1: number; avgScore: number }
-  const batches: Batch[] = [];
-  for (const fam of ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']) {
-    const games = assignments
-      .filter((a) => a.family === fam && a.wave !== 0)
-      .sort((x, y) => prioVal(x.priority) - prioVal(y.priority) || (x.slug < y.slug ? -1 : x.slug > y.slug ? 1 : x.id - y.id));
-    for (let i = 0; i < games.length; i += 10) {
-      const chunk = games.slice(i, i + 10);
-      batches.push({
-        name: `${fam}${String(Math.floor(i / 10) + 1).padStart(2, '0')}`,
-        ids: chunk.map((c) => c.id),
-        p1: chunk.filter((c) => c.priority === 'P1').length,
-        avgScore: chunk.reduce((s, c) => s + c.scoreBefore, 0) / chunk.length,
-      });
-    }
-  }
-  batches.sort((x, y) => y.p1 - x.p1 || x.avgScore - y.avgScore);
+  const pilotThemes = new Set<string>();
+  for (const r of inWorldviewFirst(pilotBatch)) buildOne(r, 0, 'W0', pilotThemes);
   batches.forEach((b, i) => {
     const wave = Math.floor(i / 10) + 1;
-    for (const id of b.ids) {
-      const a = assignments.find((x) => x.id === id)!;
-      a.wave = wave;
-      a.batch = b.name;
-    }
+    const batchThemes = new Set<string>();
+    for (const r of inWorldviewFirst(b.games)) buildOne(r, wave, b.name, batchThemes);
   });
 
   assignments.sort((a, b) => a.id - b.id);
   return assignments;
-}
-
-function rowsDupSize(a: Assignment, all: Assignment[]): number {
-  return all.filter((x) => x.slug === a.slug).length;
 }
 
 // ── 出力 ─────────────────────────────────────────────────────────────────
@@ -607,16 +677,16 @@ function writeLedgerCsv(rows: GameRow[]): void {
 
 function writeAssignmentsCsv(assignments: Assignment[]): void {
   const header = [
-    'id', 'filename', 'slug', 'mechanic', 'family', 'theme', 'theme_jp', 'theme_source',
-    'style_pack', 'bgm_direction', 'duration_current', 'duration_target',
+    'id', 'filename', 'slug', 'title', 'hook', 'mechanic', 'family', 'theme', 'theme_jp', 'theme_source',
+    'style_pack', 'bgm_direction', 'variation', 'spice', 'duration_current', 'duration_target',
     'needed_current', 'needed_action', 'priority', 'wave', 'batch',
     'fix_items', 'keep_items', 'status', 'score_before', 'score_after', 'style_actual', 'notes',
   ];
   const lines = [header.join(',')];
   for (const a of assignments) {
     lines.push([
-      a.id, a.filename, a.slug, a.mechanic, a.family, a.theme, a.themeJp, a.themeSource,
-      a.stylePack, a.bgmDirection, a.durationCurrent, a.durationTarget,
+      a.id, a.filename, a.slug, a.title, a.hook, a.mechanic, a.family, a.theme, a.themeJp, a.themeSource,
+      a.stylePack, a.bgmDirection, a.variation, a.spice, a.durationCurrent, a.durationTarget,
       a.neededCurrent, a.neededAction, a.priority, a.wave, a.batch,
       a.fixItems, a.keepItems, a.status, a.scoreBefore, a.scoreAfter, a.styleActual, a.notes,
     ].map(csvEscape).join(','));
@@ -734,6 +804,47 @@ ${fmt(hist(assignments, (a) => a.priority))}
 | wave | 本数 |
 |---|---|
 ${fmt(hist(assignments, (a) => `Wave ${a.wave}`))}
+
+### 尺の目標分布(duration_target — 帯域内分散の確認)
+
+| 秒 | 本数 |
+|---|---|
+${fmt(hist(assignments.filter((a) => typeof a.durationTarget === 'number'), (a) => String(a.durationTarget)), 20)}
+
+### 変化軸の分布
+
+| プレッシャー型 | 本数 |
+|---|---|
+${fmt(hist(assignments, (a) => a.variation))}
+
+| スパイス | 本数 |
+|---|---|
+${fmt(hist(assignments, (a) => a.spice))}
+
+### バッチ多様性検査(クローン量産の構造的防止)
+
+${(() => {
+    const byBatch = new Map<string, Assignment[]>();
+    for (const a of assignments) {
+      if (!byBatch.has(a.batch)) byBatch.set(a.batch, []);
+      byBatch.get(a.batch)!.push(a);
+    }
+    let maxSameMech = 0; let maxSameSlug = 0; let themeCollisions = 0; let distinctMechSum = 0;
+    for (const games of byBatch.values()) {
+      const mech = hist(games, (g) => g.mechanic);
+      const slug = hist(games, (g) => g.slug);
+      const themes = hist(games, (g) => g.theme).filter(([t, n]) => t !== 'custom' && n > 1);
+      maxSameMech = Math.max(maxSameMech, mech[0]?.[1] || 0);
+      maxSameSlug = Math.max(maxSameSlug, slug[0]?.[1] || 0);
+      themeCollisions += themes.reduce((s, [, n]) => s + n - 1, 0);
+      distinctMechSum += mech.length;
+    }
+    const avgMech = (distinctMechSum / byBatch.size).toFixed(1);
+    return `- バッチ数: ${byBatch.size} / バッチ内の distinct メカニクス平均: ${avgMech}
+- 同一メカニクスの1バッチ内最大本数: ${maxSameMech}(目標≤3)
+- 同一slugの1バッチ内最大本数: ${maxSameSlug}(目標1)
+- バッチ内テーマ重複(custom除く): ${themeCollisions}件(目標0)`;
+  })()}
 ` : '\n(assignments は既存のため分布は再計算していない — --reassign で再生成)\n'}`;
   fs.writeFileSync(path.join(LEDGER_DIR, 'game-ledger-summary.md'), md, 'utf-8');
 }

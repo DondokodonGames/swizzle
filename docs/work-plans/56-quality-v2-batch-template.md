@@ -18,17 +18,23 @@ Swizzle のコードゲーム(`src/ai/code/examples/*.js`)を「遊びの文法v
 
 ### 担当ゲーム(このバッチ)
 
-`docs/work-plans/ledger/game-assignments.csv` の batch=`<<バッチ名: 例 A03>>` の行。以下に貼り付け:
+`docs/work-plans/ledger/game-assignments.csv` の batch=`<<バッチ名: 例 B03>>` の行。以下に貼り付け:
 
 ```
-<<assignments該当行(10本)をCSVのまま貼る。列: id,filename,slug,mechanic,family,theme,theme_jp,
-theme_source,style_pack,bgm_direction,duration_current,duration_target,needed_current,needed_action,
-priority,wave,batch,fix_items,keep_items,status,score_before,...>>
+<<assignments該当行(10本)をCSVのまま貼る。列: id,filename,slug,title,hook,mechanic,family,theme,
+theme_jp,theme_source,style_pack,bgm_direction,variation,spice,duration_current,duration_target,
+needed_current,needed_action,priority,wave,batch,fix_items,keep_items,status,score_before,...>>
 ```
+
+**バッチは意図的にメカニクス混成**(10本≈9種)になっている。同メカニクスを固めると
+書き換えがワンパターン化するため。ゲームごとに頭を切り替え、コードの使い回しをしないこと。
 
 列の読み方(詳細は `docs/work-plans/61-800-games-ledger.md` の凡例):
-- **theme_jp / style_pack / bgm_direction**: このゲームに割り当てられた世界観・スタイルパック・BGM方針。従うこと(バッチ内で全員別テーマなのは意図的 — 同slugの重複ゲームを見た目で差別化するため)
-- **duration_target / needed_action**: MAX_TIME と NEEDED の指定。`維持` 以外は必ず変更する
+- **hook**: そのゲーム固有の面白さ(元ヘッダー2行目)。**保全・増幅が最優先**。
+  メカニクスの教科書形に均して hook を消すことを禁止(PLAY_GRAMMAR_V3 §2.8)
+- **theme_jp / style_pack / bgm_direction**: 割り当てられた世界観・スタイルパック・BGM方針。従うこと(バッチ内で全員別テーマ・同slugは全て別テーマになるよう割当済み)
+- **variation / spice**: 難易度カーブの型と得点の山場の型(§2.8)。遊びと矛盾する場合のみ同リスト内で変更可(notesに理由を記録)
+- **duration_target / needed_action**: MAX_TIME と NEEDED の指定。`維持` 以外は必ず変更する(同メカニクスでも尺は意図的に散らしてある)
 - **fix_items**: このゲームで直す項目のコード列(TEXTLESS/DEMO/TAGS/SE/BGM/SPRITE/GRAD/FEEDBACK/BEST/THEME/DUR/NEEDED)
 - **keep_items**: 触ってはいけない部分
 
@@ -48,6 +54,7 @@ priority,wave,batch,fix_items,keep_items,status,score_before,...>>
 4. **telegraph**: 危険は0.5〜0.8秒前に必ず予告。予告なし即死を根絶
 5. **失敗の因果提示**: hit-stop 0.3〜0.6秒+当たった物のハイライト→RESULT
 6. **テーマ注入**: 割当テーマ(theme_jp)で世界観を作る。主役を `game.draw.sprite`(顔つき、2〜4フレーム)に置換。背景は `gradient`+遠景。`// スタイル: <style_pack>` を宣言し、そのパレットで統一
+6b. **フックの増幅と変化軸**: hook 列の固有要素を演出の主役に残す。variation(難易度カーブの型)と spice(得点の山場)を実装する(PLAY_GRAMMAR_V3 §2.8)
 7. **音**: SEマッピング表(§6.1)準拠で distinct 3種以上。BGMは bgm_direction 列に従う(melody固有化が第一候補)。`game.feedback.good/bad` を配線
 8. **尺と難易度**: `MAX_TIME` → duration_target、`NEEDED` → needed_action の指示通り。`// 修正` ナーフ注釈は削除
 9. **偽HI-SCORE除去**: ハードコードの HI-SCORE 数字を `game.best` の実値に置換
@@ -92,7 +99,7 @@ npm run games:smoke -- --files <<file1>> <<file2>> <<file3>>
 - **同じコミットで** `docs/work-plans/ledger/game-assignments.csv` の該当行を更新:
   `status=done` / `score_after=<新スコア>` / `style_actual=<使ったスタイルパック>`
   (バッチ間で行が交差しないためコンフリクトしない。ledger.csv の方は触らない — 検収時に再生成される)
-- ブランチ: `<<例: claude/grammar-v3-wave1-A03>>`
+- ブランチ: `<<例: claude/grammar-v3-wave1-B03>>`
 
 ### 完了報告(セッション末尾に出力)
 
