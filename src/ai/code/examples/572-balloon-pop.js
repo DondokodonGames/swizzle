@@ -1,144 +1,229 @@
 // 572-balloon-pop.js
-// バルーンポップ — 上部に指定された色の風船だけをタップで割る。違う色を割るとミス
-// 操作: 指定色（バナー表示）の風船をタップで割る（誤った色を割ると指定色が変わる）
-// 成功: 指定色を 8個 割る  失敗: 3回 誤爆 or 18秒
+// バルーンポップ — お題と同じ紋章の宙玉だけを見分けてタップで割る。違う紋章はミス
+// 操作: 上に示された紋章と同じ宙玉をタップ
+// 成功: 制限時間内に 8 個割る  失敗: 時間切れ
+// @mechanic: spot
+// @theme: dungeon
+// 世界観: 迷宮の魔術師見習いが、封印の紋章を読み、同じ紋章の宙玉だけを割って解呪する
+// variation: 精度型(進むほど宙玉が小さく多くなる)
+// spice: 黄金ターゲット(稀に光る宙玉=得点2倍が出る)
+// スタイル: 70s MONO
 
 (function(game) {
-  var W = game.canvas.width;   // 1080
-  var H = game.canvas.height;  // 1920
+  var W = game.canvas.width;
+  var H = game.canvas.height;
 
-  // ── パレット（ネオンアーケード、縁日） ──
-  var C = { bg:'#0a0614', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
-  var BALLOONS = [
-    { fill: '#ff2079', name: 'PINK' },
-    { fill: '#00cfff', name: 'CYAN' },
-    { fill: '#00ff9f', name: 'GREEN' },
-    { fill: '#ffe600', name: 'YELLOW' },
-    { fill: '#7700ff', name: 'PURPLE' }
+  // 70s MONO(琥珀フォスファ・単色)
+  var C = {
+    black: '#080400', amber: '#ffb000', amberDim: '#7a5400', amberLo: '#3a2800',
+    white: '#fff2cc', red: '#ff5a2a', glow: '#ffe08a',
+  };
+
+  var GAME_TITLE = 'BALLOON POP';
+  var MAX_TIME = 13;
+  var NEEDED = 8;
+
+  // 4種の紋章(6x6 ドット)
+  var RUNES = [
+    ['..AA..', '.A..A.', 'A....A', 'A....A', '.A..A.', '..AA..'], // 円
+    ['A....A', '.A..A.', '..AA..', '..AA..', '.A..A.', 'A....A'], // ×
+    ['AAAAAA', 'A....A', 'A.AA.A', 'A.AA.A', 'A....A', 'AAAAAA'], // 枠
+    ['..AA..', '.AAAA.', 'AA..AA', 'AA..AA', '.AAAA.', '..AA..'], // 菱
   ];
 
-  // ── ゲーム定数 ──
-  var GAME_TITLE  = 'BALLOON POP';
-  var HOW_TO_PLAY = 'POP ONLY THE BALLOONS OF THE TARGET COLOR SHOWN ABOVE';
-  var MAX_TIME = 18;
-  var NEEDED   = 8;          // 修正2: 25 → 8
-  var MAX_WRONG = 3;         // 修正2: 10 → 3
-
-  // ── ステート ──
   var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
   var state = S.ATTRACT;
   var resultSuccess = false, finalScore = 0;
 
-  // ── ゲーム変数 ──
-  var target, balloons, popped, wrongPops, timeLeft, done, particles, nextBalloon, flash, flashCol;
-
-  // ── ピクセル描画ヘルパー ──
-  function snap(v) { return Math.round(v / 8) * 8; }
-
-  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+  var orbs, target, spawnT, popped, timeLeft, done;
+  var ready, hitStop, feedback, feedbackOk;
 
   function txt(str, x, y, sz, color, align) {
-    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x + 3, y + 4, { size: sz, color: '#000000', bold: true, align: align || 'center' });
     game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
+  function scanlines() { for (var sy = 0; sy < H; sy += 6) game.draw.rect(0, sy, W, 2, '#000000', 0.28); }
 
-  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
-
-  function timeBar() {
-    var t = Math.ceil(timeLeft / MAX_TIME * 12);
-    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.f : '#140a20');
+  function dungeonBg() {
+    game.draw.gradient(0, H, [[0, '#100a02'], [1, '#040200']]);
+    // 石壁のグリッド
+    for (var y = 100; y < H; y += 120) for (var x = 0; x < W; x += 140) game.draw.rect(x + 4, y + 4, 132, 112, C.amberLo, 0.35);
   }
 
-  function background() { game.draw.clear(C.bg); }
+  function runeColorFor(o) {
+    if (o.gold) return C.white;
+    return o.rune === target ? C.amber : C.amberDim;
+  }
+  function drawOrb(o) {
+    var col = runeColorFor(o);
+    game.draw.circle(o.x, o.y, o.r, col, o.gold && Math.floor(game.time.elapsed * 8) % 2 ? 0.5 : 0.28);
+    game.draw.circle(o.x, o.y, o.r - 6, C.black, 0.5);
+    // 紋章
+    var pal = {}; pal.A = col;
+    game.draw.sprite(RUNES[o.rune], pal, o.x, o.y, o.r / 4, { anchor: 'center' });
+  }
 
-  function spawnBalloon() { var ci = Math.floor(Math.random() * BALLOONS.length), r = 50 + Math.random() * 26; balloons.push({ x: r + Math.random() * (W - r * 2), y: H + r + 20, r: r, colorIdx: ci, vy: -(140 + Math.random() * 100), vx: (Math.random() - 0.5) * 60, wobble: Math.random() * Math.PI * 2, wobbleSpeed: 2 + Math.random() * 2 }); }
-
-  function initGame() { target = Math.floor(Math.random() * BALLOONS.length); balloons = []; popped = 0; wrongPops = 0; timeLeft = MAX_TIME; done = false; particles = []; nextBalloon = 0.5; flash = 0; flashCol = C.b; }
+  function spawnOrb() {
+    var small = Math.min(30, popped * 4);
+    orbs.push({
+      x: 120 + game.random(0, W - 240), y: H + 80,
+      r: 88 - small + game.random(-6, 6),
+      rune: Math.floor(Math.random() * RUNES.length),
+      vy: -(120 + popped * 12 + game.random(0, 60)),
+      gold: Math.random() < 0.14,
+    });
+  }
+  function initGame() {
+    orbs = []; target = Math.floor(Math.random() * RUNES.length); spawnT = 0; popped = 0;
+    timeLeft = MAX_TIME; done = false; ready = 0.8; hitStop = 0; feedback = 0; feedbackOk = false;
+    for (var i = 0; i < 4; i++) spawnOrb();
+  }
 
   function finish(success) {
     if (done) return;
-    done = true; resultSuccess = success;
-    finalScore = success ? (popped * 500 + Math.ceil(timeLeft) * 100) : popped * 150;
-    game.audio.play(success ? 'se_success' : 'se_failure');
+    done = true; resultSuccess = success; finalScore = _score;
+    game.audio.stopBgm();
+    if (success) game.audio.play('se_success');
+    else { game.audio.play('se_failure'); hitStop = 0.4; game.fx.flash(C.red, 0.25); }
     state = S.RESULT;
-    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1600);
   }
+  var _score = 0;
 
-  function drawScene() {
-    for (var i = 0; i < balloons.length; i++) {
-      var b = balloons[i], col = BALLOONS[b.colorIdx].fill, wx = Math.sin(b.wobble) * 8, isT = b.colorIdx === target;
-      game.draw.rect(snap(b.x + wx) - 1, snap(b.y + b.r), 2, 80, '#8b7355', 0.9);
-      pc(b.x + wx, b.y, b.r, col, 0.9); pc(b.x + wx - b.r * 0.25, b.y - b.r * 0.25, b.r * 0.3, C.g, 0.5);
-      if (isT) pc(b.x + wx, b.y, b.r + 12, col, 0.2 + Math.sin(game.time.elapsed * 6) * 0.1);
-    }
-  }
-
-  // ── 入力 ──
-  game.onTap(function(tx, ty) {
-    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
-    if (state === S.RESULT) { state = S.ATTRACT; return; }
-    if (done) return;
-    for (var i = balloons.length - 1; i >= 0; i--) {
-      var b = balloons[i]; if (Math.hypot(tx - b.x, ty - b.y) < b.r + 10) {
-        var col = BALLOONS[b.colorIdx].fill; for (var pi = 0; pi < 10; pi++) { var a = Math.random() * Math.PI * 2; particles.push({ x: b.x, y: b.y, vx: Math.cos(a) * 220, vy: Math.sin(a) * 220, life: 0.5, col: col }); }
-        var isC = b.colorIdx === target; balloons.splice(i, 1);
-        if (isC) { popped++; flash = 0.2; flashCol = C.b; game.audio.play('se_success', 0.6); if (popped >= NEEDED) { finish(true); return; } }
-        else { wrongPops++; flash = 0.3; flashCol = C.a; game.audio.play('se_failure', 0.3); target = Math.floor(Math.random() * BALLOONS.length); if (wrongPops >= MAX_WRONG) { finish(false); return; } }
+  function tapAt(x, y) {
+    for (var i = orbs.length - 1; i >= 0; i--) {
+      var o = orbs[i];
+      if (game.hit.circle(x, y, 10, o.x, o.y, o.r)) {
+        if (o.rune === target) {
+          popped++;
+          var gain = o.gold ? 200 : 100; _score += gain;
+          feedback = 0.3; feedbackOk = true;
+          game.feedback.good(o.x, o.y, { text: o.gold ? 'GOLD +200' : '+100', color: o.gold ? C.white : C.amber });
+          if (o.gold) game.audio.play('se_milestone');
+          orbs.splice(i, 1);
+          if (popped >= NEEDED) { finish(true); return; }
+          spawnOrb();
+        } else {
+          feedback = 0.3; feedbackOk = false; hitStop = 0.3;
+          game.feedback.bad(o.x, o.y, { text: 'WRONG' });
+          target = Math.floor(Math.random() * RUNES.length); // 誤爆でお題が変わる
+        }
         return;
       }
     }
+  }
+
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_coin'); state = S.PLAYING; _score = 0; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done || ready > 0 || hitStop > 0) return;
+    tapAt(x, y);
   });
 
-  // ── 更新 & 描画 ──
+  function targetBanner(cx, cy) {
+    game.draw.rect(cx - 90, cy - 90, 180, 180, C.amberLo, 0.5);
+    game.draw.rect(cx - 90, cy - 90, 180, 8, C.amber);
+    var pal = { A: C.amber };
+    game.draw.sprite(RUNES[target], pal, cx, cy, 22, { anchor: 'center' });
+  }
+
+  // ATTRACT ゴースト実演: 手がお題と同じ紋章の玉へ
+  var d = { orbs: null, t: 0, target: 0, gx: W / 2, gy: H * 0.8, press: false };
+  function stepDemo(dt) {
+    if (!d.orbs) {
+      d.orbs = [];
+      for (var i = 0; i < 4; i++) d.orbs.push({ x: 180 + i * 230, y: H * 0.4 + Math.sin(i) * 120, r: 80, rune: i % RUNES.length, gold: false });
+      d.target = 1;
+    }
+    d.t += dt;
+    for (var j = 0; j < d.orbs.length; j++) d.orbs[j].y += Math.sin(d.t * 2 + j) * 20 * dt;
+    var tgt = d.orbs[d.target];
+    d.gx += (tgt.x - d.gx) * Math.min(1, dt * 3);
+    d.gy += (tgt.y + 30 - d.gy) * Math.min(1, dt * 3);
+    d.press = Math.hypot(d.gx - tgt.x, d.gy - tgt.y - 30) < 90;
+    if (d.press && Math.floor(d.t * 2) % 2 === 0) {
+      game.feedback.good(tgt.x, tgt.y, { text: '+100', color: C.amber });
+      d.target = (d.target + 1) % d.orbs.length;
+    }
+  }
+
   game.onUpdate(function(dt) {
     if (state === S.ATTRACT) {
-      if (!balloons) initGame(); background(); drawScene();
-      txt(GAME_TITLE, W / 2, H * 0.30, 82, C.c);
-      txt(HOW_TO_PLAY, W / 2, H * 0.345, 20, C.b);
-      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
-        txt('► 100円 投入 ◄', W / 2, H * 0.52, 56, C.a);
-        txt('TAP TO START', W / 2, H * 0.56, 42, C.g);
+      dungeonBg(); stepDemo(dt);
+      for (var i = 0; i < d.orbs.length; i++) {
+        var o = d.orbs[i], col = o.rune === d.target % RUNES.length ? C.amber : C.amberDim;
+        game.draw.circle(o.x, o.y, o.r, col, 0.28);
+        game.draw.sprite(RUNES[o.rune], { A: col }, o.x, o.y, o.r / 4, { anchor: 'center' });
+      }
+      targetBanner(W / 2, H * 0.16);
+      game.draw.hand(d.gx, d.gy, { press: d.press, scale: 15 });
+      txt(GAME_TITLE, W / 2, H * 0.62, 80, C.amber);
+      txt('BEST ' + String(game.best).padStart(6, '0'), W / 2, H * 0.68, 40, C.glow);
+      if (Math.floor(game.time.elapsed * 1.8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.84, 62, C.amber);
+        txt('TAP TO START', W / 2, H * 0.9, 48, C.white);
       }
       scanlines();
       return;
     }
 
     if (state === S.RESULT) {
-      background();
-      txt(resultSuccess ? 'ALL POPPED!' : 'TOO MANY MISSES', W / 2, H * 0.35, 62, resultSuccess ? C.b : C.a);
-      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
-      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      dungeonBg();
+      if (hitStop > 0) hitStop -= dt;
+      targetBanner(W / 2, H * 0.24);
+      txt(resultSuccess ? 'CLEAR' : 'GAME OVER', W / 2, H * 0.48, 88, resultSuccess ? C.amber : C.red);
+      txt('SCORE ' + String(_score).padStart(6, '0'), W / 2, H * 0.58, 56, C.white);
+      var best = Math.max(game.best, _score);
+      txt('BEST ' + String(best).padStart(6, '0'), W / 2, H * 0.64, 42, C.amber);
+      if (_score > game.best && game.best > 0 && resultSuccess && Math.floor(game.time.elapsed * 3) % 2 === 0) {
+        txt('NEW RECORD', W / 2, H * 0.71, 54, C.glow);
+      } else if (Math.floor(game.time.elapsed * 2) % 2 === 0) {
+        txt('TAP TO CONTINUE', W / 2, H * 0.75, 46, C.amber);
+      }
       scanlines();
       return;
     }
 
     // PLAYING
     if (!done) {
-      timeLeft -= dt;
-      if (timeLeft <= 0) { finish(false); return; }
-      if (flash > 0) flash -= dt * 4;
-      nextBalloon -= dt; if (nextBalloon <= 0) { spawnBalloon(); if (Math.random() < 0.3) spawnBalloon(); nextBalloon = 0.4 + Math.random() * 0.5; }
-      for (var i = balloons.length - 1; i >= 0; i--) { var b = balloons[i]; b.x += b.vx * dt; b.y += b.vy * dt; b.wobble += b.wobbleSpeed * dt; if (b.x - b.r < 0) { b.x = b.r; b.vx = Math.abs(b.vx); } if (b.x + b.r > W) { b.x = W - b.r; b.vx = -Math.abs(b.vx); } if (b.y + b.r < -20) balloons.splice(i, 1); }
-      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 300 * dt; p.life -= dt * 2; if (p.life <= 0) particles.splice(pp, 1); }
+      if (hitStop > 0) { hitStop -= dt; }
+      else if (ready > 0) { ready -= dt; if (ready <= 0) game.audio.play('se_tap'); }
+      else {
+        timeLeft -= dt;
+        if (timeLeft <= 0) { finish(false); return; }
+        for (var i = orbs.length - 1; i >= 0; i--) {
+          orbs[i].y += orbs[i].vy * dt;
+          orbs[i].x += Math.sin(game.time.elapsed * 2 + i) * 20 * dt;
+          if (orbs[i].y < -100) { orbs.splice(i, 1); spawnOrb(); }
+        }
+        while (orbs.length < 5) spawnOrb();
+      }
+      if (feedback > 0) feedback -= dt;
     }
 
-    // ---- 描画 ----
-    background(); drawScene();
-    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 6, snap(particles[pp2].y) - 6, 12, 12, particles[pp2].col, particles[pp2].life * 1.5);
-    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.12);
+    // draw
+    dungeonBg();
+    for (var k = 0; k < orbs.length; k++) drawOrb(orbs[k]);
+    targetBanner(W / 2, 150);
 
-    var tc = BALLOONS[target];
-    pc(W / 2 - 180, 156, 30, tc.fill, 0.95); txt('POP ' + tc.name, W / 2 + 30, 170, 46, tc.fill);
-    timeBar();
-    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
-    txt(popped + ' / ' + NEEDED, W / 2, 232, 44, C.b);
-    for (var wi = 0; wi < MAX_WRONG; wi++) game.draw.rect(snap(W / 2 + (wi - (MAX_WRONG - 1) / 2) * 56) - 10, 268, 20, 20, wi < wrongPops ? C.a : '#140a20');
+    var frac = Math.max(0, timeLeft / MAX_TIME);
+    game.draw.rect(60, 260, (W - 120) * frac, 22, C.amber);
+    game.draw.rect(60, 260, W - 120, 22, C.amberLo, 0.6);
+    txt('SCORE ' + String(_score).padStart(6, '0'), W * 0.28, 150, 40, C.white, 'center');
+    txt(popped + ' / ' + NEEDED, W * 0.72, 150, 44, C.amber, 'center');
+    if (ready > 0) txt(ready > 0.35 ? 'READY?' : 'GO!', W / 2, H * 0.5, 92, C.amber);
     scanlines();
   });
 
   game.onStart(function() {
-    game.audio.bgm('bgm_main', 0.08);
+    game.audio.melody(
+      [['C4', 0.5], ['Eb4', 0.5], ['G4', 0.5], ['Eb4', 0.5], ['Ab4', 0.5], ['G4', 0.5], ['C4', 1],
+       ['Bb3', 0.5], ['D4', 0.5], ['F4', 0.5], ['Eb4', 0.5], ['C4', 1], ['G3', 1]],
+      { tempo: 108, wave: 'triangle', volume: 0.09, loop: true,
+        bass: [['C2', 1], ['C2', 1], ['Ab1', 1], ['Bb1', 1], ['F1', 1], ['G1', 1]], bassWave: 'square', bassVolume: 0.06 }
+    );
     state = S.ATTRACT;
+    _score = 0;
     initGame();
   });
 })(game);
