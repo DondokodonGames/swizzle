@@ -25,6 +25,8 @@ export interface IframeGameContext {
  *   iframe → parent:  { type: 'READY' }
  *                     { type: 'GAME_END', result: 'success'|'failure', score?: number, stats?: object }
  *                     { type: 'ERROR', message: string }
+ *                     { type: 'WARN', code: 'UNKNOWN_SE'|'UNKNOWN_BGM'|'UNKNOWN_IMAGE'|'ASSET_LOAD_FAILED', id: string }
+ *                       (visibility only — asset fallbacks still play/skip as before; sent once per id)
  *
  * API v2 (all additive, backward compatible with v1 games):
  *   - WebAudio chiptune synthesis: game.audio.tone / game.audio.melody, plus
@@ -36,6 +38,7 @@ export interface IframeGameContext {
  *   - Continuous & multi-touch input: game.input, game.touches,
  *     game.onPress / onRelease / onMove.
  *   - Pixel sprites: game.draw.sprite (string-bitmap + palette, cached).
+ *   - Built-in hand cursor: game.draw.hand (ATTRACT ghost-demo pointer, cached).
  *   - Vertical gradient backgrounds: game.draw.gradient.
  *   - Hit tests: game.hit.circle / game.hit.rect.
  *   - Best score: game.best (injected via INIT context).
@@ -89,6 +92,34 @@ export function buildIframeHtml(gameCode: string, maxDurationMs: number): string
   let currentDelta = 0;
   let audioUnlocked = false;
   let gameContext = {};
+
+  // ── Watchdog (armed from first user input, not from START) ─────────────────
+  // START begins the ATTRACT screen; timing the maxDuration watchdog from there
+  // force-fails a player who is still watching the ghost-demo. Instead the
+  // watchdog is armed once on the first pointerdown (= ATTRACT→PLAYING for all
+  // games), which is equivalent to "time from PLAYING start". A separate 120s
+  // absolute cap on START keeps an untouched iframe from living forever.
+  let watchdogArmed = false;
+  function armWatchdog() {
+    if (watchdogArmed) return;
+    watchdogArmed = true;
+    setTimeout(function() {
+      if (isRunning) game.end.failure();
+    }, ${maxDurationMs});
+  }
+
+  // ── WARN visibility ────────────────────────────────────────────────────────
+  // Silent asset fallbacks (unknown SE/BGM/image, load failures) hide quality
+  // regressions. Surface them to the parent as WARN messages — once per id/code
+  // so per-frame draw calls don't spam. Production behaviour is unchanged.
+  const warnedKeys = {};
+  function warnOnce(code, id) {
+    const key = code + ':' + id;
+    if (warnedKeys[key]) return;
+    warnedKeys[key] = true;
+    parent.postMessage({ type: 'WARN', code: code, id: id }, '*');
+  }
+  const knownImageIds = {};  // ids declared via INIT assets (image); guards UNKNOWN_IMAGE
 
   // ── Swipe detection state ─────────────────────────────────────────────────
   let touchStartX = 0, touchStartY = 0, touchStartTime = 0;
@@ -334,6 +365,7 @@ export function buildIframeHtml(gameCode: string, maxDurationMs: number): string
     return -1;
   }
   function addTouch(id, x, y) {
+    armWatchdog();  // first user input starts the maxDuration clock (= PLAYING start)
     const i = findTouchIndex(id);
     if (i >= 0) { activeTouches[i].x = x; activeTouches[i].y = y; }
     else activeTouches.push({ id: id, x: x, y: y });
@@ -440,6 +472,7 @@ export function buildIframeHtml(gameCode: string, maxDurationMs: number): string
   });
   canvas.addEventListener('click', function(e) {
     unlockAudio();
+    armWatchdog();  // covers synthetic clicks that never fire mousedown/touchstart
     const pos = canvasCoords(e.clientX, e.clientY);
     tapHandlers.forEach(function(fn) { fn(pos.x, pos.y); });
   });
@@ -568,6 +601,36 @@ export function buildIframeHtml(gameCode: string, maxDurationMs: number): string
     return cv;
   }
 
+  // ── Built-in hand cursor (ATTRACT ghost-demo pointer) ─────────────────────
+  // 8px-grid dot-art pointing hand, drawn through the sprite path (cached).
+  // Both poses are 8 wide so the fingertip anchor stays put; the pressed pose
+  // shifts down one row to read as a tap.
+  const HAND_POINT = [
+    '..KK....',
+    '.KWWK...',
+    '.KWWK...',
+    '.KWWK...',
+    '.KWWKKK.',
+    'KKWWWWWK',
+    'KWWWWWWK',
+    'KWWWWWWK',
+    '.KWWWWK.',
+    '..KKKK..'
+  ];
+  const HAND_PRESS = [
+    '........',
+    '..KK....',
+    '.KWWKKK.',
+    'KKWWWWWK',
+    'KWWWWWWK',
+    'KWWWWWWK',
+    'KWWWWWWK',
+    'KWWWWWWK',
+    '.KWWWWK.',
+    '..KKKK..'
+  ];
+  const HAND_PAL = { K: '#1a1a1a', W: '#ffffff' };
+
   // ── SwizzleGameAPI implementation ─────────────────────────────────────────
   function playSound(id, volume) {
     const a = audioCache[id];
@@ -580,8 +643,11 @@ export function buildIframeHtml(gameCode: string, maxDurationMs: number): string
     // Synthesized preset fallback (fixes silent games with no audio assets)
     const v = volume !== undefined ? volume : 1.0;
     const preset = SE_PRESETS[id];
-    if (preset) preset(v);
-    else if (id && String(id).indexOf('se_') === 0) SE_PRESETS.se_tap(v);
+    if (preset) { preset(v); return; }
+    // Unknown SE id: no asset, no preset. Behaviour unchanged (se_tap fallback
+    // for se_* ids), but surface the typo/omission.
+    warnOnce('UNKNOWN_SE', id);
+    if (id && String(id).indexOf('se_') === 0) SE_PRESETS.se_tap(v);
   }
 
   const game = {
@@ -623,7 +689,12 @@ export function buildIframeHtml(gameCode: string, maxDurationMs: number): string
       },
       image: function(id, x, y, w, h, rotation) {
         const img = imageCache[id];
-        if (!img || !img.complete) return;
+        if (!img || !img.complete) {
+          // Declared-but-still-loading / declared-but-failed ids stay silent here
+          // (ASSET_LOAD_FAILED is emitted at load time). Only truly unknown ids warn.
+          if (!knownImageIds[id]) warnOnce('UNKNOWN_IMAGE', id);
+          return;
+        }
         ctx.save();
         if (rotation) {
           ctx.translate(x + w / 2, y + h / 2);
@@ -718,6 +789,28 @@ export function buildIframeHtml(gameCode: string, maxDurationMs: number): string
         ctx.fillStyle = g;
         ctx.fillRect(0, Math.min(y0, y1), 1080, Math.abs(y1 - y0));
         ctx.restore();
+      },
+      hand: function(x, y, opts) {
+        const o = opts || {};
+        const scale = o.scale || 8;
+        const alpha = (o.alpha !== undefined) ? o.alpha : 1;
+        // Tap ring under the hand when pressing — a white ring that expands and
+        // fades on a repeating cycle (driven by elapsed so demos read as taps).
+        if (o.press) {
+          const period = 0.5;
+          const phase = (elapsed % period) / period;  // 0..1 repeating
+          ctx.save();
+          ctx.globalAlpha = alpha * (1 - phase) * 0.8;
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = Math.max(2, scale * 0.6);
+          ctx.beginPath();
+          ctx.arc(x, y, scale * (2 + phase * 6), 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        }
+        // Anchor the fingertip (top, ~col 2.5 of 8) at (x, y) via the sprite path.
+        game.draw.sprite(o.press ? HAND_PRESS : HAND_POINT, HAND_PAL,
+          x - scale * 2.5, y, scale, { alpha: alpha });
       }
     },
 
@@ -776,6 +869,7 @@ export function buildIframeHtml(gameCode: string, maxDurationMs: number): string
           return;
         }
         // Synthesized preset fallback — unknown ids get the default loop
+        if (!BGM_PRESETS[id]) warnOnce('UNKNOWN_BGM', id);
         const p = BGM_PRESETS[id] || BGM_PRESETS.bgm_main;
         const mult = ((volume !== undefined) ? volume : 0.5) / 0.5;
         playSynthMelody(p.notes, {
@@ -818,10 +912,11 @@ export function buildIframeHtml(gameCode: string, maxDurationMs: number): string
   function loadAssets(assets) {
     var promises = assets.map(function(asset) {
       if (asset.type === 'image') {
+        knownImageIds[asset.id] = true;  // declared id — guards against false UNKNOWN_IMAGE
         return new Promise(function(resolve) {
           var img = new Image();
           img.onload = function() { imageCache[asset.id] = img; resolve(); };
-          img.onerror = function() { resolve(); }; // missing asset → skip silently
+          img.onerror = function() { warnOnce('ASSET_LOAD_FAILED', asset.id); resolve(); };
           img.src = asset.dataUrl;
         });
       } else {
@@ -861,10 +956,12 @@ export function buildIframeHtml(gameCode: string, maxDurationMs: number): string
     if (msg.type === 'START') {
       isRunning = true;
 
-      // Watchdog: force-end if game runs too long
+      // The maxDuration watchdog is armed on first user input (see armWatchdog),
+      // so an unattended ATTRACT ghost-demo is never force-failed. This absolute
+      // 120s cap only guards against an iframe that receives zero input.
       setTimeout(function() {
         if (isRunning) game.end.failure();
-      }, ${maxDurationMs});
+      }, 120000);
 
       // Execute game code via dynamic <script> injection (iOS Safari compatible).
       // new Function() is blocked by WebKit in sandboxed srcdoc iframes on iOS;
@@ -890,25 +987,29 @@ export function buildIframeHtml(gameCode: string, maxDurationMs: number): string
       // Game loop
       function loop(ts) {
         if (!isRunning) return;
-        if (lastTimestamp !== null) {
-          currentDelta = Math.min((ts - lastTimestamp) / 1000, 0.05);
-          elapsed += currentDelta;
-          updateShake(currentDelta);
-          ctx.save();
-          ctx.translate(shakeDx, shakeDy);
-          var frameOk = true;
-          if (updateFn) {
-            try { updateFn(currentDelta); } catch (err) {
-              parent.postMessage({ type: 'ERROR', message: String(err) }, '*');
-              isRunning = false;
-              frameOk = false;
-            }
+        // First frame: lastTimestamp is null. Render it (don't skip → no black
+        // frame) with a minimal non-zero delta (~1 frame @60fps) so onUpdate math
+        // that divides by dt stays safe.
+        var delta = (lastTimestamp === null)
+          ? (1 / 60)
+          : Math.min((ts - lastTimestamp) / 1000, 0.05);
+        currentDelta = delta;
+        elapsed += delta;
+        updateShake(delta);
+        ctx.save();
+        ctx.translate(shakeDx, shakeDy);
+        var frameOk = true;
+        if (updateFn) {
+          try { updateFn(delta); } catch (err) {
+            parent.postMessage({ type: 'ERROR', message: String(err) }, '*');
+            isRunning = false;
+            frameOk = false;
           }
-          if (frameOk) drawFxWorld(currentDelta);
-          ctx.restore();
-          if (!frameOk) return;
-          drawFxScreen(currentDelta);
         }
+        if (frameOk) drawFxWorld(delta);
+        ctx.restore();
+        if (!frameOk) return;
+        drawFxScreen(delta);
         lastTimestamp = ts;
         rafId = requestAnimationFrame(loop);
       }

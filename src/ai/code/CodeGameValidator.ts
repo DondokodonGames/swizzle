@@ -15,6 +15,7 @@ const KNOWN_API_METHODS = new Set([
   'game.onPress', 'game.onRelease', 'game.onMove',
   'game.draw.clear', 'game.draw.image', 'game.draw.rect', 'game.draw.circle',
   'game.draw.text', 'game.draw.line', 'game.draw.sprite', 'game.draw.gradient',
+  'game.draw.hand',
   'game.audio.play', 'game.audio.bgm', 'game.audio.stopBgm',
   'game.audio.tone', 'game.audio.melody',
   'game.fx.burst', 'game.fx.popup', 'game.fx.flash', 'game.fx.shake',

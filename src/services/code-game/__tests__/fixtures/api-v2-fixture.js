@@ -85,6 +85,9 @@
       game.draw.text('BEST ' + game.best, W / 2, H * 0.14, { size: 40, color: '#00ff9f' });
       game.draw.text('TAP TO START', W / 2, H * 0.5, { size: 48, color: '#ffffff' });
       game.draw.sprite(HERO, HERO_COL, W / 2, H * 0.65, 24, { anchor: 'center' });
+      // ATTRACTゴースト実演: 手カーソルがタップ位置に降りて押す(pressを周期で切替)
+      var pressing = Math.floor(game.time.elapsed * 2) % 2 === 0;
+      game.draw.hand(W / 2, H * 0.55, { press: pressing, scale: 14 });
       return;
     }
 

@@ -13,6 +13,15 @@ export interface SpriteDrawOpts {
   anchor?: 'topleft' | 'center';
 }
 
+/** ATTRACTゴースト実演用の手カーソル描画オプション */
+export interface HandDrawOpts {
+  /** true で押下ポーズ + 拡大するタップリングを描く */
+  press?: boolean;
+  /** 1ドットの描画サイズ(既定8) */
+  scale?: number;
+  alpha?: number;
+}
+
 export interface ToneOpts {
   wave?: 'square' | 'triangle' | 'sawtooth' | 'sine';
   volume?: number;
@@ -102,6 +111,8 @@ export interface SwizzleGameAPI {
     sprite(art: string[], palette: Record<string, string>, x: number, y: number, px?: number, opts?: SpriteDrawOpts): void;
     /** 縦グラデーション矩形(y0→y1、全幅)。stops: 色配列 or [位置0-1, 色] 配列 */
     gradient(y0: number, y1: number, stops: string[] | Array<[number, string]>): void;
+    /** 内蔵の手カーソル(ATTRACTゴースト実演用)。指先が(x,y)に来る */
+    hand(x: number, y: number, opts?: HandDrawOpts): void;
   };
 
   fx: {

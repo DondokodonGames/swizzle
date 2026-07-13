@@ -122,6 +122,12 @@ game.draw.sprite(HERO, PAL, x, y, 16, { anchor: 'center', flipX: facingLeft });
 // 縦グラデーション背景(黒一色禁止の受け皿)
 game.draw.gradient(0, H, ['#182848', '#080810']);          // 等間隔
 game.draw.gradient(0, H, [[0,'#301040'], [0.7,'#100818'], [1,'#000008']]); // 位置指定
+
+// 内蔵の手カーソル(ATTRACTゴースト実演用。指先が(x,y)に来る)
+game.draw.hand(x, y, { press: false, scale: 14 });          // 指さしポーズ
+game.draw.hand(x, y, { press: true,  scale: 14 });          // 押下ポーズ + 拡大タップリング
+// opts: { press?:bool, scale?:number(既定8), alpha?:number }
+// 各ゲームで手を自作せず必ずこれを使う(scanlines同様の複製地獄を避ける)
 ```
 
 ## その他v2
@@ -239,6 +245,35 @@ var STYLE = {
   main: ['#00ffff', '#ff00ff', '#ffff00'],      // 基調3色
   accent: ['#ff8800', '#ffffff'],               // アクセント2色
 };
+```
+
+## 11. ATTRACTゴースト実演(手カーソルで遊び方を見せる)
+
+PLAY_GRAMMAR_V3 §2.1 が要求する「無操作で放置してもゲーム内容が伝わる」ためのデモループ。
+**実ゲームロジックを流用**した自動プレイを ATTRACT 中に回し、`game.draw.hand` で操作を可視化する。
+ウォッチドッグは初回入力から計時するので(エンジンv2.1)、放置しても強制終了しない。
+
+```js
+// 実プレイと同じ当たり判定・演出を使うデモ。入力の代わりにゴーストが自動でタップする。
+var ghost = { x: W / 2, y: H * 0.5, t: 0, pressing: false };
+function stepGhost(dt) {
+  ghost.t += dt;
+  // 実ロジックの target に向かって手を動かし、到達したら「タップ」した扱いにする
+  ghost.x += (target.x - ghost.x) * Math.min(1, dt * 4);
+  ghost.y += (target.y - ghost.y) * Math.min(1, dt * 4);
+  var near = game.hit.circle(ghost.x, ghost.y, 10, target.x, target.y, target.r);
+  ghost.pressing = near;
+  if (near && ghost.t > 0.6) {                 // タップ発火(実ロジックの成功演出を流用)
+    game.feedback.good(ghost.x, ghost.y, { text: '+100' });
+    newTarget(); ghost.t = 0;
+  }
+}
+// ATTRACT の onUpdate 内:
+stepGhost(dt);
+game.draw.circle(target.x, target.y, target.r, '#ff2079', 0.8);   // 実ゲームと同じ的
+game.draw.hand(ghost.x, ghost.y, { press: ghost.pressing, scale: 14 });
+game.draw.text('TAP TO PLAY', W / 2, H * 0.85, { size: 48, color: '#ffffff' });
+// 初回タップで state=PLAYING に遷移し、以降は本物の入力で遊ぶ
 ```
 
 ## 9. 8pxグリッドドット絵ヘルパー(既存標準の継続)
