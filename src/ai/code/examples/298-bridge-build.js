@@ -1,162 +1,245 @@
 // 298-bridge-build.js
-// 橋を架けろ — タップで橋を伸ばし、もう一度タップで固定。対岸にぴったり届く長さを見極める
-// 操作: タップで伸ばし開始、もう一度タップで固定して倒す
-// 成功: 3本の橋を渡りきる  失敗: 3回落下 or 15秒
+// 橋を架けろ — 押している間だけ橋が伸び、離すと倒れる。対岸に届く長さを見極める
+// 操作: 押している間だけ橋が伸び、離すと橋が倒れる
+// 成功: 制限時間内に 4 本渡りきる  失敗: 時間切れ
+// @mechanic: hold_charge
+// @theme: ninja
+// 世界観: 忍者屋敷から脱する忍びが、谷ごとに橋を伸ばして対岸へ跳ぶ
+// variation: 物量型(進むほど谷が広く足場が狭くなる)
+// spice: フィーバータイム(2本渡ると数秒だけ得点2倍)
+// スタイル: NEO-RETRO
 
 (function(game) {
-  var W = game.canvas.width;   // 1080
-  var H = game.canvas.height;  // 1920
+  var W = game.canvas.width;
+  var H = game.canvas.height;
 
-  // ── パレット（ネオンアーケード、渓谷の橋） ──
-  var C = { bg:'#0a1628', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff', plat:'#3a4a66' };
+  // NEO-RETRO(和のネオン)
+  var C = {
+    night: '#0a0f1c', indigo: '#1b2a4a', plat: '#3a4a66', wood: '#c8642a', woodDk: '#7a3a14',
+    ninja: '#e8eef7', band: '#ff3b5c', gold: '#ffd23f', mint: '#4dffb0', red: '#ff3b5c', purple: '#a86bff',
+  };
 
-  // ── ゲーム定数 ──
-  var GAME_TITLE  = 'BRIDGE BUILD';
-  var HOW_TO_PLAY = 'TAP TO GROW · TAP AGAIN TO DROP · REACH THE LEDGE';
-  var MAX_TIME = 15;
-  var NEEDED   = 3;          // 修正2: 10 → 3
-  var MAX_FALL = 3;
-  var PLAT_Y = snap(H * 0.58), PLAT_H = snap(H * 0.30), GROW = 460;
+  var GAME_TITLE = 'BRIDGE BUILD';
+  var MAX_TIME = 10;
+  var NEEDED = 4;
+  var GROW_SPEED = 640;   // px/s
+  var GROUND_Y = H * 0.7;
 
-  // ── ステート ──
   var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
   var state = S.ATTRACT;
   var resultSuccess = false, finalScore = 0;
 
-  // ── ゲーム変数 ──
-  var leftX, leftW, gap, rightX, rightW, bridgeLen, maxLen, phase, fallA, manX, crossed, falls, timeLeft, done, particles, fbText, fbCol, fbTimer;
+  var here, gap, farW, bridge, growing, phase, ninjaX, ninjaY, fallV, fallAngle;
+  var score, crossed, timeLeft, done, ready, fever, feedback, feedbackOk, hitStop;
 
-  // ── ピクセル描画ヘルパー ──
-  function snap(v) { return Math.round(v / 8) * 8; }
-
-  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
-
-  function pline(x1, y1, x2, y2, color, alpha, wide) { var dx = x2 - x1, dy = y2 - y1, n = Math.max(1, Math.ceil(Math.hypot(dx, dy) / 8)); for (var i = 0; i <= n; i++) { var w = wide || 8; game.draw.rect(snap(x1 + dx * i / n) - w / 2, snap(y1 + dy * i / n) - w / 2, w, w, color, alpha); } }
+  // 忍者スプライト(顔つき)
+  var NINJA = [
+    '..NNNN..',
+    '.NNNNNN.',
+    '.NBBBBN.',
+    '.NWNNWN.',
+    '.NNNNNN.',
+    'RRNNNNRR',
+    '..NNNN..',
+    '..N..N..',
+  ];
+  var NINJA_COL = { N: '#20263a', B: C.band, W: C.ninja, R: C.band };
 
   function txt(str, x, y, sz, color, align) {
-    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x + 3, y + 4, { size: sz, color: '#01040c', bold: true, align: align || 'center' });
     game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
+  function scanlines() { for (var sy = 0; sy < H; sy += 8) game.draw.rect(0, sy, W, 2, '#000000', 0.14); }
 
-  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
-
-  function timeBar() {
-    var t = Math.ceil(timeLeft / MAX_TIME * 12);
-    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#0a1628');
+  function nightBg() {
+    game.draw.gradient(0, H, [[0, '#141d38'], [0.5, '#0c1428'], [1, '#05070f']]);
+    // 月
+    game.draw.circle(W * 0.78, H * 0.16, 90, C.gold, 0.85);
+    game.draw.circle(W * 0.74, H * 0.14, 90, '#0c1428', 0.5);
+    // 屋根の遠景
+    for (var i = 0; i < 5; i++) {
+      var rx = i * 260 - 40, ry = H * 0.44;
+      game.draw.line(rx, ry, rx + 130, ry - 60, C.indigo, 6);
+      game.draw.line(rx + 130, ry - 60, rx + 260, ry, C.indigo, 6);
+    }
+    // 谷底の霧
+    game.draw.rect(0, GROUND_Y + 60, W, H - GROUND_Y, '#0a0f1c');
   }
 
-  function background() { game.draw.clear(C.bg); game.draw.rect(0, 0, W, PLAT_Y, '#0f2040', 0.6); game.draw.rect(0, PLAT_Y + PLAT_H, W, H, C.d, 0.15); }
-
-  function newRound() {
-    leftW = snap(180 + Math.random() * 80); leftX = 40; gap = snap(200 + Math.random() * 320); rightX = leftX + leftW + gap; rightW = snap(140 + Math.random() * 100);
-    bridgeLen = 0; maxLen = gap + rightW + 120; phase = 'idle'; fallA = 0; manX = leftX + leftW / 2; fbText = '';
+  function platform(x, w) {
+    game.draw.rect(x, GROUND_Y, w, H - GROUND_Y, C.plat);
+    game.draw.rect(x, GROUND_Y, w, 12, C.wood);
   }
 
-  function initGame() { crossed = 0; falls = 0; timeLeft = MAX_TIME; done = false; particles = []; fbTimer = 0; newRound(); }
+  function newRound(first) {
+    var hereW = 160;
+    here = first ? { x: 120, w: hereW } : { x: 120, w: hereW };
+    gap = 260 + Math.min(320, crossed * 70);   // 物量型: 谷が広がる
+    farW = Math.max(70, 150 - crossed * 18);    // 足場が狭まる
+    bridge = 0; growing = false; phase = 'build';
+    ninjaX = here.x + here.w - 40; ninjaY = GROUND_Y - 60; fallV = 0; fallAngle = 0;
+  }
+  function farX() { return here.x + here.w + gap; }
+
+  function initGame() {
+    score = 0; crossed = 0; timeLeft = MAX_TIME; done = false;
+    ready = 0.8; fever = 0; feedback = 0; feedbackOk = false; hitStop = 0;
+    newRound(true);
+  }
 
   function finish(success) {
     if (done) return;
-    done = true; resultSuccess = success;
-    finalScore = success ? (crossed * 500 + Math.ceil(timeLeft) * 80) : crossed * 200;
-    game.audio.play(success ? 'se_success' : 'se_failure');
+    done = true; resultSuccess = success; finalScore = score;
+    game.audio.stopBgm();
+    if (success) game.audio.play('se_success');
+    else { game.audio.play('se_failure'); hitStop = 0.4; game.fx.flash(C.red, 0.25); }
     state = S.RESULT;
-    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1600);
   }
 
-  function drawScene() {
-    game.draw.rect(leftX, PLAT_Y, leftW, PLAT_H, C.plat, 0.95); game.draw.rect(leftX, PLAT_Y, leftW, 12, C.e, 0.5);
-    if (rightX < W + 200) { game.draw.rect(rightX, PLAT_Y, Math.min(rightW, W - rightX), PLAT_H, C.plat, 0.95); game.draw.rect(rightX, PLAT_Y, Math.min(rightW, W - rightX), 12, C.b, 0.6); }
-    if (bridgeLen > 0) {
-      var bx = leftX + leftW, by = PLAT_Y, ex = bx + bridgeLen * Math.sin(fallA), ey = by + bridgeLen * (1 - Math.cos(fallA));
-      pline(bx, by, ex, ey, C.f, 0.95, 18); pline(bx, by, ex, ey, C.c, 0.6, 6);
+  function drop() {
+    if (phase !== 'build') return;
+    growing = false;
+    game.audio.play('se_break', 0.5);
+    judgeBridge();
+  }
+
+  function judgeBridge() {
+    var tip = here.x + here.w + bridge;
+    var far = farX();
+    if (tip >= far && tip <= far + farW) {
+      phase = 'cross'; // 成功: 渡る
+    } else {
+      phase = 'plunge';
+      ninjaX = here.x + here.w + Math.min(bridge, gap + farW) - 40;
+      fallV = 0;
+      feedback = 0.3; feedbackOk = false; hitStop = 0.35;
+      game.feedback.bad(here.x + here.w + bridge, GROUND_Y, { text: tip < far ? 'SHORT' : 'LONG' });
     }
-    // マン（ピクセル人形）
-    var mx = snap(manX), my = PLAT_Y;
-    pc(mx, my - 60, 18, C.b, 0.95); game.draw.rect(mx - 5, my - 44, 10, 30, C.b, 0.9);
-    var sw = Math.floor(game.time.elapsed * 8) % 2 ? 10 : -10;
-    game.draw.rect(mx - 12 + sw, my - 14, 8, 20, C.b, 0.9); game.draw.rect(mx + 4 - sw, my - 14, 8, 20, C.b, 0.9);
   }
 
-  // ── 入力 ──
+  game.onPress(function() {
+    if (state !== S.PLAYING || done || ready > 0 || hitStop > 0) return;
+    if (phase === 'build') { growing = true; if (bridge === 0) game.audio.play('se_tap', 0.5); }
+  });
+  game.onRelease(function() { if (state === S.PLAYING && phase === 'build') drop(); });
   game.onTap(function() {
-    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.ATTRACT) { game.audio.play('se_coin'); state = S.PLAYING; initGame(); return; }
     if (state === S.RESULT) { state = S.ATTRACT; return; }
-    if (done) return;
-    if (phase === 'idle') { phase = 'growing'; bridgeLen = 0; }
-    else if (phase === 'growing') { phase = 'falling'; fallA = 0; game.audio.play('se_tap', 0.3); }
   });
 
-  // ── 更新 & 描画 ──
+  function onCross() {
+    crossed++;
+    var gain = fever > 0 ? 200 : 100; score += gain;
+    feedback = 0.3; feedbackOk = true;
+    game.feedback.good(farX() + farW / 2, GROUND_Y - 80, { text: '+' + gain, color: C.mint });
+    if (crossed === 2) { fever = 3.5; game.audio.play('se_milestone'); }
+    if (crossed >= NEEDED) { finish(true); return; }
+    newRound(false);
+  }
+
+  // ATTRACT ゴースト実演: 手が押して橋を伸ばし、ちょうどで離す
+  var d = { bridge: 0, phase: 'build', t: 0, nx: 0, press: false, target: 300 };
+  function stepDemo(dt) {
+    d.t += dt;
+    var hx = 120 + 160, fx = hx + 260, tgt = 260 + 40;
+    if (d.phase === 'build') {
+      d.press = true; d.bridge += GROW_SPEED * dt * 0.8;
+      if (d.bridge >= tgt) { d.phase = 'fall'; d.press = false; }
+    } else if (d.phase === 'fall') { d.phase = 'cross'; d.nx = hx; }
+    else if (d.phase === 'cross') {
+      d.nx += 420 * dt;
+      if (d.nx >= fx + 30) { game.feedback.good(fx + 40, GROUND_Y - 80, { text: '+100', color: C.mint }); d.phase = 'build'; d.bridge = 0; d.t = 0; d.nx = 0; }
+    }
+  }
+
   game.onUpdate(function(dt) {
     if (state === S.ATTRACT) {
-      if (leftW === undefined) initGame(); background(); drawScene();
-      txt(GAME_TITLE, W / 2, H * 0.16, 80, C.c);
-      txt(HOW_TO_PLAY, W / 2, H * 0.23, 24, C.b);
-      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
-        txt('► 100円 投入 ◄', W / 2, H * 0.40, 60, C.a);
-        txt('TAP TO START', W / 2, H * 0.46, 46, C.g);
+      nightBg(); stepDemo(dt);
+      var hx = 120, fx = 120 + 160 + 260;
+      platform(hx, 160); platform(fx, 140);
+      game.draw.rect(hx + 160, GROUND_Y - 8, d.bridge, 16, C.wood);
+      var nx = d.phase === 'cross' ? d.nx : hx + 160 - 40;
+      game.draw.sprite(NINJA, NINJA_COL, nx + 40, GROUND_Y - 60, 10, { anchor: 'center' });
+      game.draw.hand(hx + 240, GROUND_Y - 220, { press: d.press, scale: 16 });
+      txt(GAME_TITLE, W / 2, H * 0.12, 78, C.gold);
+      txt('BEST ' + String(game.best).padStart(6, '0'), W / 2, H * 0.18, 40, C.mint);
+      if (Math.floor(game.time.elapsed * 1.8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.84, 62, C.band);
+        txt('TAP TO START', W / 2, H * 0.9, 48, C.ninja);
       }
       scanlines();
       return;
     }
 
     if (state === S.RESULT) {
-      background();
-      txt(resultSuccess ? 'CROSSED!' : 'FELL DOWN', W / 2, H * 0.35, 78, resultSuccess ? C.b : C.a);
-      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
-      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      nightBg();
+      if (hitStop > 0) hitStop -= dt;
+      game.draw.sprite(NINJA, NINJA_COL, W / 2, H * 0.34, 18, { anchor: 'center' });
+      txt(resultSuccess ? 'CLEAR' : 'GAME OVER', W / 2, H * 0.52, 90, resultSuccess ? C.mint : C.red);
+      txt('SCORE ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.62, 56, C.ninja);
+      var best = Math.max(game.best, finalScore);
+      txt('BEST ' + String(best).padStart(6, '0'), W / 2, H * 0.68, 42, C.gold);
+      if (finalScore > game.best && game.best > 0 && resultSuccess && Math.floor(game.time.elapsed * 3) % 2 === 0) {
+        txt('NEW RECORD', W / 2, H * 0.75, 54, C.purple);
+      } else if (Math.floor(game.time.elapsed * 2) % 2 === 0) {
+        txt('TAP TO CONTINUE', W / 2, H * 0.79, 46, C.mint);
+      }
       scanlines();
       return;
     }
 
     // PLAYING
     if (!done) {
-      timeLeft -= dt;
-      if (timeLeft <= 0) { finish(false); return; }
-      if (fbTimer > 0) fbTimer -= dt;
-      if (phase === 'growing') { bridgeLen += GROW * dt; if (bridgeLen > maxLen) { bridgeLen = maxLen; phase = 'falling'; fallA = 0; } }
-      else if (phase === 'falling') {
-        fallA += dt * 3.2;
-        if (fallA >= Math.PI / 2) {
-          fallA = Math.PI / 2;
-          var endX = leftX + leftW + bridgeLen;
-          if (endX >= rightX && endX <= rightX + rightW) { phase = 'walking'; fbText = 'PERFECT!'; fbCol = C.b; fbTimer = 1.0; game.audio.play('se_success', 0.4); }
-          else {
-            falls++; fbText = endX > rightX + rightW ? 'TOO LONG!' : 'TOO SHORT!'; fbCol = C.a; fbTimer = 1.0; game.audio.play('se_failure', 0.5);
-            for (var pk = 0; pk < 8; pk++) { var a = Math.random() * Math.PI * 2; particles.push({ x: endX, y: PLAT_Y, vx: Math.cos(a) * 160, vy: Math.sin(a) * 160, life: 0.6, col: C.a }); }
-            if (falls >= MAX_FALL) { finish(false); return; }
-            phase = 'reset';
-            setTimeout(function() { if (!done) newRound(); }, 900);
-          }
-        }
-      } else if (phase === 'walking') {
-        manX += 380 * dt;
-        if (manX >= rightX + rightW / 2) {
-          crossed++;
-          for (var ck = 0; ck < 10; ck++) { var a2 = Math.random() * Math.PI * 2; particles.push({ x: manX, y: PLAT_Y - 60, vx: Math.cos(a2) * 200, vy: Math.sin(a2) * 200 - 40, life: 0.7, col: C.b }); }
-          if (crossed >= NEEDED) { finish(true); return; }
-          phase = 'reset';
-          setTimeout(function() { if (!done) newRound(); }, 500);
-        }
+      if (hitStop > 0) { hitStop -= dt; }
+      else if (ready > 0) { ready -= dt; if (ready <= 0) game.audio.play('se_tap'); }
+      else {
+        timeLeft -= dt;
+        if (fever > 0) fever -= dt;
+        if (timeLeft <= 0) { finish(false); return; }
+        if (phase === 'build' && growing) bridge += GROW_SPEED * dt;
+        else if (phase === 'cross') { ninjaX += 520 * dt; if (ninjaX >= farX() + farW / 2 - 40) onCross(); }
+        else if (phase === 'plunge') { fallV += 1600 * dt; ninjaY += fallV * dt; if (ninjaY > H) newRound(false); }
       }
-      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 400 * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
+      if (feedback > 0) feedback -= dt;
     }
 
-    // ---- 描画 ----
-    background(); drawScene();
-    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
-    if (fbTimer > 0) txt(fbText, W / 2, snap(H * 0.42), 56, fbCol);
-    if (phase === 'idle') txt('TAP TO GROW', W / 2, snap(H * 0.50), 40, C.c);
+    // draw
+    nightBg();
+    platform(here.x, here.w);
+    platform(farX(), farW);
+    // 橋
+    var bx = here.x + here.w, by = GROUND_Y - 8;
+    if (phase === 'cross') {
+      game.draw.rect(bx, by, farX() + farW - bx, 16, C.wood);
+      game.draw.rect(bx, by, farX() + farW - bx, 4, C.gold);
+    } else {
+      // build / plunge: 伸びた分の橋を描く(plunge は届かず谷へ)
+      game.draw.rect(bx, by, bridge, 16, phase === 'plunge' ? C.woodDk : C.wood);
+      game.draw.rect(bx, by, bridge, 4, C.gold);
+    }
+    game.draw.sprite(NINJA, NINJA_COL, ninjaX + 40, ninjaY, 10, { anchor: 'center' });
 
-    timeBar();
-    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
-    txt(crossed + ' / ' + NEEDED, W / 2, 168, 48, C.b);
-    for (var fi = 0; fi < MAX_FALL; fi++) game.draw.rect(snap(W / 2 + (fi - (MAX_FALL - 1) / 2) * 56) - 10, 224, 20, 20, fi < falls ? C.a : '#0a1628');
+    // HUD
+    var frac = Math.max(0, timeLeft / MAX_TIME);
+    game.draw.rect(60, 40, (W - 120) * frac, 26, fever > 0 ? C.purple : C.mint);
+    game.draw.rect(60, 40, W - 120, 26, C.indigo, 0.6);
+    txt('SCORE ' + String(score).padStart(6, '0'), W / 2, 108, 44, C.ninja);
+    txt(crossed + ' / ' + NEEDED, W / 2, 168, 44, C.mint);
+    // 目標帯(対岸)を telegraph
+    if (phase === 'build') game.draw.rect(farX(), GROUND_Y - 24, farW, 10, C.gold, 0.6);
+    if (fever > 0 && Math.floor(game.time.elapsed * 6) % 2 === 0) txt('FEVER', W / 2, H * 0.3, 52, C.purple);
+    if (ready > 0) txt(ready > 0.35 ? 'READY?' : 'GO!', W / 2, H * 0.4, 92, C.gold);
     scanlines();
   });
 
   game.onStart(function() {
-    game.audio.bgm('bgm_main', 0.15);
+    game.audio.melody(
+      [['A3', 0.5], ['B3', 0.5], ['C4', 0.5], ['E4', 0.5], ['D4', 0.5], ['B3', 0.5], ['A3', 1],
+       ['E4', 0.5], ['D4', 0.5], ['C4', 0.5], ['B3', 0.5], ['A3', 1], ['E3', 1]],
+      { tempo: 132, wave: 'triangle', volume: 0.09, loop: true,
+        bass: [['A1', 1], ['A1', 1], ['F1', 1], ['E1', 1], ['A1', 1], ['A1', 1]], bassWave: 'square', bassVolume: 0.06 }
+    );
     state = S.ATTRACT;
     initGame();
   });
