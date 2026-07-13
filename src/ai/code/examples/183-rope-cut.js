@@ -1,181 +1,240 @@
 // 183-rope-cut.js
-// ロープカット — 揺れるボムのロープを切って、狙いのゴールに届かせる
-// 操作: 揺れるボムをタップしてロープを切る
-// 成功: 1個のボムをゴールに届ける  失敗: 7個外す or 15秒
+// ロープカット — 枝で揺れる木の実から、熟した実だけを見つけて摘み取る
+// 操作: 熟した(光る)木の実をタップ
+// 成功: 制限時間内に 4 個摘む  失敗: 時間切れ
+// @mechanic: spot
+// @theme: forest
+// 世界観: 森の奥のリスが、揺れる枝から熟して光る木の実だけを見分けて摘み集める
+// variation: 物量型(進むほど枝に実が増える)
+// spice: フィーバータイム(2個摘むと数秒だけ得点2倍)
+// スタイル: 90s 16bit
 
 (function(game) {
-  var W = game.canvas.width;   // 1080
-  var H = game.canvas.height;  // 1920
+  var W = game.canvas.width;
+  var H = game.canvas.height;
 
-  // ── パレット（ネオンアーケード、仕掛け部屋） ──
-  var C = { bg:'#1a0028', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
+  // 90s 16bit(SNES風の土と葉)
+  var C = {
+    sky: '#2a1e3c', leaf: '#3fa34d', leafDk: '#1e6b34', bark: '#7a4a24',
+    ripe: '#ffcf3f', ripeGlow: '#fff29a', dull: '#8a6a3a', red: '#e0483b',
+    cream: '#fff4d6', shadow: '#12101f', pink: '#ff9ecb',
+  };
 
-  // ── ゲーム定数 ──
-  var GAME_TITLE  = 'ROPE CUT';
-  var HOW_TO_PLAY = 'TAP THE SWINGING BOMB TO CUT THE ROPE';
-  var MAX_TIME = 15;             // 修正2: 50 → 15
-  var NEEDED   = 1;              // 修正2: 10 → 1
-  var MAX_MISS = 7;
-  var GOAL_X = snap(W / 2), GOAL_Y = snap(H * 0.74), GOAL_R = 90;
-  var ANCHOR_X = snap(W / 2), ANCHOR_Y = snap(260), ROPE_LEN = 360;
+  var GAME_TITLE = 'FOREST PICK';
+  var MAX_TIME = 10;
+  var NEEDED = 4;
 
-  // ── ステート ──
   var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
   var state = S.ATTRACT;
   var resultSuccess = false, finalScore = 0;
 
-  // ── ゲーム変数 ──
-  var rope, score, misses, timeLeft, done, feedback, feedbackOk, particles;
+  var nuts, score, picks, timeLeft, done, ready, fever, hitStop, feedback, feedbackOk;
 
-  // ── ピクセル描画ヘルパー ──
-  function snap(v) { return Math.round(v / 8) * 8; }
-
-  function pc(cx, cy, r, color, alpha) {
-    var step = 8; cx = snap(cx); cy = snap(cy);
-    for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) {
-      if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha);
-    }
-  }
-
-  function pl(x1, y1, x2, y2, color, w) {
-    var steps = Math.ceil(Math.hypot(x2 - x1, y2 - y1) / 8);
-    for (var i = 0; i <= steps; i++) { var t = i / steps; game.draw.rect(snap(x1 + (x2 - x1) * t) - w / 2, snap(y1 + (y2 - y1) * t) - w / 2, w, w, color, 1); }
-  }
+  // 木の実スプライト(顔つきどんぐり)
+  var NUT = [
+    '.BBBB.',
+    'BBBBBB',
+    'NNNNNN',
+    'NEWWEN',
+    'NNMMNN',
+    '.NNNN.',
+  ];
+  var NUT_RIPE = { B: '#6b4a22', N: C.ripe, E: '#2a1a08', W: '#fff', M: '#b5651d' };
+  var NUT_DULL = { B: '#4a3418', N: C.dull, E: '#2a1a08', W: '#d8c8a8', M: '#5a4020' };
+  // カゴ
+  var BASKET = [
+    'K....K',
+    'KWWWWK',
+    'KWWWWK',
+    'KKKKKK',
+  ];
+  var BASKET_COL = { K: '#7a4a24', W: '#b98a4a' };
 
   function txt(str, x, y, sz, color, align) {
-    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x + 3, y + 4, { size: sz, color: C.shadow, bold: true, align: align || 'center' });
     game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
+  function scanlines() { for (var sy = 0; sy < H; sy += 8) game.draw.rect(0, sy, W, 2, '#000000', 0.12); }
 
-  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
-
-  function timeBar() {
-    var t = Math.ceil(timeLeft / MAX_TIME * 12);
-    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#2a0a3a');
+  function forestBg() {
+    game.draw.gradient(0, H, [[0, '#33244a'], [0.5, '#24314a'], [1, '#14251c']]);
+    // 樹冠
+    for (var i = 0; i < 14; i++) {
+      var cx = (i * 151) % W, cy = 60 + (i % 3) * 70;
+      game.draw.circle(cx, cy, 90, C.leafDk, 0.5);
+      game.draw.circle(cx + 30, cy + 10, 60, C.leaf, 0.4);
+    }
+    // 枝(実がぶら下がる)
+    game.draw.rect(0, 210, W, 20, C.bark);
+    // 地面
+    game.draw.rect(0, H - 130, W, 130, '#2a1c10');
+    game.draw.rect(0, H - 130, W, 10, C.leafDk);
   }
 
-  function background() { game.draw.clear(C.bg); }
-
-  function drawGoal() {
-    var on = Math.floor(game.time.elapsed * 8) % 2 === 0;
-    pc(GOAL_X, GOAL_Y, GOAL_R, C.b, on ? 0.4 : 0.25);
-    pc(GOAL_X, GOAL_Y, GOAL_R - 24, C.b, 0.7);
-    txt('IN', GOAL_X, GOAL_Y - 8, 44, C.g);
+  function drawNut(n) {
+    // ツル
+    game.draw.line(n.ax, 220, n.x, n.y, C.leafDk, 6);
+    var glow = n.ripe && Math.floor(game.time.elapsed * 6) % 2 === 0;
+    if (n.ripe) game.draw.circle(n.x, n.y, 70, C.ripeGlow, glow ? 0.35 : 0.18);
+    game.draw.sprite(NUT, n.ripe ? NUT_RIPE : NUT_DULL, n.x, n.y, 9, { anchor: 'center' });
   }
 
-  function drawBomb(r) {
-    if (!r.falling) { pl(r.anchorX, r.anchorY, r.bx, r.by, C.f, 8); pc(r.anchorX, r.anchorY, 14, C.f, 1); }
-    pc(r.bx, r.by, 40, '#222222', 1);
-    pc(r.bx - 12, r.by - 12, 8, C.g, 0.6);
-    var spark = Math.floor(game.time.elapsed * 8) % 2 === 0;
-    game.draw.rect(snap(r.bx) - 4, snap(r.by) - 56, 8, 20, C.f);
-    game.draw.rect(snap(r.bx) - 6, snap(r.by) - 62, 12, 12, spark ? C.c : C.a);
+  function makeNut(i, n) {
+    var ax = W * (i + 1) / (n + 1);
+    return {
+      ax: ax, x: ax, y: 400, len: 220 + (i % 3) * 60,
+      phase: Math.random() * Math.PI * 2, spd: 1.1 + Math.random() * 0.8,
+      amp: 0.5 + Math.random() * 0.35, ripe: false, pop: 0,
+    };
   }
-
-  function resetBomb() {
-    rope = { anchorX: ANCHOR_X, anchorY: ANCHOR_Y, len: ROPE_LEN, angle: (Math.random() - 0.5) * Math.PI * 0.5, avel: (Math.random() > 0.5 ? 1 : -1) * (1.4 + Math.random()), cut: false, bx: ANCHOR_X, by: ANCHOR_Y + ROPE_LEN, falling: false, vx: 0, vy: 0 };
+  function reseed() {
+    var n = Math.min(4, 2 + Math.floor(picks / 2)); // 物量型
+    nuts = [];
+    for (var i = 0; i < n; i++) nuts.push(makeNut(i, n));
+    // ちょうど1つを熟させる(spot対象)
+    nuts[Math.floor(Math.random() * nuts.length)].ripe = true;
   }
-
   function initGame() {
-    score = 0; misses = 0; timeLeft = MAX_TIME; done = false; feedback = 0; particles = [];
-    resetBomb();
+    score = 0; picks = 0; timeLeft = MAX_TIME; done = false;
+    ready = 0.8; fever = 0; hitStop = 0; feedback = 0; feedbackOk = false;
+    reseed();
   }
 
   function finish(success) {
     if (done) return;
-    done = true; resultSuccess = success;
-    finalScore = success ? (score * 400 + Math.ceil(timeLeft) * 30) : score * 80;
-    game.audio.play(success ? 'se_success' : 'se_failure');
+    done = true; resultSuccess = success; finalScore = score;
+    game.audio.stopBgm();
+    if (success) game.audio.play('se_success');
+    else { game.audio.play('se_failure'); hitStop = 0.4; game.fx.flash(C.red, 0.25); }
     state = S.RESULT;
-    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1600);
   }
 
-  function cut() {
-    if (rope.falling || rope.cut) return;
-    rope.cut = true; rope.falling = true; rope.vx = rope.avel * rope.len * 0.3; rope.vy = 0;
-    game.audio.play('se_tap', 0.7);
+  function updateNuts(dt, tt) {
+    for (var i = 0; i < nuts.length; i++) {
+      var n = nuts[i];
+      var a = Math.sin(tt * n.spd + n.phase) * n.amp;
+      n.x = n.ax + Math.sin(a) * n.len; n.y = 220 + Math.cos(a) * n.len;
+      if (n.pop > 0) n.pop -= dt;
+    }
   }
 
-  // ── 入力 ──
+  function pick(good, x, y) {
+    if (good) {
+      picks++;
+      var gain = fever > 0 ? 200 : 100;
+      score += gain;
+      feedback = 0.4; feedbackOk = true;
+      game.feedback.good(x, y, { text: '+' + gain, color: C.ripe });
+      if (picks === 2) { fever = 3.5; game.audio.play('se_milestone'); }
+      if (picks >= NEEDED) { finish(true); return; }
+      reseed();
+    } else {
+      feedback = 0.4; feedbackOk = false; hitStop = 0.3;
+      game.feedback.bad(x, y, { text: 'MISS' });
+    }
+  }
+
   game.onTap(function(x, y) {
-    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.ATTRACT) { game.audio.play('se_coin'); state = S.PLAYING; initGame(); return; }
     if (state === S.RESULT) { state = S.ATTRACT; return; }
-    if (done || rope.falling) return;
-    if (Math.hypot(x - rope.bx, y - rope.by) < 90) cut();
+    if (done || ready > 0 || hitStop > 0) return;
+    for (var i = 0; i < nuts.length; i++) {
+      if (game.hit.circle(x, y, 10, nuts[i].x, nuts[i].y, 70)) { pick(nuts[i].ripe, nuts[i].x, nuts[i].y); return; }
+    }
   });
 
-  game.onSwipe(function() { if (state === S.PLAYING && !done && !rope.falling) cut(); });
+  // ATTRACT ゴースト実演: 手が光る実へ寄って摘む
+  var dnuts = null, dt2 = 0, dgx = W / 2, dgy = H * 0.8, dpress = false, dcut = 0;
+  function stepDemo(dt) {
+    if (!dnuts) { dnuts = [makeNut(0, 3), makeNut(1, 3), makeNut(2, 3)]; dnuts[1].ripe = true; }
+    dt2 += dt;
+    for (var i = 0; i < dnuts.length; i++) {
+      var n = dnuts[i], a = Math.sin(dt2 * n.spd + n.phase) * n.amp;
+      n.x = n.ax + Math.sin(a) * n.len; n.y = 220 + Math.cos(a) * n.len;
+    }
+    var ripe = dnuts[1];
+    dgx += (ripe.x - dgx) * Math.min(1, dt * 3);
+    dgy += (ripe.y + 30 - dgy) * Math.min(1, dt * 3);
+    dpress = Math.hypot(dgx - ripe.x, dgy - ripe.y - 30) < 90;
+    if (dpress && dcut <= 0) {
+      dcut = 0.6;
+      game.feedback.good(ripe.x, ripe.y, { text: '+100', color: C.ripe });
+      // 次の熟し実へ
+      ripe.ripe = false; dnuts[(1 + Math.floor(dt2)) % dnuts.length].ripe = true;
+    }
+    if (dcut > 0) dcut -= dt;
+  }
 
-  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
     if (state === S.ATTRACT) {
-      background(); drawGoal();
-      rope = rope || { anchorX: ANCHOR_X, anchorY: ANCHOR_Y, len: ROPE_LEN, falling: false };
-      rope.bx = ANCHOR_X + Math.sin(game.time.elapsed) * 180; rope.by = ANCHOR_Y + Math.cos(Math.sin(game.time.elapsed)) * ROPE_LEN;
-      drawBomb(rope);
-      txt(GAME_TITLE, W / 2, H * 0.50, 84, C.c);
-      txt(HOW_TO_PLAY, W / 2, H * 0.58, 30, C.b);
-      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
-        txt('► 100円 投入 ◄', W / 2, H * 0.86, 62, C.a);
-        txt('TAP TO START', W / 2, H * 0.92, 48, C.g);
+      forestBg(); stepDemo(dt);
+      for (var i = 0; i < dnuts.length; i++) drawNut(dnuts[i]);
+      game.draw.sprite(BASKET, BASKET_COL, W / 2, H - 150, 12, { anchor: 'center' });
+      game.draw.hand(dgx, dgy, { press: dpress, scale: 15 });
+      txt(GAME_TITLE, W / 2, H * 0.12, 80, C.ripe);
+      txt('BEST ' + String(game.best).padStart(6, '0'), W / 2, H * 0.18, 40, C.leaf);
+      if (Math.floor(game.time.elapsed * 1.8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.82, 62, C.pink);
+        txt('TAP TO START', W / 2, H * 0.88, 48, C.cream);
       }
       scanlines();
       return;
     }
 
     if (state === S.RESULT) {
-      background();
-      txt(resultSuccess ? 'ON TARGET!' : 'GAME OVER', W / 2, H * 0.35, 74, resultSuccess ? C.b : C.a);
-      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
-      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      forestBg();
+      if (hitStop > 0) hitStop -= dt;
+      game.draw.sprite(BASKET, BASKET_COL, W / 2, H * 0.42, 18, { anchor: 'center' });
+      txt(resultSuccess ? 'CLEAR' : 'GAME OVER', W / 2, H * 0.56, 92, resultSuccess ? C.ripe : C.red);
+      txt('SCORE ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.65, 58, C.cream);
+      var best = Math.max(game.best, finalScore);
+      txt('BEST ' + String(best).padStart(6, '0'), W / 2, H * 0.71, 42, C.leaf);
+      if (finalScore > game.best && game.best > 0 && resultSuccess && Math.floor(game.time.elapsed * 3) % 2 === 0) {
+        txt('NEW RECORD', W / 2, H * 0.78, 54, C.pink);
+      } else if (Math.floor(game.time.elapsed * 2) % 2 === 0) {
+        txt('TAP TO CONTINUE', W / 2, H * 0.82, 46, C.leaf);
+      }
       scanlines();
       return;
     }
 
     // PLAYING
     if (!done) {
-      timeLeft -= dt;
-      if (timeLeft <= 0) { finish(false); return; }
-      if (!rope.falling) {
-        rope.avel += (-9.8 * 3.5 / rope.len) * Math.sin(rope.angle) * dt; rope.avel *= 0.995; rope.angle += rope.avel * dt;
-        rope.bx = rope.anchorX + Math.sin(rope.angle) * rope.len; rope.by = rope.anchorY + Math.cos(rope.angle) * rope.len;
-      } else {
-        rope.vy += 1200 * dt; rope.bx += rope.vx * dt; rope.by += rope.vy * dt;
-        if (Math.hypot(rope.bx - GOAL_X, rope.by - GOAL_Y) < GOAL_R + 30) {
-          score++; feedbackOk = true; feedback = 0.4;
-          game.audio.play('se_success', 0.9);
-          for (var pi = 0; pi < 10; pi++) { var ang = Math.random() * Math.PI * 2; particles.push({ x: GOAL_X, y: GOAL_Y, vx: Math.cos(ang) * 180, vy: Math.sin(ang) * 180, life: 0.5 }); }
-          if (score >= NEEDED) { finish(true); return; }
-          resetBomb();
-        } else if (rope.by > H + 50 || rope.bx < -50 || rope.bx > W + 50) {
-          misses++; feedbackOk = false; feedback = 0.4;
-          game.audio.play('se_failure', 0.4);
-          if (misses >= MAX_MISS) { finish(false); return; }
-          resetBomb();
-        }
+      if (hitStop > 0) { hitStop -= dt; }
+      else if (ready > 0) { ready -= dt; if (ready <= 0) game.audio.play('se_tap'); }
+      else {
+        timeLeft -= dt;
+        if (fever > 0) fever -= dt;
+        if (timeLeft <= 0) { finish(false); return; }
+        updateNuts(dt, game.time.elapsed);
       }
+      if (feedback > 0) feedback -= dt;
     }
-    for (var p = 0; p < particles.length; p++) { particles[p].x += particles[p].vx * dt; particles[p].y += particles[p].vy * dt; particles[p].vy += 400 * dt; particles[p].life -= dt; }
-    particles = particles.filter(function(pt) { return pt.life > 0; });
-    if (feedback > 0) feedback -= dt;
 
-    // ---- 描画 ----
-    background(); drawGoal(); drawBomb(rope);
-    for (var pp = 0; pp < particles.length; pp++) game.draw.rect(snap(particles[pp].x) - 5, snap(particles[pp].y) - 5, 10, 10, C.b, particles[pp].life * 2);
-    if (feedback > 0) game.draw.rect(0, 0, W, H, feedbackOk ? C.b : C.a, feedback * 0.1);
+    // draw
+    forestBg();
+    game.draw.sprite(BASKET, BASKET_COL, W / 2, H - 150, 12, { anchor: 'center' });
+    for (var d = 0; d < nuts.length; d++) drawNut(nuts[d]);
 
-    timeBar();
-    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
-    txt(score + ' / ' + NEEDED, W / 2, 168, 44, C.b);
-    for (var mm = 0; mm < MAX_MISS; mm++) {
-      var mx = snap(W / 2 + (mm - (MAX_MISS - 1) / 2) * 44);
-      game.draw.rect(mx - 8, 208, 16, 16, mm < misses ? C.a : '#2a0a3a');
-    }
+    var frac = Math.max(0, timeLeft / MAX_TIME);
+    game.draw.rect(60, 40, (W - 120) * frac, 26, fever > 0 ? C.pink : C.leaf);
+    game.draw.rect(60, 40, W - 120, 26, C.leafDk, 0.5);
+    txt('SCORE ' + String(score).padStart(6, '0'), W / 2, 108, 46, C.cream);
+    txt(picks + ' / ' + NEEDED, W / 2, 168, 44, C.ripe);
+    if (fever > 0 && Math.floor(game.time.elapsed * 6) % 2 === 0) txt('FEVER', W / 2, H * 0.34, 54, C.pink);
+    if (ready > 0) txt(ready > 0.35 ? 'READY?' : 'GO!', W / 2, H * 0.6, 92, C.ripe);
+    if (feedback > 0 && !feedbackOk) txt('あと' + (NEEDED - picks) + '個', W / 2, H * 0.7, 48, C.ripe);
     scanlines();
   });
 
   game.onStart(function() {
-    game.audio.bgm('bgm_main', 0.25);
+    game.audio.melody(
+      [['G4', 0.5], ['A4', 0.5], ['C5', 0.5], ['A4', 0.5], ['G4', 0.5], ['E4', 0.5], ['G4', 1],
+       ['F4', 0.5], ['A4', 0.5], ['C5', 0.5], ['D5', 0.5], ['C5', 1], ['G4', 1]],
+      { tempo: 128, wave: 'square', volume: 0.09, loop: true,
+        bass: [['C3', 1], ['G2', 1], ['A2', 1], ['F2', 1], ['C3', 1], ['G2', 1]], bassWave: 'triangle', bassVolume: 0.08 }
+    );
     state = S.ATTRACT;
     initGame();
   });
