@@ -1,10 +1,14 @@
-# GAME QUALITY STANDARD v2 — 1プレイ10〜100円に値するコードゲームの基準
+# GAME QUALITY STANDARD v2.1 — 1プレイ10〜100円に値するコードゲームの基準
 
 対象: `src/ai/code/examples/*.js` の全ゲームと今後の新規ゲーム。
 目的: **プレイヤーが選択した行動に手応えがあり、コインを入れたくなる見た目と、もう1回押したくなる結末**を全ゲームに保証する。
-採点: `CodeQualityScorer`(静的) + `npm run games:smoke`(実行時+スクショ)。**合格ライン: スコア80以上 + スモークPASS。**
+採点: `CodeQualityScorer`(静的) + `npm run games:smoke`(実行時+スクショ)。**合格ライン: スコア80以上 + スモークPASS**
+(v3ゲート導入後(WP63)は validator v3 PASS + WARN 0 + attract_motion も必須)。
 
-関連文書: [SANDBOX_API_V2.md](./SANDBOX_API_V2.md)(API・レシピ) / [MECHANICS_CATALOG_V2.md](./MECHANICS_CATALOG_V2.md)(メカニクス) / [ARCADE_ART_DIRECTION.md](./ARCADE_ART_DIRECTION.md)(見た目)
+> **v2.1**: テキストレス原則を導入。「説明文を読まなくても見れば遊べる」の正典は
+> [PLAY_GRAMMAR_V3.md](./PLAY_GRAMMAR_V3.md) — テキスト/尺/難易度について本書と差異があれば **PLAY_GRAMMAR_V3 が優先**。
+
+関連文書: [PLAY_GRAMMAR_V3.md](./PLAY_GRAMMAR_V3.md)(遊びの文法・正典) / [SANDBOX_API_V2.md](./SANDBOX_API_V2.md)(API・レシピ) / [MECHANICS_CATALOG_V2.md](./MECHANICS_CATALOG_V2.md)(メカニクス) / [ARCADE_ART_DIRECTION.md](./ARCADE_ART_DIRECTION.md)(見た目)
 
 ---
 
@@ -41,11 +45,11 @@
 - 動くキャラは **2〜4フレーム**のアニメ(歩行/羽ばたき/点滅)+移動方向で `flipX`
 - 背景はテーマを反映する: `game.draw.gradient` + 遠景要素(山/星/街並み/小物)。**黒一色背景は宇宙・洞窟等テーマが要求する場合のみ**
 - ゲームごとに固有パレットを宣言(基調3色+アクセント2色、ARCADE_ART_DIRECTION の時代別スタイルパックから選択)
-- ATTRACT画面に1行の世界観(誰が何を目指す話か)を書く
+- 世界観は**文章ではなく絵と実演で**示す(v2.1: 説明文の掲示は禁止 — PLAY_GRAMMAR_V3 §3)
 
 ## 4. アーケード演出(MUST — ARCADE_ART_DIRECTION.md 準拠)
 
-- ATTRACT = 3秒で遊びを売る: ピクセルロゴ + 遊びが分かるデモ/一枚絵 + **`game.best` の実値による HI-SCORE** + 点滅する「100円投入/TAP TO START」
+- ATTRACT = 3秒で遊びを売る: ピクセルロゴ + **ゴースト実演デモ**(手カーソル+実ロジック。静止一枚絵は不可 — PLAY_GRAMMAR_V3 §2.1) + **`game.best` の実値による HI-SCORE** + 点滅する「100円投入/TAP TO START」
 - 成功時は音と光を飽和させる CELEBRATION(se_success + burst連発 + 点滅)
 - **ニアミスの可視化**: 惜しい失敗は「あと1個!」「99%」など悔しさを言語化(もう1回動機)
 - HI-SCORE 更新時は祭り演出(NEW RECORD 表示 + se_milestone)
@@ -59,18 +63,21 @@
 
 ## 6. ゲーム構造(MUST)
 
-- 状態機械 **ATTRACT → PLAYING → RESULT** を維持
-- **ゴールは開始時に見える**: 「12個爆破せよ」「10000mへ」等を ATTRACT と HUD に明示
+- 状態機械 **ATTRACT → PLAYING → RESULT** を維持。PLAYING 冒頭に READY?→GO! のカウントイン(PLAY_GRAMMAR_V3 §2.7)
+- **ゴールは開始時に見える**: 残りN個のアイコン列・ゴール旗・満タンになるゲージ等、**非言語の可視化**で(文章での明示は禁止)
 - 進捗を常時表示: 残時間バー + 達成カウンタ(`3 / 12`)or 高度メーター
 - **走行内難易度カーブ**: 後半ほど速く/多く/狭く(スコア連動の速度上昇など)。最初の5秒は操作を体得できる易しさ
 - 走行中に最低1つの**マイルストーン演出**(fx.popup + se_milestone)
 - RESULT: CLEAR と GAME OVER で色・文言・音を明確に変える。統計(スコア+プレイ固有値)と BEST を表示し、`game.end.success(score, stats)` で統計を渡す
-- 尺は 15〜30 秒で決着。1/10 難易度哲学(初見でも成功に手が届く)は維持
+- 尺と難易度は台帳(`docs/work-plans/ledger/game-assignments.csv`)の指定に従う。帯域はメカニクス族ごとに 8〜30 秒
+  (PLAY_GRAMMAR_V3 §4)。v2の「1/10難易度」は**過剰ナーフだったため撤回** — NEEDED=1 の原則禁止と再調整は §5 参照
 
 ## 7. 禁止事項
 
 - 無反応な入力 / ハードコードの偽 HI-SCORE / 黒一色背景(テーマ上の必然なし) / 幾何学図形のみのキャラ /
   上半分のみのレイアウト / 無音(BGMなし) / 成功と失敗の演出が同じ / 理不尽な失敗 /
+  **指導文・操作説明テキストの掲示**(`HOW_TO_PLAY` 等 — PLAY_GRAMMAR_V3 §3のホワイトリスト以外) /
+  **予告なしの即死**(telegraph必須 — 同 §2.4) /
   `window.*`・`AudioContext`・`localStorage`・`fetch`・無限ループ(バリデーターが検出)
 
 ## 8. 合格チェックリスト(書き換えセッションは提出前に自己検証)
@@ -78,15 +85,16 @@
 ```
 [ ] 全入力ハンドラが結果分岐して feedback/fx/audio を呼んでいる
 [ ] game.feedback.good と game.feedback.bad の両方を使っている
-[ ] BGM(melodyまたはbgm)がATTRACTから鳴る
+[ ] BGM(melodyまたはbgm)がATTRACTから鳴る。bgm_main の惰性使用でない
 [ ] キャラ/モチーフを draw.sprite で描き、2フレーム以上動く
 [ ] 背景に gradient + 遠景要素。固有パレット宣言(スタイルパック名をコメント)
 [ ] HUD上部/プレイ中央/操作下部の3ゾーンを使っている
-[ ] ゴールがATTRACTとHUDで見える。進捗表示が常時ある
+[ ] ゴールが非言語で見える(アイコン列/旗/ゲージ)。進捗表示が常時ある
 [ ] マイルストーン演出が走行中に出る
 [ ] CLEAR/GAME OVERの演出が別物。statsとBESTを表示
 [ ] ATTRACTのHI-SCOREは game.best の実値
 [ ] ニアミス時の悔しさ演出がある
+[ ] PLAY_GRAMMAR_V3 §8 のv3チェック(テキストレス/実演/telegraph/hit-stop等)を通過
 [ ] CodeQualityScorer 80点以上 / games:smoke PASS
 ```
 

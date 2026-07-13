@@ -75,6 +75,7 @@
     "ai:upload:examples": "tsx src/ai/v2/run-upload-examples.ts",
     "ai:upload:examples:dry": "DRY_RUN=true tsx src/ai/v2/run-upload-examples.ts",
     "ai:neta:trend": "tsx src/ai/v2/run-trend-neta.ts",
+    "games:ledger": "tsx scripts/build-game-ledger.ts",
     "games:smoke": "tsx scripts/smoke-code-games.ts",
     "games:smoke:all": "tsx scripts/smoke-code-games.ts --all",
     "games:smoke:quick": "tsx scripts/smoke-code-games.ts --quick"

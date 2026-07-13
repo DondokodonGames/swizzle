@@ -1,88 +1,139 @@
-# WP56: 品質基準v2 バッチ書き換え指示書(穴埋めテンプレート)
+# WP56: 遊びの文法v3 バッチ書き換え指示書(穴埋めテンプレート)
 
-**担当**: Sonnet / Codex(1セッション = 1バッチ) / **依存**: WP50〜54(API v2・スコアラーv2・スモークハーネス、実装済み) / **想定規模**: 1セッションで10〜15本
+**担当**: Sonnet / Opus(1セッション = 1バッチ = **10本**) / **依存**: WP61(台帳)・WP62(エンジンv2.1)・WP63(スコアラー/smoke v3)
+**進捗管理**: `docs/work-plans/ledger/game-assignments.csv`(このバッチの行が担当指示書のすべて)
 
 > このファイルを丸ごと新しいセッションに貼り、`<<...>>` を埋めて実行させる。
-> Wave 0(パイロット12〜16本、メカニクス族横断+bird_jump移植#801)→人間レビューで基準確定→Wave 1..N(全800本、55〜70セッション)の順で回す。
+> Wave 0(パイロット13本 = assignments の wave=0。A〜F各2+長尺枠。真の対戦ゲームが0本のためG枠なし)
+> → **人間レビューで基準凍結** → Wave 1..8(P1優先、各約100本)。
+> v2時代のこのテンプレの旧文面は git 履歴参照。旧「制限時間・難易度は変えない」条項は**v3で撤廃**された(下記)。
 
 ---
 
 ## あなたのタスク
 
-Swizzle のコードゲーム(`src/ai/code/examples/*.js`)を品質基準v2に引き上げる。
-**遊び(メカニクス・成功失敗条件・難易度1/10)は維持し、提示を刷新する**:
-縦画面レイアウト / キャラと世界観 / 行動フィードバック / 音 / アーケード演出。
+Swizzle のコードゲーム(`src/ai/code/examples/*.js`)を「遊びの文法v3」に引き上げる。
+**メカニクス(遊びのルール・勝敗条件・入力の意味)は変えない。変えるのは伝え方**:
+テキストレス化 / テーマ・キャラ / 音 / 尺 / 難易度の再調整(過剰ナーフの是正) / 実演デモ。
 
-### 担当ファイル(このバッチ)
+### 担当ゲーム(このバッチ)
+
+`docs/work-plans/ledger/game-assignments.csv` の batch=`<<バッチ名: 例 B03>>` の行。以下に貼り付け:
 
 ```
-<<例: 004-shooting-star.js, 005-balance-tilt.js, ... 10〜15本を列挙>>
+<<assignments該当行(10本)をCSVのまま貼る。列: id,filename,slug,title,hook,mechanic,family,theme,
+theme_jp,theme_source,style_pack,bgm_direction,variation,spice,duration_current,duration_target,
+needed_current,needed_action,priority,wave,batch,fix_items,keep_items,status,score_before,...>>
 ```
+
+**バッチは意図的にメカニクス混成**(10本≈9種)になっている。同メカニクスを固めると
+書き換えがワンパターン化するため。ゲームごとに頭を切り替え、コードの使い回しをしないこと。
+
+列の読み方(詳細は `docs/work-plans/61-800-games-ledger.md` の凡例):
+- **hook**: そのゲーム固有の面白さ(元ヘッダー2行目)。**保全・増幅が最優先**。
+  メカニクスの教科書形に均して hook を消すことを禁止(PLAY_GRAMMAR_V3 §2.8)
+- **theme_jp / style_pack / bgm_direction**: 割り当てられた世界観・スタイルパック・BGM方針。従うこと(バッチ内で全員別テーマ・同slugは全て別テーマになるよう割当済み)
+- **variation / spice**: 難易度カーブの型と得点の山場の型(§2.8)。遊びと矛盾する場合のみ同リスト内で変更可(notesに理由を記録)
+- **duration_target / needed_action**: MAX_TIME と NEEDED の指定。`維持` 以外は必ず変更する(同メカニクスでも尺は意図的に散らしてある)
+- **fix_items**: このゲームで直す項目のコード列(TEXTLESS/DEMO/TAGS/SE/BGM/SPRITE/GRAD/FEEDBACK/BEST/THEME/DUR/NEEDED)
+- **keep_items**: 触ってはいけない部分
 
 ### 必読(この順で)
 
-1. `docs/specifications/GAME_QUALITY_STANDARD_V2.md` — 合格基準とチェックリスト
-2. `docs/specifications/SANDBOX_API_V2.md` — 使えるAPI全部とレシピ(**ここに無いAPIは使わない**)
-3. `docs/specifications/ARCADE_ART_DIRECTION.md` — スタイルパックと演出規定
-4. 参考実装: `src/services/code-game/__tests__/fixtures/api-v2-fixture.js`(全API見本) + `<<ゴールドスタンダード例: 801-bird-jump.js 等、確定後に記入>>`
+1. `docs/specifications/PLAY_GRAMMAR_V3.md` — **正典**。5秒の文法・テキストレス技法・ホワイトリスト・SEマッピング
+2. `docs/specifications/GAME_QUALITY_STANDARD_V2.md` — 合格基準とチェックリスト
+3. `docs/specifications/SANDBOX_API_V2.md` — 使えるAPI全部とレシピ(**ここに無いAPIは使わない**)
+4. `docs/specifications/ARCADE_ART_DIRECTION.md` — スタイルパックと記号文法
+5. 参考実装: `src/services/code-game/__tests__/fixtures/api-v2-fixture.js`(全API見本) + `<<ゴールドスタンダード例: Wave 0 確定後に記入>>`
 
-### 各ゲームで必ずやること
+### 進め方 — 1本ずつ個別に作る(MUST)
 
-1. **行動フィードバック**: 全入力ハンドラを結果分岐にし、`game.feedback.good/bad` を配線。無反応な入力を根絶
-2. **縦レイアウト再配置**: HUD上部12% / プレイフィールド12-75%(縦に遊びを展開) / 親指ゾーン下部25%
-3. **キャラ化**: 主役を `game.draw.sprite`(文字列ビットマップ、顔つき、2〜4フレーム)に置換。裸の rect/circle 主役は禁止
-4. **背景**: `game.draw.gradient` + テーマの遠景。スタイルパックを1つ選び `// スタイル: <名前>` を宣言
-5. **音**: `game.audio.melody` でゲーム固有BGM(最低でも bgm_* プリセット) + イベント別SE
-6. **ATTRACT刷新**: ピクセルロゴ+遊びの実演/一枚絵+ `game.best` のHI-SCORE + 点滅投入誘導
-7. **RESULT刷新**: CLEAR/GAME OVER演出差 + stats + BEST + ニアミス表示(「あと◯◯!」) + `game.end.success(score, stats)`
-8. **走行中演出**: マイルストーン `fx.popup` + 難易度カーブ(後半加速)
-9. ヘッダー更新: 1〜4行目の規約(ファイル名/タイトル—説明/操作/成功失敗)を維持し、
-   `// @mechanic: <MECHANICS_CATALOG_V2のID>` と `// @theme: <テーマ1語>` を追記(価格tierは人間が後で付ける)
+**共通テンプレートを先に作って10本へスタンプする進め方を禁止する**(前回リファクタが
+ワンパターン化した根本原因)。必ず1本ずつ完結させる:
+
+```
+1本のサイクル: assignments行を読む → hook×themeから世界観1行を書く(コンセプト決め)
+  → 実装 → ゲート(validator/scorer/smoke) → 次のゲームへ(前のゲームのコードは見ない)
+```
+
+### 各ゲームで必ずやること(PLAY_GRAMMAR_V3 §2 の技法カタログ準拠)
+
+1. **テキストレス化**: `HOW_TO_PLAY` 変数と指導文を全廃。表示テキストはホワイトリスト(§3)のみ
+2. **ATTRACTゴースト実演**: 手カーソル(`game.draw.hand`)+実ゲームロジックのデモ1サイクル(3秒ループ)。成功例1回+危険があれば失敗例1回
+3. **READY?→GO! カウントイン**: PLAYING遷移直後0.8秒
+4. **telegraph**: 危険は0.5〜0.8秒前に必ず予告。予告なし即死を根絶
+5. **失敗の因果提示**: hit-stop 0.3〜0.6秒+当たった物のハイライト→RESULT
+6. **テーマ注入**: 割当テーマ(theme_jp)で世界観を作る。主役を `game.draw.sprite`(顔つき、2〜4フレーム)に置換。背景は `gradient`+遠景。`// スタイル: <style_pack>` を宣言し、そのパレットで統一
+6b. **フックの増幅と変化軸**: hook 列の固有要素を演出の主役に残す。variation(難易度カーブの型)と spice(得点の山場)を実装する(PLAY_GRAMMAR_V3 §2.8)
+7. **音**: SEマッピング表(§6.1)準拠で distinct 3種以上。BGMは **melody固有化を標準**とし、プリセット(bgm_tense等)は例外(使う場合は notes に理由を記録)。`game.feedback.good/bad` を配線
+8. **尺と難易度**: `MAX_TIME` → duration_target、`NEEDED` → needed_action の指示通り。`// 修正` ナーフ注釈は削除
+9. **偽HI-SCORE除去**: ハードコードの HI-SCORE 数字を `game.best` の実値に置換
+10. **縦3ゾーンレイアウト**(v2 §2)と**マイルストーン演出**(fx.popup + se_milestone)を維持・追加
+11. **ヘッダー更新**: 1〜4行目の規約(ファイル名/タイトル—説明/操作/成功失敗)は維持しつつ、
+    `// @mechanic: <assignments の mechanic>` と `// @theme: <assignments の theme>` を追記。
+    2行目のタイトル—説明はテーマ注入後の内容に書き直す(アップロード時のDBメタデータになる)。
+    さらに `// 世界観: <誰が何を目指す話か1行>` を必ず書く(hook×themeの具体化。
+    PLAY_GRAMMAR_V3 §2.8 — 「1本ずつ作った」ことの検収指標)
+12. **ニアミス演出**: 惜しい失敗に「あと◯◯!」(fx.popup)
 
 ### 守ること
 
 - ファイル構造は IIFE `(function(game){...})(game);` を維持。1ファイル完結、外部参照なし
+- **メカニクスと勝敗条件は変えない**(明らかなバグ修正のみ可)。MAX_TIME/NEEDED は台帳の指定通りに再調整する
+  (旧テンプレの「制限時間・難易度パラメータは変えない」は撤廃 — 台帳が正)
+- keep_items 列の項目(筐体骨格・slug/ファイル名・既存世界観 等)は変更禁止
 - 禁止: `window.*` / `document.*` / `AudioContext` / `localStorage` / `fetch` / 無限ループ(バリデーターで落ちる)
-- 遊びの内容・成功失敗条件・制限時間・難易度パラメータは**変えない**(明らかなバグ修正のみ可)
 - `src/services/code-game/` や `src/ai/code/*.ts` 等のエンジン側は**触らない**
+- ファイル名・slugのリネーム禁止(DB `template_id` と統計が紐づいている)
 
 ### 1ゲームごとのゲート(全部通ってから次へ)
 
 ```bash
-# 1) 静的検査+採点(80点以上が合格)
+# 1) 静的検査+採点(v3フラグ、80点以上が合格)
 npx tsx -e "
 import { CodeGameValidator } from './src/ai/code/CodeGameValidator.js';
 import { CodeQualityScorer } from './src/ai/code/CodeQualityScorer.js';
 import * as fs from 'fs';
 const code = fs.readFileSync('src/ai/code/examples/<<file>>', 'utf-8');
-const v = new CodeGameValidator().validate(code);
+const v = new CodeGameValidator().validate(code, { v3: true });
 const s = new CodeQualityScorer().score(code, null, v);
 new CodeGameValidator().report(v); new CodeQualityScorer().report(s);
 if (!v.valid || s.total < 80) process.exit(1);
 "
-# 2) 実行時スモーク(エラーなし+GAME_END到達+スクショ)
+# 2) 実行時スモーク(エラー0 + GAME_END + WARN 0 + attract_motion)
 npm run games:smoke -- --files <<file1>> <<file2>> <<file3>>
+# 3) 台帳照合: MAX_TIME/NEEDED が assignments の duration_target/needed_action と一致していること(目視)
 ```
 
-### コミット規約
+### コミット規約と進捗反映
 
-- **3本 = 1コミット**(このブランチの実績パターン)
-- メッセージ: `Upgrade games #NNN-#NNN to quality standard v2: <一言>`
-- ブランチ: `<<例: claude/quality-v2-wave1-batch03>>`
+- **3本 = 1コミット**。メッセージ: `Upgrade games #NNN-#NNN to play grammar v3: <一言>`
+- **同じコミットで** `docs/work-plans/ledger/game-assignments.csv` の該当行を更新:
+  `status=done` / `score_after=<新スコア>` / `style_actual=<使ったスタイルパック>`
+  (バッチ間で行が交差しないためコンフリクトしない。ledger.csv の方は触らない — 検収時に再生成される)
+- ブランチ: `<<例: claude/grammar-v3-wave1-B03>>`
 
 ### 完了報告(セッション末尾に出力)
 
-- 各ゲームのスコア(before → after)と選択スタイルパックの表
-- `npm run games:smoke -- --files <担当全部>` の PASS/FAIL
-- 判断に迷った点・基準の曖昧箇所(基準書へのフィードバック)
+- 各ゲームの表: score before → after / 世界観1行 / スタイルパック / 尺・NEEDED の変更
+- `npm run games:smoke -- --files <担当全部>` の PASS/FAIL(attract_motion 含む)
+- **自己申告**: バッチ内で実装・演出が似てしまった点(なければ「なし」と明記)
+- 判断に迷った点・基準の曖昧箇所(PLAY_GRAMMAR_V3 へのフィードバック)
 
 ---
 
 ## 運用メモ(人間向け)
 
-- **Wave 0 の担当選定**: メカニクス族を横断する12〜16本 + `801-bird-jump.js`(bird_jump移植、ゴールドスタンダード)。
-  完了後にコンタクトシート(`smoke-output/contact-sheet.html`)と実機で審査し、基準書を確定してから Wave 1 を開始
-- 波ごとの公開: `OVERWRITE=true npm run ai:upload:examples`(play_count/like_count は保持される)。
-  価格連動は `PRICE_SYNC=true`(@tier ヘッダーがあるゲームのみ、S=100/A=50/B=30/C=10円)
-- 多様性監視: `npm run ai:status` の多様性レポートで mechanic 分布を確認
-- 新規ネタ(801〜2000)は `MECHANICS_CATALOG_V2.md` の未使用動詞を優先割当(同カタログの「実装優先度ガイド」参照)
+- **Wave 0(パイロット)**: assignments の wave=0 の13本(A〜F各2 + 長尺枠)。完了後に
+  コンタクトシート(`smoke-output/contact-sheet.html`)と実機で審査:
+  「スクショ2枚で遊びが分かるか」「指導文ゼロで迷わないか」「テーマが判別できるか」。
+  基準書(PLAY_GRAMMAR_V3)を微修正して**凍結**し、ゴールドスタンダード例を本テンプレに記入してから Wave 1 開始
+- **Wave 1..8**: P1(NEEDED=1・低スコア・重複slug)を含むバッチから。1 Wave ≈ 10バッチ ≈ 100本
+- **Wave 末の検収**: 該当分 `games:smoke -- --files ...` → `npm run games:ledger`(ledger再生成)で
+  計測列の before/after diff を確認 → `OVERWRITE=true npm run ai:upload:examples` で再公開
+  (`play_count`/`like_count` は保持される)。価格連動は `PRICE_SYNC=true`(@tier があるゲームのみ)
+- **多様性監視**: `docs/work-plans/ledger/game-ledger-summary.md` のスタイルパック/テーマ/メカニクス分布
+- few-shot原型3本(`dodge-balls.js` / `swipe-direction.js` / `tap-target.js`)は**全Wave不変**(生成パイプラインの挙動維持)
+- **新規生成側の均質化対策は WP64**: 生成パイプラインは現状「固定few-shot 2本+v1のみのAPI仕様」で
+  新作を作るため、Wave 0 のゴールド凍結後に `docs/work-plans/64-generation-v3-alignment.md` を実施する
+  (書き換え済みゲームをメカニクス連動でfew-shotローテーション)
