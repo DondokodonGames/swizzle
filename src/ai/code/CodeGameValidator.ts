@@ -1,3 +1,5 @@
+import { MECHANIC_IDS, ALLOWED_SE_IDS, ALLOWED_BGM_IDS } from './mechanics-v3.js';
+
 export interface CodeValidationError {
   code: string;
   message: string;
@@ -8,6 +10,11 @@ export interface CodeValidationResult {
   valid: boolean;
   errors: CodeValidationError[];
   warnings: CodeValidationError[];
+}
+
+export interface CodeValidationOptions {
+  /** true で PLAY_GRAMMAR_V3 の追加チェックをエラーとして適用(書き換え済みゲーム用) */
+  v3?: boolean;
 }
 
 const KNOWN_API_METHODS = new Set([
@@ -41,7 +48,7 @@ const FORBIDDEN_PATTERNS: Array<{ pattern: RegExp; code: string; message: string
 ];
 
 export class CodeGameValidator {
-  validate(code: string): CodeValidationResult {
+  validate(code: string, opts?: CodeValidationOptions): CodeValidationResult {
     const errors: CodeValidationError[] = [];
     const warnings: CodeValidationError[] = [];
 
@@ -106,11 +113,75 @@ export class CodeGameValidator {
       }
     }
 
+    // 7. PLAY_GRAMMAR_V3 チェック(v3 フラグ時のみエラーにする)
+    if (opts?.v3) {
+      this.validateV3(code, errors);
+    }
+
     return {
       valid: errors.length === 0,
       errors,
       warnings,
     };
+  }
+
+  /** PLAY_GRAMMAR_V3 の追加チェック(書き換え済みゲーム用)。errors に push する。 */
+  private validateV3(code: string, errors: CodeValidationError[]): void {
+    // @mechanic ヘッダー: 存在 + 40+ID に一致(MECHANICS_CATALOG_V2 / mechanics-v3)
+    const mechMatch = code.match(/^\s*\/\/\s*@mechanic:\s*(\S+)/m);
+    if (!mechMatch) {
+      errors.push({
+        code: 'NO_MECHANIC',
+        message: '// @mechanic: ヘッダーがありません(PLAY_GRAMMAR_V3 §8)',
+        severity: 'error',
+      });
+    } else if (!MECHANIC_IDS.has(mechMatch[1])) {
+      errors.push({
+        code: 'UNKNOWN_MECHANIC',
+        message: `@mechanic: ${mechMatch[1]} はMECHANICS_CATALOG_V2の有効IDではありません`,
+        severity: 'error',
+      });
+    }
+
+    // @theme ヘッダー: 存在
+    if (!/^\s*\/\/\s*@theme:\s*\S+/m.test(code)) {
+      errors.push({
+        code: 'NO_THEME',
+        message: '// @theme: ヘッダーがありません(PLAY_GRAMMAR_V3 §8)',
+        severity: 'error',
+      });
+    }
+
+    // HOW_TO_PLAY の全廃(v3 テキストレス原則 §3)
+    if (/HOW_TO_PLAY/.test(code)) {
+      errors.push({
+        code: 'HOW_TO_PLAY_PRESENT',
+        message: 'HOW_TO_PLAY が残っています。v3では指導文を全廃してください(§3)',
+        severity: 'error',
+      });
+    }
+
+    // se_* / bgm_* トークンがプリセット+エイリアス一覧に無い(iframeTemplate と同期: mechanics-v3)
+    const seTokens = new Set(code.match(/\bse_[a-z0-9_]+/g) || []);
+    for (const id of seTokens) {
+      if (!ALLOWED_SE_IDS.has(id)) {
+        errors.push({
+          code: 'UNKNOWN_SE',
+          message: `未定義のSE: ${id} はプリセット+エイリアスに存在しません(§6.1)`,
+          severity: 'error',
+        });
+      }
+    }
+    const bgmTokens = new Set(code.match(/\bbgm_[a-z0-9_]+/g) || []);
+    for (const id of bgmTokens) {
+      if (!ALLOWED_BGM_IDS.has(id)) {
+        errors.push({
+          code: 'UNKNOWN_BGM',
+          message: `未定義のBGM: ${id} はプリセットに存在しません(§6.2)`,
+          severity: 'error',
+        });
+      }
+    }
   }
 
   /** バリデーション結果をコンソールに出力 */

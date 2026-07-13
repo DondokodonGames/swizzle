@@ -204,3 +204,82 @@ describe('CodeQualityScorer v2 – total / メタ情報', () => {
     expect(() => scorer.report(r)).not.toThrow();
   });
 });
+
+describe('CodeQualityScorer v3 – テキストレス検査(structure)', () => {
+  it('draw.text の指導文リテラル(3語以上/14字超)は structure を減点+ヒント', () => {
+    const code = "var S={ATTRACT:0,RESULT:2}; game.draw.text('TAP THE RED STAR NOW', 0, 0, {});";
+    const r = scorer.score(code, null, noErrors());
+    expect(r.breakdown.structure).toBeLessThan(15);
+    expect(r.hints.some((h) => h.includes('指導文'))).toBe(true);
+  });
+
+  it('ホワイトリスト語(TAP TO START / カウンタ)は減点しない', () => {
+    const code = "var S={ATTRACT:0,RESULT:2}; game.draw.text('TAP TO START', 0,0,{}); game.draw.text(a+' / '+b, 0,0,{});";
+    const r = scorer.score(code, null, noErrors());
+    expect(r.breakdown.structure).toBe(15);
+    expect(r.hints.some((h) => h.includes('指導文'))).toBe(false);
+  });
+
+  it('ローカルヘルパー(txt())の第1引数リテラルも検出する', () => {
+    const code = "function txt(s,x,y){ game.draw.text(s,x,y,{}); } txt('PRESS AND HOLD TO CHARGE', 0, 0);";
+    const r = scorer.score(code, null, noErrors());
+    expect(r.hints.some((h) => h.includes('指導文'))).toBe(true);
+  });
+
+  it('指導文2件以上でも減点は最大-10', () => {
+    const code = [
+      'var S={ATTRACT:0,RESULT:2};',
+      "game.draw.text('SWIPE LEFT TO SORT', 0,0,{});",
+      "game.draw.text('HOLD TO CHARGE UP', 0,0,{});",
+      "game.draw.text('DODGE THE RED SPIKES', 0,0,{});",
+    ].join('\n');
+    const r = scorer.score(code, null, noErrors());
+    // 15(満点) - min(10, 3*5)=10 → 5
+    expect(r.breakdown.structure).toBe(5);
+  });
+});
+
+describe('CodeQualityScorer v3 – audioVisual(distinct SE 3種で満点)', () => {
+  it('distinct SE 3種はSE配点満点(2種より高い)', () => {
+    const s3 = scorer.score("game.audio.play('se_a');game.audio.play('se_b');game.audio.play('se_c');", null, noErrors());
+    const s2 = scorer.score("game.audio.play('se_a');game.audio.play('se_b');", null, noErrors());
+    expect(s3.breakdown.audioVisual - s2.breakdown.audioVisual).toBe(2);
+    expect(s3.hints.some((h) => h.includes('SE'))).toBe(false);
+    expect(s2.hints.some((h) => h.includes('SE'))).toBe(true);
+  });
+});
+
+describe('CodeQualityScorer v3 – 偽HI-SCORE(goalEndings)', () => {
+  const base = [
+    "if (win) show('CLEAR'); else show('GAME OVER');",
+    "var p = s + ' / ' + n;",
+    "game.fx.popup('x');",
+  ].join('\n');
+
+  it('game.best 不使用+ハードコードHI-SCORE → -3+ヒント', () => {
+    const fake = scorer.score(base + "\ngame.draw.text('HI-SCORE 88888', 0,0,{});", null, noErrors());
+    const real = scorer.score(base + "\ngame.draw.text('BEST ' + game.best, 0,0,{});", null, noErrors());
+    expect(real.breakdown.goalEndings - fake.breakdown.goalEndings).toBe(6); // best +3 と 偽-3 の差
+    expect(fake.hints.some((h) => h.includes('偽のHI-SCORE'))).toBe(true);
+  });
+});
+
+describe('CodeQualityScorer v3 – 尺/NEEDED ヒント(減点なし)', () => {
+  it('@mechanic の帯域外 MAX_TIME はヒント', () => {
+    const code = ['// @mechanic: aim_shoot', 'var MAX_TIME = 25;'].join('\n'); // aim_shoot=10〜20
+    const r = scorer.score(code, null, noErrors());
+    expect(r.hints.some((h) => h.includes('帯域'))).toBe(true);
+  });
+
+  it('非ワンショット族で NEEDED<=2 かつ MAX_TIME>=10 はヒント', () => {
+    const code = ['// @mechanic: dodge', 'var MAX_TIME = 15; var NEEDED = 1;'].join('\n');
+    const r = scorer.score(code, null, noErrors());
+    expect(r.hints.some((h) => h.includes('NEEDED'))).toBe(true);
+  });
+
+  it('ONE_SHOT_OK 族(timing_one_shot)は NEEDED=1 でもヒントを出さない', () => {
+    const code = ['// @mechanic: timing_one_shot', 'var MAX_TIME = 12; var NEEDED = 1;'].join('\n');
+    const r = scorer.score(code, null, noErrors());
+    expect(r.hints.some((h) => h.includes('NEEDED'))).toBe(false);
+  });
+});

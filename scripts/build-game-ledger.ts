@@ -24,40 +24,16 @@ import * as path from 'path';
 import { fileURLToPath } from 'url';
 import { CodeGameValidator } from '../src/ai/code/CodeGameValidator.js';
 import { CodeQualityScorer } from '../src/ai/code/CodeQualityScorer.js';
+// メカニクスカタログ・尺帯域・ONE_SHOT_OK は共通モジュールに集約(validator/scorer と単一の真実の源)。
+// 変更は src/ai/code/mechanics-v3.ts で行う(PLAY_GRAMMAR_V3 §4/§5 と同期)。
+import {
+  MECHANIC_FAMILY, DURATION_BAND, DURATION_BAND_OVERRIDE, ONE_SHOT_OK,
+} from '../src/ai/code/mechanics-v3.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const EXAMPLES_DIR = path.resolve(__dirname, '../src/ai/code/examples');
 const LEDGER_DIR = path.resolve(__dirname, '../docs/work-plans/ledger');
 const OVERRIDES_FILE = path.join(LEDGER_DIR, 'mechanic-overrides.json');
-
-// ── メカニクスカタログ(MECHANICS_CATALOG_V2.md の40 ID) ──────────────────
-const MECHANIC_FAMILY: Record<string, 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H'> = {
-  timing_one_shot: 'A', timing_window: 'A', mash: 'A', alternate_tap: 'A', cooldown_tap: 'A',
-  hold_charge: 'A', hold_duration: 'A', freeze: 'A', rhythm: 'A',
-  aim_shoot: 'B', slingshot: 'B', flick_launch: 'B', trajectory: 'B', drop_timing: 'B',
-  dodge: 'C', drag_follow: 'C', camera_climb: 'C', camera_run: 'C', balance: 'C',
-  guide_path: 'C', chase: 'C',
-  trace: 'D', slice: 'D', rub: 'D', rotate_gesture: 'D', swipe_direction: 'D', pinch_zone: 'D',
-  stack: 'E', gap_fit: 'E', push_out: 'E', drag_sort: 'E', connect: 'E', count_exact: 'E',
-  spot: 'F', judge: 'F', size_judge: 'F', memory_sequence: 'F', pair_match: 'F',
-  counting: 'F', reaction_duel: 'F',
-  duel_2p: 'G', coop_2zone: 'G', turn_attack: 'G',
-  jackpot_combo: 'H', near_miss: 'H',
-};
-
-// 族ごとの適正尺帯域(PLAY_GRAMMAR_V3 §尺の帯域表と同期を保つこと)
-const DURATION_BAND: Record<string, [number, number]> = {
-  A: [8, 15], B: [10, 20], C: [15, 25], D: [8, 15], E: [15, 25], F: [8, 15], G: [15, 30],
-};
-// F系のうち記憶系は上限を延長
-const DURATION_BAND_OVERRIDE: Record<string, [number, number]> = {
-  memory_sequence: [10, 20], pair_match: [10, 20],
-};
-// NEEDED=1 が遊びとして正当なメカニクス(1つの行為そのものが遊び)
-const ONE_SHOT_OK = new Set([
-  'timing_one_shot', 'hold_charge', 'hold_duration', 'freeze', 'reaction_duel',
-  'slingshot', 'flick_launch', 'trajectory', 'drop_timing', 'counting', 'size_judge',
-]);
 
 // ── メカニクス推定ルール ─────────────────────────────────────────────────
 // ヘッダー3行目(操作:)+4行目(成功/失敗)の日本語に対するルール。重みは特異性。

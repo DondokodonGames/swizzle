@@ -1,5 +1,6 @@
 import { GameConcept } from '../v2/types.js';
 import { CodeValidationResult } from './CodeGameValidator.js';
+import { ONE_SHOT_OK, durationBandFor } from './mechanics-v3.js';
 
 /**
  * CodeQualityScorer v2 — GAME_QUALITY_STANDARD_V2 に対応した静的採点。
@@ -91,6 +92,60 @@ function extractHandlerBodies(code: string): string[] {
   return bodies;
 }
 
+// ── テキストレス検査(PLAY_GRAMMAR_V3 §3) ────────────────────────────────
+// draw.text に渡す文字列リテラルと、draw.text を内部で呼ぶローカルヘルパーの
+// 第1引数リテラルを収集する。
+function extractDisplayedTexts(code: string): string[] {
+  const texts: string[] = [];
+  let m: RegExpExecArray | null;
+
+  // 直接呼び出し: game.draw.text('...' / "..."
+  const directRe = /draw\.text\s*\(\s*(['"])((?:\\.|(?!\1).)*)\1/g;
+  while ((m = directRe.exec(code)) !== null) texts.push(m[2]);
+
+  // draw.text を呼ぶローカルヘルパー名を収集(txt() 等)
+  const helperNames = new Set<string>();
+  const fnRe = /(?:function\s+([\w$]+)\s*\([^)]*\)|(?:var|let|const)\s+([\w$]+)\s*=\s*(?:function\s*\([^)]*\)|\([^)]*\)\s*=>|[\w$]+\s*=>))\s*\{/g;
+  while ((m = fnRe.exec(code)) !== null) {
+    const name = m[1] || m[2];
+    const body = extractBraceBlock(code, m.index + m[0].length - 1);
+    if (name && body && body.includes('draw.text')) helperNames.add(name);
+  }
+  for (const name of helperNames) {
+    const callRe = new RegExp(name.replace(/\$/g, '\\$') + '\\s*\\(\\s*([\'"])((?:\\\\.|(?!\\1).)*)\\1', 'g');
+    while ((m = callRe.exec(code)) !== null) texts.push(m[2]);
+  }
+  return texts;
+}
+
+// §3 ホワイトリスト語(長いものから消し込むため長さ降順)
+const TEXT_WHITELIST_PHRASES = [
+  'TAP TO CONTINUE', 'TAP TO START', 'TAP TO PLAY', 'INSERT COIN', 'NEW RECORD',
+  'GAME OVER', 'GAMEOVER', 'HI-SCORE', 'HI SCORE', 'HISCORE', 'TIME UP', 'TIMEUP',
+  'CONTINUE', 'PERFECT', 'FINISH', 'RECORD', 'SCORE', 'CLEAR', 'READY', 'GREAT',
+  'GOOD', 'NICE', 'MISS', 'BEST', 'COMBO', 'FEVER', 'BONUS', 'START', 'GO', 'TAP',
+  '投入', '円',
+].sort((a, b) => b.length - a.length);
+
+function isWhitelistText(raw: string): boolean {
+  const t = raw.trim();
+  if (!t) return true;
+  if (/^あと/.test(t)) return true; // ニアミス定型「あと◯◯」
+  let s = t.toUpperCase();
+  for (const p of TEXT_WHITELIST_PHRASES) s = s.split(p.toUpperCase()).join(' ');
+  // 数字・記号・空白・矢印・単位を除去 → 残りが無ければ許可(数字/カウンタ/筐体定型/判定語)
+  s = s.replace(/[0-9\s/%×xX:.,+\-!?()（）「」『』►◄▶◀◆●○★☆…・、。¥$秒回個点段目位人本個m]/g, '');
+  return s.trim() === '';
+}
+
+/** 「指導文」= ホワイトリスト外 かつ 14文字超 or 空白区切り3語以上 */
+function isInstructionalText(raw: string): boolean {
+  const t = raw.trim();
+  if (!t || isWhitelistText(t)) return false;
+  const words = t.split(/\s+/).filter(Boolean).length;
+  return t.length > 14 || words >= 3;
+}
+
 export class CodeQualityScorer {
   score(
     code: string,
@@ -130,9 +185,10 @@ export class CodeQualityScorer {
     if (code.includes('game.audio.melody(')) audioVisual += 8;
     else if (code.includes('game.audio.bgm(')) audioVisual += 6;
     else hints.push('BGM(game.audio.melody か bgm)を鳴らす');
+    // distinct SE 3種以上で満点(§6.1)。2種以下は種数ぶんの部分点。
     const distinctSe = new Set(code.match(/se_[a-z_]+/g) || []).size;
-    audioVisual += Math.min(4, distinctSe);
-    if (distinctSe < 2) hints.push('イベント別のSE(se_*)を増やす');
+    audioVisual += distinctSe >= 3 ? 4 : distinctSe;
+    if (distinctSe < 3) hints.push('イベント別のSE(se_*)を3種以上に増やす(§6.1)');
     if (code.includes('game.draw.sprite(')) audioVisual += 5;
     else hints.push('キャラ/モチーフを game.draw.sprite で描く');
     if (code.includes('game.draw.gradient(')) audioVisual += 3;
@@ -164,17 +220,50 @@ export class CodeQualityScorer {
       code.includes('timeBar') || code.includes('progress');
     if (hasProgress) goalEndings += 4;
     else hints.push('進捗バーか達成カウンタを常時表示する');
-    if (code.includes('game.best')) goalEndings += 3;
+    const usesBest = code.includes('game.best');
+    if (usesBest) goalEndings += 3;
     else hints.push('ATTRACTやRESULTで game.best(実ベスト)を表示する');
     if (code.includes('game.fx.popup') || /milestone/i.test(code)) goalEndings += 3;
     else hints.push('走行中のマイルストーン演出(fx.popup)を入れる');
-    goalEndings = Math.min(15, goalEndings);
+    // 偽HI-SCORE: game.best 不使用 かつ HI-SCORE 表記+ハードコード数値 → 減点(§3/§6)
+    const fakeHiScore =
+      /['"][^'"]*HI-?SCORE[^'"]*\d{2,}[^'"]*['"]/i.test(code) ||     // "HI-SCORE 12000"
+      /HI-?SCORE[^;\n]{0,24}\+\s*\d{3,}/i.test(code) ||              // 'HI-SCORE ' + 12000
+      /\d{3,}[^;\n]{0,10}HI-?SCORE/i.test(code);
+    if (!usesBest && fakeHiScore) {
+      goalEndings -= 3;
+      hints.push('偽のHI-SCORE(ハードコード値)を game.best の実値に置換する');
+    }
+    goalEndings = Math.max(0, Math.min(15, goalEndings));
 
     // ── structure (15) ───────────────────────────────────────────────────
     let structure = Math.max(0, 10 - validationResult.errors.length * 4);
     if (/ATTRACT/.test(code) && /RESULT/.test(code)) structure += 5;
     else hints.push('ATTRACT/PLAYING/RESULT の状態機械を使う');
     structure = Math.min(15, structure);
+    // テキストレス検査(§3): 指導文らしきリテラル1件につき −5(最大 −10)
+    const displayedTexts = extractDisplayedTexts(code);
+    const instructional = displayedTexts.filter(isInstructionalText);
+    if (instructional.length > 0) {
+      structure = Math.max(0, structure - Math.min(10, instructional.length * 5));
+      hints.push(`指導文を削除しアート/実演で伝える(§3): 例 "${instructional[0].slice(0, 20)}"`);
+    }
+
+    // ── 尺・NEEDED(hint のみ・減点しない。合否は台帳照合で判定) ──────────
+    const mech = (code.match(/^\s*\/\/\s*@mechanic:\s*(\S+)/m) || [])[1];
+    const maxTimeStr = (code.match(/\b(?:MAX_TIME|TIME_LIMIT)\s*=\s*(\d+(?:\.\d+)?)/) || [])[1];
+    const neededStr = (code.match(/\bNEEDED\s*=\s*(\d+)/) || [])[1];
+    const maxTime = maxTimeStr !== undefined ? parseFloat(maxTimeStr) : NaN;
+    const needed = neededStr !== undefined ? parseInt(neededStr, 10) : NaN;
+    if (mech && !Number.isNaN(maxTime)) {
+      const band = durationBandFor(mech);
+      if (band && (maxTime < band[0] || maxTime > band[1])) {
+        hints.push(`MAX_TIME=${maxTime}s は ${mech} の帯域 ${band[0]}〜${band[1]}s の外(§4)`);
+      }
+    }
+    if (mech && needed <= 2 && maxTime >= 10 && !ONE_SHOT_OK.has(mech)) {
+      hints.push(`NEEDED=${needed} は尺${maxTime}sに対し少ない(§5: 尺10秒あたり3〜8アクション)`);
+    }
 
     // ── runtime (10) ─────────────────────────────────────────────────────
     const runtimeScore = runtime == null ? 5 : runtime.passed ? 10 : 0;

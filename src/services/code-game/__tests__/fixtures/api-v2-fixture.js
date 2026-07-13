@@ -1,10 +1,14 @@
 // api-v2-fixture.js
-// APIv2フィクスチャ — サンドボックスAPI v2 の全機能を使う検証用ミニゲーム
+// APIフィクスチャ — サンドボックスAPI v2 の全機能を使う検証用ミニゲーム
 // 操作: タップ — 的をタップで GOOD、外すと MISS。押しっぱなしでキャラが追従
-// 成功: 3回 GOOD  失敗: 8秒経過
+// 成功: 3回 GOOD  失敗: 10秒経過
+// @mechanic: aim_shoot
+// @theme: arcade
+// 世界観: テスト技師が的を撃ち抜いてAPIの動作を確かめる
 //
 // このファイルは配信用ゲームではなく、スモークハーネスとテストのための
 // フィクスチャ。game.* API v2 の全メソッドを少なくとも1回ずつ呼ぶ。
+// v3ゲート(validator v3 + score≥80 + smoke: WARN0 + attract_motion)のゴールド参照でもある。
 
 (function(game) {
   var W = game.canvas.width;
@@ -13,7 +17,7 @@
   var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
   var state = S.ATTRACT;
   var NEEDED = 3;
-  var MAX_TIME = 8;
+  var MAX_TIME = 10;
 
   var goods, misses, timeLeft, target, done, resultSuccess;
   var heroX = W / 2, heroY = H * 0.8;
@@ -37,6 +41,26 @@
   function initGame() {
     goods = 0; misses = 0; timeLeft = MAX_TIME; done = false;
     newTarget();
+  }
+
+  // ── ATTRACTゴースト実演(§2.1) ──
+  // 実ゲームと同じ的+feedbackを流用し、手カーソルを的まで動かして「タップ」する。
+  var demo = { tx: W * 0.5, ty: H * 0.35, r: 120, gx: W * 0.5, gy: H * 0.85, t: 0, press: false };
+  function demoNewTarget() {
+    demo.tx = W * 0.22 + game.random(0, W * 0.56);
+    demo.ty = H * 0.24 + game.random(0, H * 0.22);
+  }
+  function stepDemo(dt) {
+    demo.t += dt;
+    demo.gx += (demo.tx - demo.gx) * Math.min(1, dt * 3);
+    demo.gy += (demo.ty - demo.gy) * Math.min(1, dt * 3);
+    var near = game.hit.circle(demo.gx, demo.gy, 10, demo.tx, demo.ty, demo.r);
+    demo.press = near;
+    if (near && demo.t > 0.45) {
+      game.feedback.good(demo.gx, demo.gy, { text: '+100' }); // 実ロジックの成功演出を流用
+      demoNewTarget();
+      demo.t = 0; demo.gx = W * 0.5; demo.gy = H * 0.85; // 手を戻して再度寄せる(動きを作る)
+    }
   }
 
   game.onStart(function() {
@@ -81,13 +105,15 @@
     game.draw.gradient(0, H, ['#182848', '#080810']);
 
     if (state === S.ATTRACT) {
-      game.draw.text('API V2 FIXTURE', W / 2, H * 0.08, { size: 64, color: '#ffe600', bold: true });
+      stepDemo(dt); // ゴーストが実ロジックで1サイクル遊んで見せる(手が動く)
+      game.draw.text('API FIXTURE', W / 2, H * 0.08, { size: 64, color: '#ffe600', bold: true });
       game.draw.text('BEST ' + game.best, W / 2, H * 0.14, { size: 40, color: '#00ff9f' });
-      game.draw.text('TAP TO START', W / 2, H * 0.5, { size: 48, color: '#ffffff' });
-      game.draw.sprite(HERO, HERO_COL, W / 2, H * 0.65, 24, { anchor: 'center' });
-      // ATTRACTゴースト実演: 手カーソルがタップ位置に降りて押す(pressを周期で切替)
-      var pressing = Math.floor(game.time.elapsed * 2) % 2 === 0;
-      game.draw.hand(W / 2, H * 0.55, { press: pressing, scale: 14 });
+      // 実ゲームと同じ的を描き、手カーソルが寄っていく
+      game.draw.circle(demo.tx, demo.ty, demo.r, '#ff2079', 0.8);
+      game.draw.circle(demo.tx, demo.ty, demo.r * 0.5, '#ffe600');
+      game.draw.sprite(HERO, HERO_COL, W / 2, H * 0.68, 24, { anchor: 'center' });
+      game.draw.hand(demo.gx, demo.gy, { press: demo.press, scale: 16 });
+      game.draw.text('TAP TO START', W / 2, H * 0.86, { size: 48, color: '#ffffff' });
       return;
     }
 
@@ -129,6 +155,5 @@
     // キャラ
     game.draw.sprite(HERO, HERO_COL, heroX, heroY, 20, { anchor: 'center', flipX: heroX < W / 2 });
     game.draw.line(heroX, heroY - 100, target.x, target.y, '#ffffff', 2);
-    game.draw.image('missing_asset', 0, 0, 1, 1);
   });
 })(game);

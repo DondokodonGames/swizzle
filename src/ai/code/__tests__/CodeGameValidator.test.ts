@@ -161,3 +161,64 @@ describe('CodeGameValidator – 未知APIチェック', () => {
 function codeWithUnknown(snippet: string): string {
   return `${validCode()}\n${snippet}`;
 }
+
+function v3Code(extra = ''): string {
+  return [
+    '// @mechanic: aim_shoot',
+    '// @theme: candy',
+    '// 世界観: 検品係がチョコを撃ち抜く',
+    validCode(),
+    "game.audio.play('se_good');",
+    extra,
+  ].join('\n');
+}
+
+describe('CodeGameValidator – v3 フラグ', () => {
+  it('v3 未指定なら @mechanic/@theme が無くてもエラーにならない(後方互換)', () => {
+    const r = v.validate(validCode());
+    expect(r.errors.some(e => ['NO_MECHANIC', 'NO_THEME', 'HOW_TO_PLAY_PRESENT'].includes(e.code))).toBe(false);
+  });
+
+  it('v3: 完全なヘッダー+有効SEなら valid', () => {
+    const r = v.validate(v3Code(), { v3: true });
+    expect(r.valid).toBe(true);
+  });
+
+  it('v3: @mechanic 欠落で NO_MECHANIC', () => {
+    const code = ['// @theme: candy', validCode()].join('\n');
+    const r = v.validate(code, { v3: true });
+    expect(r.errors.some(e => e.code === 'NO_MECHANIC')).toBe(true);
+  });
+
+  it('v3: 未知メカニクスで UNKNOWN_MECHANIC', () => {
+    const code = ['// @mechanic: not_a_real_mechanic', '// @theme: candy', validCode()].join('\n');
+    const r = v.validate(code, { v3: true });
+    expect(r.errors.some(e => e.code === 'UNKNOWN_MECHANIC')).toBe(true);
+  });
+
+  it('v3: @theme 欠落で NO_THEME', () => {
+    const code = ['// @mechanic: aim_shoot', validCode()].join('\n');
+    const r = v.validate(code, { v3: true });
+    expect(r.errors.some(e => e.code === 'NO_THEME')).toBe(true);
+  });
+
+  it('v3: HOW_TO_PLAY 残存で HOW_TO_PLAY_PRESENT', () => {
+    const r = v.validate(v3Code('var HOW_TO_PLAY = "tap";'), { v3: true });
+    expect(r.errors.some(e => e.code === 'HOW_TO_PLAY_PRESENT')).toBe(true);
+  });
+
+  it('v3: 未定義SE(se_bogus)で UNKNOWN_SE', () => {
+    const r = v.validate(v3Code("game.audio.play('se_bogus');"), { v3: true });
+    expect(r.errors.some(e => e.code === 'UNKNOWN_SE')).toBe(true);
+  });
+
+  it('v3: エイリアスSE(se_correct)は有効', () => {
+    const r = v.validate(v3Code("game.audio.play('se_correct');"), { v3: true });
+    expect(r.errors.some(e => e.code === 'UNKNOWN_SE')).toBe(false);
+  });
+
+  it('v3: 未定義BGM(bgm_bogus)で UNKNOWN_BGM', () => {
+    const r = v.validate(v3Code("game.audio.bgm('bgm_bogus');"), { v3: true });
+    expect(r.errors.some(e => e.code === 'UNKNOWN_BGM')).toBe(true);
+  });
+});

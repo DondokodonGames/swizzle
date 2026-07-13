@@ -66,15 +66,28 @@ interface ZoneCoverage {
   bottom: number;
 }
 
+interface WarnEvent {
+  code: string;
+  id: string;
+}
+
 interface GameSmokeResult {
   file: string;
   ok: boolean;
   gameEnd: boolean;
   endResult?: 'success' | 'failure';
   errors: string[];
+  /** エンジンが送った WARN(未知SE/BGM/画像・読込失敗)。1件でもあれば FAIL(WP63) */
+  warns: WarnEvent[];
+  /** ATTRACT の2枚のスクショが動いているか(ゴースト実演の実行時担保。false は FAIL) */
+  attractMotion: boolean | null;
+  /** ATTRACT 2枚のサンプリング pixel-diff 率(0..1) */
+  attractDiff: number | null;
   tapResponsive: boolean | null;
   coverage: ZoneCoverage | null;
   durationMs: number;
+  /** START→GAME_END の実測ms(台帳の尺検収用) */
+  playMs: number | null;
   screenshots: string[];
 }
 
@@ -151,6 +164,41 @@ async function canvasFingerprint(page: Page): Promise<string | null> {
   }
 }
 
+// attract_motion 判定: ATTRACT 2枚(t≈1.2s/2.8s)の輝度サンプル差分率がこの値以上なら「動いている」。
+// 実測調整(WP63, --sample 30 + fixture で計測):
+//   ・ゴースト実演あり(fixture: 手が的へ移動+feedback)= 4.7%
+//   ・ATTRACTに既存アニメがあるv2ゲーム = 0.6〜1.7%
+//   ・点滅テキストのみ/静止の静的ATTRACT = 0〜0.49%
+// → 0.005(0.5%)が「点滅のみ」と「実演あり」の間に明確に入る(境界の空き: 0.49% ↔ 0.61%)。
+const ATTRACT_MOTION_THRESHOLD = 0.005;
+// 輝度差がこの値超のサンプルを「変化した」とみなす(微小なアンチエイリアス揺れを無視)
+const LUMA_DELTA = 16;
+
+/** キャンバス全面を等間隔サンプリングした輝度配列(ATTRACT モーション差分用) */
+async function canvasLumaSamples(page: Page): Promise<number[] | null> {
+  try {
+    return await page.evaluate(() => {
+      const c = document.getElementById('c') as HTMLCanvasElement | null;
+      const g = c?.getContext('2d');
+      if (!c || !g) return null;
+      const d = g.getImageData(0, 0, c.width, c.height).data;
+      const out: number[] = [];
+      for (let i = 0; i < d.length; i += 600 * 4) out.push((d[i] + d[i + 1] + d[i + 2]) / 3 | 0);
+      return out;
+    });
+  } catch {
+    return null;
+  }
+}
+
+/** 2枚の輝度サンプルの差分率(0..1)。長さ不一致・null は null。 */
+function lumaDiffRatio(a: number[] | null, b: number[] | null): number | null {
+  if (!a || !b || a.length === 0 || a.length !== b.length) return null;
+  let changed = 0;
+  for (let i = 0; i < a.length; i++) if (Math.abs(a[i] - b[i]) > LUMA_DELTA) changed++;
+  return changed / a.length;
+}
+
 async function smokeOne(
   page: Page,
   file: string,
@@ -167,11 +215,13 @@ async function smokeOne(
 
   const capMs = opts.quick ? 6000 : 15000;
 
-  // GAME_END / ERROR / READY を親(=同一window)で受け取るキャプチャを
+  // GAME_END / ERROR / READY / WARN を親(=同一window)で受け取るキャプチャを
   // HTML に直接注入する(setContent では addInitScript が効かないため)。
+  // 各イベントに performance.now() を刻んで START→GAME_END の実測 msを取る。
   const capture =
     '<script>window.__smokeEvents=[];window.addEventListener("message",function(e){' +
-    'var d=e.data;if(d&&(d.type==="GAME_END"||d.type==="ERROR"||d.type==="READY"))window.__smokeEvents.push(d);});</scr' + 'ipt>';
+    'var d=e.data;if(d&&(d.type==="GAME_END"||d.type==="ERROR"||d.type==="READY"||d.type==="WARN")){' +
+    'd.__t=performance.now();window.__smokeEvents.push(d);}});</scr' + 'ipt>';
   const html = buildIframeHtml(code, capMs).replace('<canvas', capture + '<canvas');
 
   page.removeAllListeners('pageerror');
@@ -183,9 +233,10 @@ async function smokeOne(
 
   await page.setContent(html, { waitUntil: 'domcontentloaded' });
 
-  const readEvents = async () => {
+  type SmokeEvent = { type: string; result?: string; message?: string; code?: string; id?: string; __t?: number };
+  const readEvents = async (): Promise<SmokeEvent[]> => {
     const ev = await page
-      .evaluate(() => (window as unknown as { __smokeEvents?: Array<{ type: string; result?: string; message?: string }> }).__smokeEvents)
+      .evaluate(() => (window as unknown as { __smokeEvents?: SmokeEvent[] }).__smokeEvents)
       .catch(() => undefined);
     return ev || [];
   };
@@ -202,13 +253,29 @@ async function smokeOne(
     window.postMessage({ type: 'INIT', assets: [], context: { gameId: 'smoke', bestScore: 1234 } }, '*');
   });
   await page.waitForTimeout(150);
-  await page.evaluate(() => { window.postMessage({ type: 'START' }, '*'); });
+  const startAt = await page.evaluate(() => {
+    (window as unknown as { __smokeStartAt?: number }).__smokeStartAt = performance.now();
+    window.postMessage({ type: 'START' }, '*');
+    return (window as unknown as { __smokeStartAt: number }).__smokeStartAt;
+  });
 
-  // ATTRACT スクリーンショット
-  await page.waitForTimeout(900);
-  const shotA = path.join(shotDir, `${base}-attract.png`);
-  await page.locator('#c').screenshot({ path: shotA }).catch(() => {});
-  if (fs.existsSync(shotA)) screenshots.push(path.basename(shotA));
+  // ATTRACT モーション判定: t≈1.2s と t≈2.8s の2枚を撮り、輝度差分率で
+  // ゴースト実演が動いているかを実行時に担保する(§2.1)。
+  // WP62 でウォッチドッグは初回入力から計時されるため、ATTRACT を長めに眺めても強制終了しない。
+  await page.waitForTimeout(1200);
+  const shotA1 = path.join(shotDir, `${base}-attract.png`);
+  await page.locator('#c').screenshot({ path: shotA1 }).catch(() => {});
+  if (fs.existsSync(shotA1)) screenshots.push(path.basename(shotA1));
+  const attractSample1 = await canvasLumaSamples(page);
+
+  await page.waitForTimeout(1600); // 合計 t≈2.8s
+  const shotA2 = path.join(shotDir, `${base}-attract2.png`);
+  await page.locator('#c').screenshot({ path: shotA2 }).catch(() => {});
+  if (fs.existsSync(shotA2)) screenshots.push(path.basename(shotA2));
+  const attractSample2 = await canvasLumaSamples(page);
+
+  const attractDiff = lumaDiffRatio(attractSample1, attractSample2);
+  const attractMotion = attractDiff === null ? null : attractDiff >= ATTRACT_MOTION_THRESHOLD;
 
   // タップ反応チェック: ATTRACT→PLAYING 遷移タップ
   const before = await canvasFingerprint(page);
@@ -230,6 +297,7 @@ async function smokeOne(
   const coverage = await measureCoverage(page);
 
   // GAME_END までタップ連打(quick モードでは打ち切りのみ)
+  let playMs: number | null = null;
   const deadline = started + capMs + 6000;
   while (Date.now() < deadline) {
     const events = await readEvents();
@@ -237,6 +305,7 @@ async function smokeOne(
     if (end) {
       gameEnd = true;
       endResult = end.result as 'success' | 'failure';
+      if (end.__t !== undefined) playMs = Math.round(end.__t - startAt);
       break;
     }
     const err = events.find((e) => e.type === 'ERROR');
@@ -249,16 +318,32 @@ async function smokeOne(
     await page.waitForTimeout(350);
   }
 
-  const ok = errors.length === 0 && (opts.quick ? true : gameEnd);
+  // WARN 収集(未知SE/BGM/画像・読込失敗)。1件でもあれば FAIL(WP63)。
+  const finalEvents = await readEvents();
+  const warns: WarnEvent[] = finalEvents
+    .filter((e) => e.type === 'WARN')
+    .map((e) => ({ code: String(e.code), id: String(e.id) }));
+
+  // 合否: エラー0 + (quick以外は GAME_END) + WARN 0 + attract_motion。
+  // quick は打ち切りのため GAME_END / attract_motion を合否に含めない。
+  const ok =
+    errors.length === 0 &&
+    warns.length === 0 &&
+    (opts.quick ? true : gameEnd && attractMotion === true);
+
   return {
     file: path.basename(file),
     ok,
     gameEnd,
     endResult,
     errors,
+    warns,
+    attractMotion,
+    attractDiff: attractDiff === null ? null : +attractDiff.toFixed(4),
     tapResponsive,
     coverage,
     durationMs: Date.now() - started,
+    playMs,
     screenshots,
   };
 }
@@ -274,8 +359,14 @@ function writeContactSheet(outDir: string, results: GameSmokeResult[]): void {
         : '-';
       const badge = r.ok ? '<span class="ok">PASS</span>' : '<span class="ng">FAIL</span>';
       const errs = r.errors.length ? `<div class="err">${r.errors.join('<br>')}</div>` : '';
+      const motion =
+        r.attractMotion === null ? '?' : r.attractMotion ? `yes(${((r.attractDiff ?? 0) * 100).toFixed(1)}%)` : `<span class="ng">NO(${((r.attractDiff ?? 0) * 100).toFixed(1)}%)</span>`;
+      const warnHtml = r.warns.length
+        ? `<div class="err">WARN×${r.warns.length}: ${r.warns.map((w) => `${w.code}(${w.id})`).join(', ')}</div>`
+        : '';
+      const playMsStr = r.playMs !== null ? ` | 実測尺: ${r.playMs}ms` : '';
       return `<div class="game"><h3>${badge} ${r.file}</h3><div class="shots">${shots}</div>` +
-        `<div class="meta">end: ${r.gameEnd ? r.endResult : 'none'} | tap反応: ${r.tapResponsive === null ? '?' : r.tapResponsive ? 'yes' : 'NO'} | 被覆率: ${cov} | ${r.durationMs}ms</div>${errs}</div>`;
+        `<div class="meta">end: ${r.gameEnd ? r.endResult : 'none'} | attract動き: ${motion} | tap反応: ${r.tapResponsive === null ? '?' : r.tapResponsive ? 'yes' : 'NO'} | 被覆率: ${cov}${playMsStr} | ${r.durationMs}ms</div>${warnHtml}${errs}</div>`;
     })
     .join('\n');
 
@@ -339,6 +430,7 @@ async function main() {
         result = {
           file: path.basename(file), ok: false, gameEnd: false,
           errors: [`harness: ${err instanceof Error ? err.message : String(err)}`],
+          warns: [], attractMotion: null, attractDiff: null, playMs: null,
           tapResponsive: null, coverage: null, durationMs: 0, screenshots: [],
         };
       }

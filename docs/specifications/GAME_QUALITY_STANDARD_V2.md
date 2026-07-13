@@ -98,13 +98,25 @@
 [ ] CodeQualityScorer 80点以上 / games:smoke PASS
 ```
 
-## 9. 採点との対応
+## 9. 採点との対応(WP63 で v3 検査を追加。配点合計は不変)
 
-| 基準 | スコアラー軸 | 配点 |
-|------|-------------|------|
-| §1 行動フィードバック | actionFeedback | 25 |
-| §3,4,5 見た目と音 | audioVisual | 20 |
-| §2 縦レイアウト | layout | 15 |
-| §4,6 ゴール・結末 | goalEndings | 15 |
-| §6,7 構造・禁止事項 | structure | 15 |
-| 実行時(smoke) | runtime | 10 |
+| 基準 | スコアラー軸 | 配点 | v3 追加検査(`CodeQualityScorer`) |
+|------|-------------|------|-----------------------------------|
+| §1 行動フィードバック | actionFeedback | 25 | — |
+| §3,4,5 見た目と音 | audioVisual | 20 | distinct `se_*` **3種以上**で満点(§6.1) |
+| §2 縦レイアウト | layout | 15 | — |
+| §4,6 ゴール・結末 | goalEndings | 15 | 偽HI-SCORE(`game.best`不使用+ハードコード数値)で −3 |
+| §6,7 構造・禁止事項 | structure | 15 | テキストレス: 指導文リテラル1件 −5(最大 −10、§3) |
+| 実行時(smoke) | runtime | 10 | — |
+
+尺・NEEDED は減点せず **hint のみ**(帯域 §4 / ONE_SHOT_OK §5)。合否は台帳 `game-assignments.csv` との照合で判定する。
+
+### v3 合格ゲート(3点セット)
+
+書き換え済みゲームは以下すべてを満たすこと(`validate(code, { v3:true })` を指定):
+
+1. **validator v3 PASS** — `@mechanic`(40+ID)/`@theme` ヘッダーあり、`HOW_TO_PLAY` 全廃、未定義 `se_*`/`bgm_*` なし
+2. **CodeQualityScorer 合計 ≥ 80**
+3. **games:smoke PASS** = ERROR 0 + GAME_END 到達 + **WARN 0** + **attract_motion**(ATTRACTゴースト実演が実行時に動く)
+
+検査定数(メカ族/尺帯域/ONE_SHOT_OK/SE・BGM許可ID)は `src/ai/code/mechanics-v3.ts` に集約。
