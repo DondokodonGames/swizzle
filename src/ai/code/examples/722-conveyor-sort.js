@@ -1,159 +1,216 @@
 // 722-conveyor-sort.js
-// コンベアソート — ベルトで流れる荷物を色で見分けて上下のレーンへ振り分ける
-// 操作: 青(A)は画面上、橙(B)は画面下をタップ。上下スワイプでも仕分けできる
-// 成功: 12個 正確に仕分ける  失敗: 3回 ミス or 22秒
+// コンベアソート — ベルトを流れる木箱の焼印を見分け、上下スワイプで正しい荷降し場へ
+// 操作: 丸印の箱は上スワイプ、×印の箱は下スワイプ
+// 成功: 制限時間内に 12 個仕分ける  失敗: 時間切れ
+// @mechanic: swipe_direction
+// @theme: western
+// 世界観: 西部の荒野の貨物駅で、駅員が木箱の焼印を読んで上下の荷降し場へ振り分ける
+// variation: 精度型(進むほどベルトが速くなる)
+// spice: 黄金ターゲット(稀に金塊の箱=得点2倍が出る)
+// スタイル: 70s MONO
 
 (function(game) {
-  var W = game.canvas.width;   // 1080
-  var H = game.canvas.height;  // 1920
+  var W = game.canvas.width;
+  var H = game.canvas.height;
 
-  // ── パレット（ネオンアーケード、荷物色は保持） ──
-  var C = { bg:'#060408', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
-  var BOX_A = '#00cfff', BOX_B = '#ff6600';
+  // 70s MONO(琥珀フォスファ・単色)
+  var C = {
+    black: '#0a0600', amber: '#ffb000', amberDim: '#8a5c00', amberLo: '#2e2000',
+    white: '#fff0cc', red: '#ff5a2a', glow: '#ffe08a',
+  };
 
-  // ── ゲーム定数 ──
-  var GAME_TITLE  = 'CONVEYOR SORT';
-  var HOW_TO_PLAY = 'BLUE (A) TO THE TOP · ORANGE (B) TO THE BOTTOM · TAP OR SWIPE';
-  var MAX_TIME = 22;
-  var NEEDED   = 12;         // 修正2: 35 → 12
-  var MAX_ERR  = 3;          // 修正2: 8 → 3
-  var LANE_A_Y = snap(H * 0.30), LANE_B_Y = snap(H * 0.60), BELT_Y = snap(H * 0.45), BOX_W = 110, BOX_H = 90, BOX_SPEED = 300;
+  var GAME_TITLE = 'CONVEYOR SORT';
+  var MAX_TIME = 13;
+  var NEEDED = 12;
+  var BELT_Y = H * 0.5;
+  var BOX_W = 200;
 
-  // ── ステート ──
   var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
   var state = S.ATTRACT;
   var resultSuccess = false, finalScore = 0;
 
-  // ── ゲーム変数 ──
-  var currentBox, spawnTimer, sentAnim, score, errors, timeLeft, done, elapsed, particles, flash, flashCol, resultText, resultTimer;
+  var box, sent, beltSpd, score, sorted, timeLeft, done;
+  var ready, hitStop, feedback, feedbackOk;
 
-  // ── ピクセル描画ヘルパー ──
-  function snap(v) { return Math.round(v / 8) * 8; }
-
-  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
-
-  function arrow(cx, cy, size, dir, color) { cx = snap(cx); cy = snap(cy); var st = 8; for (var i = 0; i < size; i += st) { var w = size - i; if (dir === 'up') game.draw.rect(cx - w / 2, cy - i + size / 2 - st, w, st, color, 0.6); else game.draw.rect(cx - w / 2, cy + i - size / 2, w, st, color, 0.6); } }
+  // 焼印: 0=丸(上へ) / 1=×(下へ)
+  var BRAND = [
+    ['.AAAA.', 'A....A', 'A....A', 'A....A', 'A....A', '.AAAA.'],
+    ['A....A', '.A..A.', '..AA..', '..AA..', '.A..A.', 'A....A'],
+  ];
 
   function txt(str, x, y, sz, color, align) {
-    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x + 3, y + 4, { size: sz, color: '#000000', bold: true, align: align || 'center' });
     game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
+  function scanlines() { for (var sy = 0; sy < H; sy += 6) game.draw.rect(0, sy, W, 2, '#000000', 0.28); }
 
-  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
-
-  function timeBar() {
-    var t = Math.ceil(timeLeft / MAX_TIME * 12);
-    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.e : '#0a0608');
+  function depotBg() {
+    game.draw.gradient(0, H, [[0, '#141000'], [1, '#050300']]);
+    // 上下の荷降し場(レーン)
+    game.draw.rect(0, BELT_Y - 300, W, 120, C.amberLo, 0.5);
+    game.draw.rect(0, BELT_Y + 180, W, 120, C.amberLo, 0.5);
+    // 上=丸 / 下=× のラベル記号
+    game.draw.sprite(BRAND[0], { A: C.amber }, W - 100, BELT_Y - 240, 12, { anchor: 'center' });
+    game.draw.sprite(BRAND[1], { A: C.amber }, W - 100, BELT_Y + 240, 12, { anchor: 'center' });
+    // ベルト
+    game.draw.rect(0, BELT_Y - 70, W, 140, C.amberLo);
+    var off = (game.time.elapsed * 200) % 60;
+    for (var x = -60; x < W; x += 60) game.draw.line(x + off, BELT_Y - 70, x + off, BELT_Y + 70, C.amberDim, 3);
   }
 
-  function background() { game.draw.clear(C.bg); }
+  function drawBox(b, yoff) {
+    var y = b.y + (yoff || 0);
+    var col = b.gold ? C.white : C.amber;
+    game.draw.rect(b.x - BOX_W / 2, y - 70, BOX_W, 140, C.black);
+    game.draw.rect(b.x - BOX_W / 2, y - 70, BOX_W, 140, col, 0.18);
+    // 枠
+    game.draw.rect(b.x - BOX_W / 2, y - 70, BOX_W, 8, col);
+    game.draw.rect(b.x - BOX_W / 2, y + 62, BOX_W, 8, col);
+    game.draw.sprite(BRAND[b.brand], { A: col }, b.x, y, 16, { anchor: 'center' });
+  }
 
-  function spawnBox() { currentBox = { type: Math.random() < 0.5 ? 'A' : 'B', x: -BOX_W / 2, y: BELT_Y, sent: false }; }
-
-  function initGame() { currentBox = null; spawnTimer = 0.4; sentAnim = null; score = 0; errors = 0; timeLeft = MAX_TIME; done = false; elapsed = 0; particles = []; flash = 0; flashCol = C.b; resultText = ''; resultTimer = 0; spawnBox(); }
+  function spawnBox() {
+    box = { brand: Math.random() < 0.5 ? 0 : 1, x: -BOX_W / 2, y: BELT_Y, gold: Math.random() < 0.12 };
+    sent = null;
+  }
+  function initGame() {
+    score = 0; sorted = 0; timeLeft = MAX_TIME; done = false; beltSpd = 340;
+    ready = 0.8; hitStop = 0; feedback = 0; feedbackOk = false;
+    spawnBox();
+  }
 
   function finish(success) {
     if (done) return;
-    done = true; resultSuccess = success;
-    finalScore = success ? (score * 400 + Math.ceil(timeLeft) * 100) : score * 120;
-    game.audio.play(success ? 'se_success' : 'se_failure');
+    done = true; resultSuccess = success; finalScore = score;
+    game.audio.stopBgm();
+    if (success) game.audio.play('se_success');
+    else { game.audio.play('se_failure'); hitStop = 0.4; game.fx.flash(C.red, 0.25); }
     state = S.RESULT;
-    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1600);
   }
 
-  function sendBox(dir) {
-    if (!currentBox || currentBox.sent) return;
-    currentBox.sent = true;
-    var correct = (dir === 'up' && currentBox.type === 'A') || (dir === 'down' && currentBox.type === 'B');
-    sentAnim = { x: currentBox.x, y: currentBox.y, vy: dir === 'up' ? -700 : 700, type: currentBox.type, correct: correct, life: 0.4 };
-    if (correct) {
-      score++; flash = 0.2; flashCol = C.b; game.audio.play('se_tap', 0.1);
-      if (score >= NEEDED) { currentBox = null; finish(true); return; }
+  function sort(dir) {
+    if (!box || sent) return;
+    var want = box.brand === 0 ? 'up' : 'down';
+    if (dir === want) {
+      sorted++;
+      var gain = box.gold ? 200 : 100; score += gain;
+      feedback = 0.3; feedbackOk = true;
+      game.feedback.good(box.x, box.y, { text: box.gold ? 'GOLD +200' : '+100', color: box.gold ? C.white : C.amber });
+      if (box.gold) game.audio.play('se_milestone');
+      sent = { dir: dir, t: 0 };
+      beltSpd = Math.min(760, 340 + sorted * 34); // 精度型: 速くなる
+      if (sorted >= NEEDED) { finish(true); return; }
     } else {
-      errors++; flash = 0.3; flashCol = C.a; resultText = 'WRONG!'; resultTimer = 0.4; game.audio.play('se_failure', 0.3);
-      if (errors >= MAX_ERR) { currentBox = null; finish(false); return; }
-    }
-    currentBox = null; spawnTimer = 0.3;
-  }
-
-  function drawScene() {
-    game.draw.rect(0, LANE_A_Y - 60, W, 120, '#0c4a6e', 0.7); pc(80, LANE_A_Y, 40, BOX_A, 0.85); txt('A', 80, LANE_A_Y + 16, 48, C.g); arrow(W * 0.5 - 90, LANE_A_Y, 44, 'up', BOX_A); txt('BLUE', W * 0.5 + 40, LANE_A_Y + 14, 40, '#00cfff88');
-    game.draw.rect(0, LANE_B_Y - 60, W, 120, '#7c2d12', 0.7); pc(80, LANE_B_Y, 40, BOX_B, 0.85); txt('B', 80, LANE_B_Y + 16, 48, C.g); arrow(W * 0.5 - 90, LANE_B_Y, 44, 'down', BOX_B); txt('ORANGE', W * 0.5 + 60, LANE_B_Y + 14, 40, '#ff660088');
-    game.draw.rect(0, BELT_Y - 28, W, 56, '#1c1917', 0.9);
-    for (var bs = 0; bs < 12; bs++) { var bsx = (bs * 100 - (elapsed * 320) % 100 + 100) % (W + 100) - 50; game.draw.line(bsx, BELT_Y - 28, bsx - 30, BELT_Y + 28, '#2d2825', 8); }
-    if (sentAnim) { var sa = sentAnim; game.draw.rect(snap(sa.x - BOX_W / 2), snap(sa.y - BOX_H / 2), BOX_W, BOX_H, sa.correct ? C.b : C.a, sa.life * 2); }
-    if (currentBox && !currentBox.sent) {
-      var bCol = currentBox.type === 'A' ? BOX_A : BOX_B;
-      game.draw.rect(snap(currentBox.x - BOX_W / 2), snap(currentBox.y - BOX_H / 2), BOX_W, BOX_H, bCol, 0.92);
-      game.draw.rect(snap(currentBox.x - BOX_W / 2), snap(currentBox.y - BOX_H / 2), BOX_W, 12, C.g, 0.22);
-      txt(currentBox.type, currentBox.x, currentBox.y + 20, 64, C.g);
+      feedback = 0.3; feedbackOk = false; hitStop = 0.3;
+      game.feedback.bad(box.x, box.y, { text: 'WRONG' });
+      sent = { dir: dir, t: 0, wrong: true };
     }
   }
 
-  // ── 入力 ──
-  game.onTap(function(tx, ty) {
-    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+  game.onTap(function() {
+    if (state === S.ATTRACT) { game.audio.play('se_coin'); state = S.PLAYING; initGame(); return; }
     if (state === S.RESULT) { state = S.ATTRACT; return; }
-    if (done || !currentBox || currentBox.sent) return;
-    sendBox(ty < H / 2 ? 'up' : 'down');
   });
-
   game.onSwipe(function(dir) {
-    if (state !== S.PLAYING || done || !currentBox || currentBox.sent) return;
-    if (dir === 'up') sendBox('up'); else if (dir === 'down') sendBox('down');
+    if (state !== S.PLAYING || done || ready > 0 || hitStop > 0) return;
+    if (dir === 'up' || dir === 'down') sort(dir);
   });
 
-  // ── 更新 & 描画 ──
+  // ATTRACT ゴースト実演: 手が焼印に合わせて上下フリック
+  var d = { box: null, t: 0, gx: W / 2, gy: BELT_Y + 40, press: false, sent: null };
+  function stepDemo(dt) {
+    if (!d.box) d.box = { brand: 0, x: -BOX_W / 2, gold: false };
+    d.t += dt;
+    if (!d.sent) {
+      d.box.x += 300 * dt;
+      d.gx = d.box.x; d.gy = BELT_Y + 40;
+      d.press = d.box.x > W * 0.42;
+      if (d.box.x >= W / 2) {
+        d.sent = { dir: d.box.brand === 0 ? 'up' : 'down', t: 0 };
+        game.feedback.good(d.box.x, BELT_Y, { text: '+100', color: C.amber });
+      }
+    } else {
+      d.sent.t += dt;
+      d.box.y = BELT_Y + (d.sent.dir === 'up' ? -1 : 1) * d.sent.t * 700;
+      d.gy = BELT_Y + (d.sent.dir === 'up' ? -1 : 1) * 120;
+      if (d.sent.t > 0.4) { d.box = { brand: 1 - d.box.brand, x: -BOX_W / 2, y: BELT_Y, gold: false }; d.sent = null; }
+    }
+  }
+
   game.onUpdate(function(dt) {
     if (state === S.ATTRACT) {
-      if (!currentBox) initGame(); background(); drawScene();
-      txt(GAME_TITLE, W / 2, H * 0.10, 74, C.c);
-      txt(HOW_TO_PLAY, W / 2, H * 0.14, 20, C.b);
-      if (Math.floor(game.time.elapsed * 8) % 2 === 0) txt('► 100円 投入 ◄ TAP TO START', W / 2, H * 0.88, 40, C.a);
+      depotBg(); stepDemo(dt);
+      drawBox(d.box.y !== undefined && d.sent ? d.box : { x: d.box.x, y: BELT_Y, brand: d.box.brand, gold: false });
+      game.draw.hand(d.gx, d.gy, { press: d.press, scale: 15 });
+      txt(GAME_TITLE, W / 2, H * 0.12, 74, C.amber);
+      txt('BEST ' + String(game.best).padStart(6, '0'), W / 2, H * 0.18, 40, C.glow);
+      if (Math.floor(game.time.elapsed * 1.8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.84, 60, C.amber);
+        txt('TAP TO START', W / 2, H * 0.9, 46, C.white);
+      }
       scanlines();
       return;
     }
 
     if (state === S.RESULT) {
-      background();
-      txt(resultSuccess ? 'SHIPPED CLEAN!' : 'WRONG BIN', W / 2, H * 0.35, 58, resultSuccess ? C.b : C.a);
-      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
-      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      depotBg();
+      if (hitStop > 0) hitStop -= dt;
+      txt(resultSuccess ? 'CLEAR' : 'GAME OVER', W / 2, H * 0.4, 86, resultSuccess ? C.amber : C.red);
+      txt('SCORE ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 56, C.white);
+      var best = Math.max(game.best, finalScore);
+      txt('BEST ' + String(best).padStart(6, '0'), W / 2, H * 0.56, 42, C.amber);
+      if (finalScore > game.best && game.best > 0 && resultSuccess && Math.floor(game.time.elapsed * 3) % 2 === 0) {
+        txt('NEW RECORD', W / 2, H * 0.63, 54, C.glow);
+      } else if (Math.floor(game.time.elapsed * 2) % 2 === 0) {
+        txt('TAP TO CONTINUE', W / 2, H * 0.67, 46, C.amber);
+      }
       scanlines();
       return;
     }
 
     // PLAYING
     if (!done) {
-      timeLeft -= dt; elapsed += dt;
-      if (timeLeft <= 0) { finish(false); return; }
-      if (flash > 0) flash -= dt * 3; if (resultTimer > 0) resultTimer -= dt;
-      if (currentBox && !currentBox.sent) {
-        currentBox.x += BOX_SPEED * dt;
-        if (currentBox.x > W + BOX_W / 2) {
-          errors++; flash = 0.3; flashCol = C.a; resultText = 'MISSED!'; resultTimer = 0.4; game.audio.play('se_failure', 0.3); currentBox = null; spawnTimer = 0.3;
-          if (errors >= MAX_ERR) { finish(false); return; }
+      if (hitStop > 0) { hitStop -= dt; }
+      else if (ready > 0) { ready -= dt; if (ready <= 0) game.audio.play('se_tap'); }
+      else {
+        timeLeft -= dt;
+        if (timeLeft <= 0) { finish(false); return; }
+        if (sent) {
+          sent.t += dt;
+          box.y = BELT_Y + (sent.dir === 'up' ? -1 : 1) * sent.t * 800;
+          if (sent.t > 0.35) spawnBox();
+        } else if (box) {
+          box.x += beltSpd * dt;
+          if (box.x > W + BOX_W) { // 見送り=ミス扱い(仕分けそこね)
+            game.feedback.bad(W - 40, BELT_Y, { text: 'MISS' });
+            hitStop = 0.2; spawnBox();
+          }
         }
       }
-      if (spawnTimer > 0) { spawnTimer -= dt; if (spawnTimer <= 0 && !currentBox) spawnBox(); }
-      if (!currentBox && spawnTimer <= 0) spawnBox();
-      if (sentAnim) { sentAnim.y += sentAnim.vy * dt; sentAnim.life -= dt * 2.5; if (sentAnim.life <= 0) sentAnim = null; }
+      if (feedback > 0) feedback -= dt;
     }
 
-    // ---- 描画 ----
-    background(); drawScene();
-    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.08);
-    if (resultTimer > 0) txt(resultText, W / 2, snap(H * 0.75), 56, C.a);
+    // draw
+    depotBg();
+    if (box) drawBox(box);
 
-    timeBar();
-    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
-    txt(score + ' / ' + NEEDED, W / 2, 168, 48, C.b);
-    for (var ei = 0; ei < MAX_ERR; ei++) game.draw.rect(snap(W / 2 + (ei - (MAX_ERR - 1) / 2) * 56) - 10, 224, 20, 20, ei < errors ? C.a : '#0a0608');
+    var frac = Math.max(0, timeLeft / MAX_TIME);
+    game.draw.rect(60, 40, (W - 120) * frac, 26, C.amber);
+    game.draw.rect(60, 40, W - 120, 26, C.amberLo, 0.6);
+    txt('SCORE ' + String(score).padStart(6, '0'), W / 2, 108, 44, C.white);
+    txt(sorted + ' / ' + NEEDED, W / 2, 168, 44, C.amber);
+    if (ready > 0) txt(ready > 0.35 ? 'READY?' : 'GO!', W / 2, H * 0.68, 92, C.amber);
     scanlines();
   });
 
   game.onStart(function() {
-    game.audio.bgm('bgm_main', 0.04);
+    game.audio.melody(
+      [['E4', 0.5], ['A4', 0.5], ['C5', 0.5], ['A4', 0.5], ['B4', 0.5], ['G4', 0.5], ['E4', 1],
+       ['D4', 0.5], ['E4', 0.5], ['G4', 0.5], ['A4', 0.5], ['E4', 1], ['A3', 1]],
+      { tempo: 126, wave: 'square', volume: 0.08, loop: true,
+        bass: [['A1', 1], ['A1', 1], ['E1', 1], ['G1', 1], ['A1', 1], ['A1', 1]], bassWave: 'triangle', bassVolume: 0.07 }
+    );
     state = S.ATTRACT;
     initGame();
   });
