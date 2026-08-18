@@ -30,6 +30,7 @@ npm run games:smoke   # Runtime smoke test + screenshot contact sheet (Playwrigh
 npm run games:ledger  # Regenerate per-game ledger (docs/work-plans/ledger/, measurements + summary)
 npm run games:ip      # IP safety scan (examples + neta idea files; --all for warnings)
 npm run ai:neta:space # Neta-space inventory: which mechanics are saturated vs empty (--full/--json)
+npm run games:dup     # Detect duplicate plays among the 800 and propose conversions (--csv/--json)
 npm run ai:upload:examples            # Upload examples (OVERWRITE=true to update, PRICE_SYNC=true for tier pricing)
 ```
 

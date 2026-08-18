@@ -78,6 +78,7 @@
     "games:ledger": "tsx scripts/build-game-ledger.ts",
     "games:ip": "tsx scripts/check-ip-safety.ts",
     "ai:neta:space": "tsx scripts/neta-space.ts",
+    "games:dup": "tsx scripts/dup-plays.ts",
     "games:smoke": "tsx scripts/smoke-code-games.ts",
     "games:smoke:all": "tsx scripts/smoke-code-games.ts --all",
     "games:smoke:quick": "tsx scripts/smoke-code-games.ts --quick"
