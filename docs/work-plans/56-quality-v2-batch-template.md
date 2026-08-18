@@ -40,6 +40,7 @@ needed_current,needed_action,priority,wave,batch,fix_items,keep_items,status,sco
 
 ### 必読(この順で)
 
+0. `docs/specifications/PRODUCTION_ORDER.md` — **制作順序**。遊びの型 → 世界観 → 様式（この順を崩さない）
 0. `docs/specifications/IP_SAFETY_RULES.md` — **権利ルール**。ジャンル/メカニクスは自由、固有名詞は完全オリジナル
 1. `docs/specifications/PLAY_GRAMMAR_V3.md` — **正典**。5秒の文法・テキストレス技法・ホワイトリスト・SEマッピング
 2. `docs/specifications/GAME_QUALITY_STANDARD_V2.md` — 合格基準とチェックリスト
@@ -86,6 +87,9 @@ needed_current,needed_action,priority,wave,batch,fix_items,keep_items,status,sco
 - 禁止: `window.*` / `document.*` / `AudioContext` / `localStorage` / `fetch` / 無限ループ(バリデーターで落ちる)
 - `src/services/code-game/` や `src/ai/code/*.ts` 等のエンジン側は**触らない**
 - ファイル名・slugのリネーム禁止(DB `template_id` と統計が紐づいている)
+- **制作順序**: 世界観は**遊びの型から導出**する（PRODUCTION_ORDER.md）。
+  台帳の `theme` 列は割当済みだが**参考**扱い。型から導けない世界観なら、型に合うものへ差し替えてよい
+  （変更理由を notes に書く）。様式（style_pack）は最後に当てる分類で、差別化手段ではない
 - **権利ルール**: 世界観・タイトル・描画文字列に実在タイトル名/キャラ名/権利者名を入れない。
   「〇〇風」で作らない・名付けない(IP_SAFETY_RULES.md)。違反はバリデーターが `IP_RISK` で落とす
 

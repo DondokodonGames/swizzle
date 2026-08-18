@@ -521,10 +521,11 @@ export class GameConceptGenerator {
 
     const promptStyle = getPromptStyle();
 
-    // コード側でテーマをランダム選択（AIの偏りを防ぐ）— lean/classic 共通で維持
-    // ジャンルとタグはAIがテーマに基づいて生成
-    const forcedTheme = this.selectRandomTheme();
-    console.log(`      🎲 Selected theme: ${forcedTheme}`);
+    // 制作順序は「遊びの型 → 世界観 → 様式」（docs/specifications/PRODUCTION_ORDER.md）。
+    // 以前はここでテーマを乱択して**先に固定**していたが、世界観が先に決まると遊びは
+    // 手癖の型（タップ/タイミング）に落ち、題材だけ違う同じゲームになる。
+    // テーマは型を決めた後の**語彙の参考**まで格下げする。
+    const themeHint = this.selectRandomTheme();
 
     // アーキタイプをローテーション選択（classic のみ。lean では強制せず分布提示に切替）
     const archetype = promptStyle === 'lean' ? null : this.selectNextArchetype();
@@ -547,7 +548,6 @@ export class GameConceptGenerator {
 
     if (promptStyle === 'lean') {
       // lean: 操作タイプを強制せず、最近の分布を提示して「偏りを避けて自由に発想」へ誘導
-      prompt += `\n\n# 今回のテーマ（このテーマで発想してください）\nテーマ: 「${forcedTheme}」`;
       if (dynamicContext) {
         prompt += `\n\n# 最近生成したゲームの傾向（偏りを避ける参考に。縛りではない）\n${dynamicContext}\n上記に偏りが見えるなら、別の操作タイプ・別の切り口を自由に選んでください。`;
       }
@@ -558,9 +558,8 @@ export class GameConceptGenerator {
         prompt += `\n\n# 既存ゲームの分析結果（重要: 以下の情報を参考に多様性を確保してください）\n${dynamicContext}`;
       }
 
-      // 強制テーマと操作タイプを追加
-      prompt += `\n\n# 今回のテーマと操作タイプ（必ず両方を使用してください）
-テーマ: 「${forcedTheme}」
+      // 操作タイプを指定（テーマは指定しない — 世界観は遊びの型から導く）
+      prompt += `\n\n# 今回の操作タイプ（必ず使用してください）
 操作タイプ: 「${archetype!.operationType}」
 
 ## 操作タイプの説明
@@ -570,18 +569,18 @@ ${archetype!.hint}
 ## 操作タイプのゲーム例
 ${archetype!.examples.map(e => `- ${e}`).join('\n')}
 
-このテーマと操作タイプに基づいたゲームを設計してください。
-- テーマは変更しないでください
+この操作タイプに基づいたゲームを設計してください。
 - 指定された操作タイプを必ず playerOperation に含めてください
-- ジャンルとタグはテーマとゲーム内容に合わせて適切なものを選んでください`;
+- 世界観（theme）は**遊びの型から導いて**ください（先に世界観を決めない）
+- ジャンルとタグは遊びの中身に合わせて適切なものを選んでください`;
 
       // 既存テーマを避けるための追加指示
       if (this.usedThemes.size > 0) {
-        prompt += `\n\n# 避けるべきテーマ（既出）\n${Array.from(this.usedThemes).join(', ')}`;
+        prompt += `\n\n# 避けるべき世界観（既出）\n${Array.from(this.usedThemes).join(', ')}`;
       }
     }
 
-    // メカニクス選択（カタログからローテーション）
+    // 遊びの型（メカニクス）— 制作順序の起点。世界観より先に決める。
     // classic: 強制注入（本質を変えるな）。lean: インスピレーション提示（新メカニクスも歓迎）。
     // 難易度を重み付け（easy 40% / normal 40% / hard 20%）で選び、メカニクス候補を絞る。
     const targetDifficulty = this.selectTargetDifficulty();
@@ -590,9 +589,20 @@ ${archetype!.examples.map(e => `- ${e}`).join('\n')}
       const label = promptStyle === 'lean' ? 'Inspiration mechanic' : 'Forced mechanic';
       console.log(`      🎮 ${label}: ${forcedMechanic.name} (${forcedMechanic.id}, difficulty: ${forcedMechanic.difficulty ?? 'normal'})`);
       prompt += promptStyle === 'lean'
-        ? this.buildInspirationMechanicSection(forcedMechanic, forcedTheme)
-        : this.buildForcedMechanicSection(forcedMechanic, forcedTheme);
+        ? this.buildInspirationMechanicSection(forcedMechanic)
+        : this.buildForcedMechanicSection(forcedMechanic);
     }
+
+    // 世界観は「型 → 世界観」の順で導く（PRODUCTION_ORDER.md）
+    prompt += `
+
+# 世界観の決め方（順序を守ってください）
+1. まず**遊びの型**を決める（指で何をして、何が起きたら成功/失敗か）
+2. その型が生む**緊張の正体**を一言にする（例: 止め時の自制／取りこぼす怖さ／欲張りの誘惑）
+3. **その緊張が最も自然に起きる状況**を世界観にする（世界観を先に決めない）
+
+theme には 3 で決めた状況を書いてください。
+語彙に詰まったときの参考: 「${themeHint}」（合わなければ捨てて構いません）`;
 
     // フィードバックがある場合（再生成時）
     if (feedback) {
@@ -843,7 +853,7 @@ JSONのみを出力してください。${feedback ? `\n\n# 前回の問題点\n
   /**
    * メカニクス強制注入用のプロンプトセクションを生成
    */
-  private buildForcedMechanicSection(mechanic: MechanicEntry, theme?: string): string {
+  private buildForcedMechanicSection(mechanic: MechanicEntry): string {
     const difficultyLabels: Record<string, string> = {
       easy: 'easy（直感的にすぐできる。大きめのターゲット・余裕のある判定）',
       normal: 'normal（少し集中が必要。標準的な判定）',
@@ -867,7 +877,7 @@ ${skillLine}
 **playerOperation フィールドは必ず次のガイドに沿って書いてください:**
 ${mechanic.playerOperationHint}
 
-このメカニクスをテーマ「${theme ?? ''}」の世界観で表現してください。
+この遊びの型を起点に設計してください（世界観は型が決まってから導きます）。
 メカニクスの本質（操作方法・判定方法）を変更・回避・別のもので代替しないでください。
 成功条件・失敗条件の厳しさは想定難易度に合わせて設計してください。`;
   }
@@ -878,7 +888,7 @@ ${mechanic.playerOperationHint}
    * 強制ではなく「こういう方向もある」という提示にとどめ、カタログ外の新メカニクスも歓迎する。
    * ただし操作はタップ/スワイプ/ドラッグ/長押しの組み合わせに収める（エンジン制約）。
    */
-  private buildInspirationMechanicSection(mechanic: MechanicEntry, theme?: string): string {
+  private buildInspirationMechanicSection(mechanic: MechanicEntry): string {
     const difficulty = mechanic.difficulty ?? 'normal';
     const skillLine = mechanic.skillTypes?.length
       ? `（${mechanic.skillTypes.join('・')} を試す系）`
@@ -891,7 +901,7 @@ ${mechanic.playerOperationHint}
 ヒント: **${mechanic.name}** ${skillLine} — ${mechanic.description}
 想定難易度の目安: ${difficulty}
 
-このメカニクスはあくまで出発点です。テーマ「${theme ?? ''}」に合うなら使っても、
+このメカニクスはあくまで出発点です。そのまま使っても、
 **カタログ外のまったく新しいメカニクスを考えても歓迎**します。
 ただし操作は タップ / スワイプ / ドラッグ / 長押し の組み合わせで実現できる範囲にしてください。`;
   }

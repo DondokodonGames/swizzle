@@ -37,6 +37,7 @@ npm run ai:upload:examples            # Upload examples (OVERWRITE=true to updat
 ### Code-game quality standard v2.1 / play grammar v3
 
 The 800 code games (`src/ai/code/examples/*.js`) target **quality standard v2.1 + play grammar v3** (textless rule communication). The canon:
+- `docs/specifications/PRODUCTION_ORDER.md` — **production order**: play form → world → style. The world is derived from the play form, never the reverse; style is a post-hoc era classification, not a differentiator
 - `docs/specifications/IP_SAFETY_RULES.md` — **rights rules**: genres/mechanics are free, proper nouns must be original. Enforced by `src/ai/code/IpSafetyChecker.ts` (runs inside `CodeGameValidator`, filters neta ideas before generation, scannable via `npm run games:ip`). CAPCOM / SNK are licensed exceptions
 - `docs/specifications/PLAY_GRAMMAR_V3.md` — **v3 canon**: textless techniques (ghost-hand demo, telegraph, hit-stop), duration bands per mechanic family, SE mapping, text whitelist
 - `docs/specifications/GAME_QUALITY_STANDARD_V2.md` — pass bar (scorer ≥80 + smoke PASS)
