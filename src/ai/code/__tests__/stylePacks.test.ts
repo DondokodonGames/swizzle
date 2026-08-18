@@ -1,13 +1,35 @@
 // 様式（時代別スタイルパック）は見た目の多様性を担保する層。
 // 宣言が機械可読であることと、商標名を持ち込んでいないことを固定する。
 import { describe, it, expect } from 'vitest';
-import { STYLE_PACKS, STYLE_PACK_BY_LABEL, extractStyleLabel, isKnownStylePack } from '../stylePacks';
+import { STYLE_PACKS, STYLE_PACK_BY_LABEL, extractStyleLabel, isKnownStylePack, stylePacksByDimension } from '../stylePacks';
 import { checkIpSafety } from '../IpSafetyChecker';
 
 describe('STYLE_PACKS', () => {
   it('id と label が重複しない', () => {
     expect(new Set(STYLE_PACKS.map((p) => p.id)).size).toBe(STYLE_PACKS.length);
     expect(new Set(STYLE_PACKS.map((p) => p.label)).size).toBe(STYLE_PACKS.length);
+  });
+
+  it('疑似3Dの系譜がある（板ポリ期からセルシェードまで）', () => {
+    const p3 = stylePacksByDimension('pseudo3d').map((p) => p.label);
+    expect(p3).toContain('90s LOW POLY');
+    expect(p3).toContain('MODE7 PSEUDO');
+    expect(p3).toContain('2000s BILLBOARD 3D');
+    expect(p3).toContain('TOON SHADE');
+    expect(p3.length).toBeGreaterThanOrEqual(6);
+  });
+
+  it('スマホの系譜がある（質感期・フラット期・ハイパーカジュアル）', () => {
+    const labels = STYLE_PACKS.map((p) => p.label);
+    expect(labels).toContain('SKEUOMORPH');
+    expect(labels).toContain('2010s FLAT MOBILE');
+    expect(labels).toContain('HYPERCASUAL 3D');
+  });
+
+  it('2Dと疑似3Dの両方が揃っている', () => {
+    expect(stylePacksByDimension('2d').length).toBeGreaterThan(0);
+    expect(stylePacksByDimension('pseudo3d').length).toBeGreaterThan(0);
+    expect(stylePacksByDimension('2d').length + stylePacksByDimension('pseudo3d').length).toBe(STYLE_PACKS.length);
   });
 
   it('各時代が最低1つずつある（黎明期からスマホ時代まで）', () => {

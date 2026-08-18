@@ -32,7 +32,7 @@ import {
 // メカニクス推定は neta-space.ts と共有(単一の真実の源)
 import { inferMechanic } from '../src/ai/code/mechanicClassifier.js';
 // 様式(時代別スタイルパック)は見た目の多様性を担保する層。偏りを可視化するため計測する。
-import { extractStyleLabel, isKnownStylePack } from '../src/ai/code/stylePacks.js';
+import { extractStyleLabel, isKnownStylePack, STYLE_PACK_BY_LABEL } from '../src/ai/code/stylePacks.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const EXAMPLES_DIR = path.resolve(__dirname, '../src/ai/code/examples');
@@ -614,6 +614,8 @@ ${(() => {
   return [
     ...hist2.map(([k, v]) => `| ${k} | ${v} |`),
     `| (未宣言) | ${numbered.length - declared.length} |`,
+    `| — 次元: 2D | ${declared.filter((r) => STYLE_PACK_BY_LABEL.get(r.stylePack)?.dimension === '2d').length} |`,
+    `| — 次元: 疑似3D | ${declared.filter((r) => STYLE_PACK_BY_LABEL.get(r.stylePack)?.dimension === 'pseudo3d').length} |`,
     unknown > 0 ? `| **未知のパック名** | ${unknown} |` : '',
   ].filter(Boolean).join('\n');
 })()}

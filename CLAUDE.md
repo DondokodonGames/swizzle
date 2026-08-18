@@ -43,7 +43,7 @@ The 800 code games (`src/ai/code/examples/*.js`) target **quality standard v2.1 
 - `docs/specifications/GAME_QUALITY_STANDARD_V2.md` — pass bar (scorer ≥80 + smoke PASS)
 - `docs/specifications/SANDBOX_API_V2.md` — the full `game.*` API (WebAudio chiptune synth, `game.feedback.good/bad`, multi-touch, sprites) + recipes
 - `docs/specifications/MECHANICS_CATALOG_V2.md` — 40 mechanics with API mapping (use for neta assignment / `@mechanic` headers)
-- `docs/specifications/ARCADE_ART_DIRECTION.md` — in-game art direction (era style packs, symbol grammar, coin-op feel)
+- `docs/specifications/ARCADE_ART_DIRECTION.md` — in-game art direction: 26 era style packs (vector → 8bit → 16bit → early 3D → HD → smartphone), each with a Canvas-2D recipe; machine-readable in `src/ai/code/stylePacks.ts` and enforced by the v3 validator
 - `docs/work-plans/56-quality-v2-batch-template.md` — fill-in prompt for batch rewrite sessions (ledger-driven)
 - `docs/work-plans/ledger/` — per-game ledger: `game-ledger.csv` (measurements, regenerate via `games:ledger`, never hand-edit) + `game-assignments.csv` (theme/style/duration/wave assignments + progress, hand-edited) + `mechanic-overrides.json` (human-confirmed slug→mechanic). Column dictionary: `docs/work-plans/61-800-games-ledger.md`
 - `docs/work-plans/66-neta-space.md` — **idea convergence**: why netas collapse into the same play, and the coverage map (`ai:neta:space`) that fixes it. Mechanic classifier shared with the ledger: `src/ai/code/mechanicClassifier.ts`
