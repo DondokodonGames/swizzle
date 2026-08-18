@@ -695,11 +695,15 @@ function writeSummary(rows: GameRow[], assignments: Assignment[] | null): void {
 
 生成: ${new Date().toISOString()} / 対象: ${rows.length}本(番号付き ${numbered.length} + few-shot原型 ${rows.length - numbered.length})
 
-## 既知事実との突合(検証)
+## 初回計測(2026-07)との突合
 
-| 指標 | 計測値 | 既知値 | 一致 |
+| 指標 | 現在 | 初回計測 | 差分 |
 |---|---|---|---|
-${known.map(([label, v, expect]) => `| ${label} | ${v} | ${expect} | ${v === expect ? '✅' : '❌'}`).join('\n')}
+${known.map(([label, v, expect]) => `| ${label} | ${v} | ${expect} | ${v === expect ? '±0' : (v > expect ? '+' : '') + (v - expect)}`).join('\n')}
+
+> v3リファクタで**意図的に変わる**指標(尺・NEEDED・世界観コメント)は、done 本数に見合った差分なら正常。
+> 一方「distinct slug 数」と「scanlines 自前実装」はリファクタでは動かないはずの指標で、
+> ここが動いたらリネームかパーサの退行を疑うこと。
 
 ## メカニクス分布(推定・slug単位確定後)
 

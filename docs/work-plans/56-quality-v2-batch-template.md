@@ -117,6 +117,9 @@ npm run games:ip
   `status=done` / `score_after=<新スコア>` / `style_actual=<使ったスタイルパック>`
   (バッチ間で行が交差しないためコンフリクトしない。ledger.csv の方は触らない — 検収時に再生成される)
 - ブランチ: `<<例: claude/grammar-v3-wave1-B03>>`
+- **バッチの最後に `npm run games:ledger` を1回**（計測値 `game-ledger.csv` と summary を再生成）。
+  これを忘れると台帳の計測値がリファクタ前のまま据え置かれ、進捗も v2 API 採用状況も嘘になる
+  （Wave 0 では実際に据え置かれていた）
 
 ### 完了報告(セッション末尾に出力)
 
