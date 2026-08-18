@@ -50,6 +50,7 @@
 | wave / batch | Wave 0=パイロット、1..8=本番(P1比率順)。batch=族+連番(例 A03)、1バッチ10本 | — |
 | fix_items | 修正項目コード(下記凡例) | — |
 | keep_items | 変更禁止部分 | — |
+| style_pack（ledger.csv） | 宣言された様式（`// スタイル:`）。未宣言は空。分布は summary に出る | 計測値 |
 | status | `todo` → `wip` → `done`。**バッチが3本コミットと同時に更新** | バッチ |
 | score_before / score_after | scorer合計(afterはバッチが記入) | バッチ |
 | style_actual | 実際に使ったスタイルパック(バッチが記入) | バッチ |

@@ -1,5 +1,6 @@
 import { MECHANIC_IDS, ALLOWED_SE_IDS, ALLOWED_BGM_IDS } from './mechanics-v3.js';
 import { checkIpSafety } from './IpSafetyChecker.js';
+import { extractStyleLabel, isKnownStylePack, STYLE_PACKS } from './stylePacks.js';
 
 export interface CodeValidationError {
   code: string;
@@ -163,6 +164,23 @@ export class CodeGameValidator {
       errors.push({
         code: 'NO_THEME',
         message: '// @theme: ヘッダーがありません(PLAY_GRAMMAR_V3 §8)',
+        severity: 'error',
+      });
+    }
+
+    // スタイルパック宣言(ARCADE_ART_DIRECTION §2 / 制作順序の第3段)
+    // 見た目の多様性は様式が担保するので、どの時代で作ったかを機械可読に残す。
+    const styleLabel = extractStyleLabel(code);
+    if (!styleLabel) {
+      errors.push({
+        code: 'NO_STYLE_PACK',
+        message: '// スタイル: <パック名> の宣言がありません(ARCADE_ART_DIRECTION §2)',
+        severity: 'error',
+      });
+    } else if (!isKnownStylePack(styleLabel)) {
+      errors.push({
+        code: 'UNKNOWN_STYLE_PACK',
+        message: `未知のスタイルパック「${styleLabel}」。有効な値: ${STYLE_PACKS.map((p) => p.label).join(' / ')}`,
         severity: 'error',
       });
     }

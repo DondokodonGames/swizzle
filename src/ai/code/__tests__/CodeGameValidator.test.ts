@@ -167,6 +167,7 @@ function v3Code(extra = ''): string {
     '// @mechanic: aim_shoot',
     '// @theme: candy',
     '// 世界観: 検品係がチョコを撃ち抜く',
+    '// スタイル: 90s 16bit',
     validCode(),
     "game.audio.play('se_good');",
     extra,
@@ -240,5 +241,36 @@ describe('CodeGameValidator – 権利安全性', () => {
   it('ジャンル名だけなら通る', () => {
     const r = v.validate(['// マイクロゲーム集の一本', validCode()].join('\n'));
     expect(r.errors.some(e => e.code === 'IP_RISK')).toBe(false);
+  });
+});
+
+// 様式の宣言（見た目の多様性の担保。v3ゲートで必須）
+describe('CodeGameValidator – スタイルパック', () => {
+  const noStyle = () => [
+    '// @mechanic: aim_shoot',
+    '// @theme: candy',
+    '// 世界観: 検品係がチョコを撃ち抜く',
+    validCode(),
+    "game.audio.play('se_good');",
+  ].join('\n');
+
+  it('v3: スタイル宣言が無ければ NO_STYLE_PACK', () => {
+    const r = v.validate(noStyle(), { v3: true });
+    expect(r.errors.some(e => e.code === 'NO_STYLE_PACK')).toBe(true);
+  });
+
+  it('v3: 未知のパック名は UNKNOWN_STYLE_PACK', () => {
+    const r = v.validate(['// スタイル: 8bit RETRO STYLE', noStyle()].join('\n'), { v3: true });
+    expect(r.errors.some(e => e.code === 'UNKNOWN_STYLE_PACK')).toBe(true);
+  });
+
+  it('v3: 既知のパック名なら通る', () => {
+    const r = v.validate(['// スタイル: 1BIT INK', noStyle()].join('\n'), { v3: true });
+    expect(r.errors.some(e => e.code === 'NO_STYLE_PACK' || e.code === 'UNKNOWN_STYLE_PACK')).toBe(false);
+  });
+
+  it('v3 フラグなしでは様式を要求しない（既存800本を落とさない）', () => {
+    const r = v.validate(validCode());
+    expect(r.errors.some(e => e.code === 'NO_STYLE_PACK')).toBe(false);
   });
 });

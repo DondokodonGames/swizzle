@@ -31,6 +31,8 @@ import {
 } from '../src/ai/code/mechanics-v3.js';
 // メカニクス推定は neta-space.ts と共有(単一の真実の源)
 import { inferMechanic } from '../src/ai/code/mechanicClassifier.js';
+// 様式(時代別スタイルパック)は見た目の多様性を担保する層。偏りを可視化するため計測する。
+import { extractStyleLabel, isKnownStylePack } from '../src/ai/code/stylePacks.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const EXAMPLES_DIR = path.resolve(__dirname, '../src/ai/code/examples');
@@ -115,6 +117,7 @@ interface GameRow {
   jpInLiterals: boolean;
   fakeHiScore: boolean;
   worldview: string;
+  stylePack: string;
   hasScanlines: boolean;
   hasSnap: boolean;
   hasTimeBar: boolean;
@@ -165,6 +168,7 @@ function analyzeFile(filename: string, code: string, validator: CodeGameValidato
   const mechanicTag = (code.match(/^\/\/\s*@mechanic:\s*(\S+)/m) || [])[1] || '';
   const themeTag = (code.match(/^\/\/\s*@theme:\s*(\S+)/m) || [])[1] || '';
   const worldview = (code.match(/\/\/\s*世界観[::]\s*(.*)/) || [])[1]?.trim() || '';
+  const stylePack = extractStyleLabel(code) ?? '';
 
   const maxTime = (() => {
     const m = code.match(/(?:MAX_TIME|TIME_LIMIT)\s*=\s*([\d.]+)/);
@@ -220,6 +224,7 @@ function analyzeFile(filename: string, code: string, validator: CodeGameValidato
     jpInLiterals: textLiterals.some((s) => /[ぁ-んァ-ヶ一-龠]/.test(s)),
     fakeHiScore,
     worldview,
+    stylePack,
     hasScanlines: /function\s+scanlines/.test(code),
     hasSnap: /function\s+snap/.test(code),
     hasTimeBar: /function\s+timeBar/.test(code),
@@ -522,7 +527,7 @@ function writeLedgerCsv(rows: GameRow[]): void {
     'uses_feedback', 'fx_list', 'uses_sprite', 'uses_gradient', 'uses_best',
     'uses_press_move', 'uses_touches', 'uses_input',
     'how_to_play', 'text_literals', 'longest_literal', 'jp_in_literals', 'fake_hiscore',
-    'worldview', 'has_scanlines', 'has_snap', 'has_timebar', 'has_coin', 'has_attract',
+    'worldview', 'style_pack', 'has_scanlines', 'has_snap', 'has_timebar', 'has_coin', 'has_attract',
     'score_total', 'score_breakdown', 'validation_errors', 'top_hints',
   ];
   const lines = [header.join(',')];
@@ -535,7 +540,7 @@ function writeLedgerCsv(rows: GameRow[]): void {
       r.usesFeedback, r.fxList.join(' '), r.usesSprite, r.usesGradient, r.usesBest,
       r.usesPressMove, r.usesTouches, r.usesInputPressing,
       r.howToPlay, r.textLiteralCount, r.longestTextLiteral, r.jpInLiterals, r.fakeHiScore,
-      r.worldview, r.hasScanlines, r.hasSnap, r.hasTimeBar, r.hasCoinInsert, r.hasAttract,
+      r.worldview, r.stylePack, r.hasScanlines, r.hasSnap, r.hasTimeBar, r.hasCoinInsert, r.hasAttract,
       r.scoreTotal, r.scoreBreakdown, r.validationErrors, r.topHints,
     ].map(csvEscape).join(','));
   }
@@ -595,6 +600,23 @@ ${known.map(([label, v, expect]) => `| ${label} | ${v} | ${expect} | ${v === exp
 > v3リファクタで**意図的に変わる**指標(尺・NEEDED・世界観コメント)は、done 本数に見合った差分なら正常。
 > 一方「distinct slug 数」と「scanlines 自前実装」はリファクタでは動かないはずの指標で、
 > ここが動いたらリネームかパーサの退行を疑うこと。
+
+## 様式(スタイルパック)の分布
+
+見た目の多様性はここが担保する。未宣言が多いうちは「全ゲームが同じ見た目」に見える。
+
+| スタイル | 本数 |
+|---|---|
+${(() => {
+  const declared = numbered.filter((r) => r.stylePack);
+  const hist2 = hist(declared, (r) => r.stylePack);
+  const unknown = declared.filter((r) => !isKnownStylePack(r.stylePack)).length;
+  return [
+    ...hist2.map(([k, v]) => `| ${k} | ${v} |`),
+    `| (未宣言) | ${numbered.length - declared.length} |`,
+    unknown > 0 ? `| **未知のパック名** | ${unknown} |` : '',
+  ].filter(Boolean).join('\n');
+})()}
 
 ## メカニクス分布(推定・slug単位確定後)
 
