@@ -57,14 +57,17 @@ CREATE INDEX IF NOT EXISTS idx_nfc_spot_games_spot
 
 ALTER TABLE public.nfc_spot_games ENABLE ROW LEVEL SECURITY;
 
+-- admin 判定は public.is_admin()(SECURITY DEFINER)を使う。
+-- profiles を直接 EXISTS で引くと profiles 側の RLS に依存し、将来 profiles の
+-- 公開読み取りを絞った瞬間に管理者のラインナップ編集が黙って壊れる。
 DO $$ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_policies
     WHERE tablename = 'nfc_spot_games' AND policyname = 'admins_manage_nfc_spot_games'
   ) THEN
     CREATE POLICY "admins_manage_nfc_spot_games" ON public.nfc_spot_games FOR ALL
-      USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = TRUE))
-      WITH CHECK (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = TRUE));
+      USING (public.is_admin())
+      WITH CHECK (public.is_admin());
   END IF;
 END $$;
 
@@ -77,6 +80,11 @@ DO $$ BEGIN
     CREATE POLICY "public_read_nfc_spot_games" ON public.nfc_spot_games FOR SELECT USING (TRUE);
   END IF;
 END $$;
+
+-- 既定権限に暗黙依存しないよう明示する(読めないと出題できず、拠点計測が丸ごと止まる)。
+-- 書き込みは RLS 側で admin に限定される。
+GRANT SELECT ON public.nfc_spot_games TO anon, authenticated;
+GRANT INSERT, UPDATE, DELETE ON public.nfc_spot_games TO authenticated;
 
 -- 既存の 1スポット1ゲーム設定をラインナップへ移送(冪等)
 INSERT INTO public.nfc_spot_games (spot_id, game_id, sort_order, enabled)

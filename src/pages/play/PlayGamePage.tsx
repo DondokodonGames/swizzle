@@ -6,6 +6,7 @@ import EditorGameBridge from '../../services/editor/EditorGameBridge';
 import { GameProject } from '../../types/editor/GameProject';
 import { GameLoadingService } from '../../services/GameLoadingService';
 import { track, getSpotId } from '../../services/analytics/Analytics';
+import { buildPayLinkHref } from './payLinkHref';
 import { CodeGamePlayer } from '../../components/code-game/CodeGamePlayer';
 import { CodeGameProject } from '../../types/code-game/SwizzleGameAPI';
 import { ReportGameButton } from '../../components/report/ReportGameButton';
@@ -375,14 +376,8 @@ export function PlayGamePage() {
 
   const s = styles;
 
-  // Payment Link に拠点(spot)を載せる。Stripe は client_reference_id をそのまま
-  // webhook の session に返すため、「どの設置台で発生した売上か」を
-  // サーバー側の purchase イベント(analytics_events.spot_id)に残せる。
-  const payLinkHref = (url: string): string => {
-    const spotId = getSpotId();
-    if (!spotId) return url;
-    return `${url}${url.includes('?') ? '&' : '?'}client_reference_id=${encodeURIComponent(spotId)}`;
-  };
+  // Payment Link に拠点(spot)を載せる（組み立ては payLinkHref.ts / テストで固定）
+  const payLinkHref = (url: string): string => buildPayLinkHref(url, getSpotId());
 
 
   if (pageState === 'loading' || pageState === 'exchanging' || pageState === 'validating') {

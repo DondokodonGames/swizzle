@@ -80,6 +80,36 @@ NFCタップ /nfc/:spotId
 | `completion_pct` | ゲーム単体の出来。低すぎ＝難度、高すぎ＝手応え不足 | 該当ゲームを台帳に戻して調整 |
 | `revenue_per_30d` | 1拠点あたり月次。計画 ¥24,000 / 実証 ¥6,000 | 客層別に差が出るかを先に見る |
 
+## 検証記録（2026-08-18 / PostgreSQL 16 実機）
+
+migration を実際の PostgreSQL 16 に適用し、Supabase 相当の前提（`auth.uid()` / `profiles` /
+`is_admin()` / anon・authenticated ロール・既定権限）を再現して確認した。
+
+| 確認項目 | 結果 |
+|---|---|
+| migration 適用（既存3本 → 本migration） | OK（エラーなし） |
+| `admin_spot_stats` の数値 | 手計算と一致（拠点経由でないイベントと31日以上前のイベントが混ざらないことも確認） |
+| `admin_spot_game_stats` の完走率/スキップ率 | 一致（2プレイ中1完走1スキップ → 50.0 / 50.0） |
+| `admin_spot_audience_stats` | 一致（`active=false` の台は集計から除外） |
+| `admin_spot_daily` | 一致 |
+| 非adminからのRPC呼び出し | `admin only` で拒否 |
+| 匿名でのラインナップ読み取り | 可（出題に必要） |
+| 匿名でのラインナップ書き換え | RLSで拒否 |
+| 匿名での計測イベント書き込み / 読み取り | 書き込み可・読み取り不可 |
+| レガシー `nfc_spots.game_id` の移送 | OK・再実行しても重複しない |
+| index | `idx_analytics_events_spot_id` / `_spot_created` / `idx_nfc_spot_games_spot` |
+
+**検証で直したもの**:
+- `nfc_spot_games` のRLSを `EXISTS (SELECT ... FROM profiles)` から `public.is_admin()` に変更。
+  前者は profiles 側のRLS（現在は `profiles_select_public` がある）に依存しており、将来
+  profiles の公開読み取りを絞った瞬間に管理者のラインナップ編集が黙って壊れる構造だった
+- テーブルの GRANT を明示（Supabase の既定権限に暗黙依存しない）。読めないと出題できず計測が丸ごと止まる
+
+**まだ検証できていないもの**（実環境が要る）:
+- Stripe Payment Link → webhook → `purchase(spot_id)` の実通し。`client_reference_id` の
+  往復は Stripe 側の挙動に依存するため、最初の実証台で1件課金して `analytics_events` を目視すること
+- 本番Supabaseへの migration 適用
+
 ## 未実装（次に効くもの）
 
 - 拠点別の時間帯分析（何時に回るか＝営業時の設置提案に使う）
