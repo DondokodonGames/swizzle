@@ -25,6 +25,28 @@ neta.json（ミニゲームアイデア帳）に追加するネタをChatGPTに�
 
 ---
 
+## 考え方の手順（自由連想をやめる）
+
+**ネタが似るのは発想力の問題ではなく、手持ちの在庫が見えないまま自由連想しているから。**
+自由に考えると、既に厚いセル（タイミング/連打）へ必ず戻る。実測でも既存ネタの
+主戦場はそこに寄っている。
+
+1. `npm run ai:neta:space` で在庫マップを出す（空きセルと「次に考えるべき10件」が出る）
+2. **空いているセルを1つ選ぶ**。そのメカニクスを `mechanic` に書く
+3. そのメカニクスで「完全オリジナルの見た目」の遊びを考える（題材は後、遊びが先）
+4. idea 本文に**指で何をするか**を必ず書く（下記）
+
+### idea には「指の動詞」を必ず書く
+
+実測では既存ネタの **48%** が「何を指で行う遊びか」を書いていない。書いていないネタは、
+生成側が既定の遊び（タップ/タイミング）に落として作るので、**題材だけ違う同じゲーム**になる。
+これが収束の最大の原因。
+
+- ❌「妖精が逃げるので捕まえる」→ 何をどう操作するか不明
+- ⭕「逃げる妖精を指でなぞって囲む。囲みが閉じたら捕獲」→ trace と分かる
+
+---
+
 ## ネタのフォーマット仕様
 
 ```json
@@ -44,7 +66,7 @@ neta.json（ミニゲームアイデア帳）に追加するネタをChatGPTに�
 | id | number | 連番（201から始める） |
 | title | string | 日本語タイトル（10文字以内、ゲーム内容が分かる名前） |
 | idea | string | 実装説明（下記フォーマット参照） |
-| mechanic | string | "tap" \| "drag" \| "flick" \| "swipe" |
+| mechanic | string | **遊びの型**（40+IDから1つ）。`timing_one_shot` / `timing_window` / `mash` / `alternate_tap` / `cooldown_tap` / `hold_charge` / `hold_duration` / `freeze` / `rhythm` / `aim_shoot` / `slingshot` / `flick_launch` / `trajectory` / `drop_timing` / `dodge` / `drag_follow` / `camera_climb` / `camera_run` / `balance` / `guide_path` / `chase` / `trace` / `slice` / `rub` / `rotate_gesture` / `swipe_direction` / `pinch_zone` / `stack` / `gap_fit` / `push_out` / `drag_sort` / `connect` / `count_exact` / `spot` / `judge` / `size_judge` / `memory_sequence` / `pair_match` / `counting` / `reaction_duel` / `duel_2p` / `coop_2zone` / `turn_attack` / `jackpot_combo` / `near_miss`<br>※ tap/drag/swipe は**入力の種類**であって遊びの型ではない。ここには書かない |
 | theme | string | "ゲーム" \| "スポーツ" \| "食べ物" \| "動物" \| "乗り物" \| "パズル" \| "勉強" \| "音楽" \| "アウトドア" \| "日常" |
 
 ### idea フィールドの書き方
@@ -213,6 +235,9 @@ ChatGPTが出力したJSON配列を `neta.json` の `items` 配列に追記し�
 ## PART D: テーマ別アイデアシード
 
 ChatGPTに「このシードからネタを作って」と渡すことで方向性を指定できます。
+
+> シードから考えるより、**空きセルから考える方が被らない**。
+> シードを使う場合も、先に `npm run ai:neta:space` で狙うセルを決めてから当てはめること。
 
 ### 未使用シード一覧（使ったら消してください）
 

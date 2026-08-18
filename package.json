@@ -77,6 +77,7 @@
     "ai:neta:trend": "tsx src/ai/v2/run-trend-neta.ts",
     "games:ledger": "tsx scripts/build-game-ledger.ts",
     "games:ip": "tsx scripts/check-ip-safety.ts",
+    "ai:neta:space": "tsx scripts/neta-space.ts",
     "games:smoke": "tsx scripts/smoke-code-games.ts",
     "games:smoke:all": "tsx scripts/smoke-code-games.ts --all",
     "games:smoke:quick": "tsx scripts/smoke-code-games.ts --quick"
