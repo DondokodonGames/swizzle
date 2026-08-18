@@ -242,6 +242,16 @@ serve(async (req) => {
 });
 
 /**
+ * client_reference_id を spot_id として受け取る際の検証。
+ * 外部から任意文字列が入りうる値なので、こちらが発行する ID 形式
+ * （`spot_` + 英数字）に合致するものだけを採用する。
+ */
+function normalizeSpotId(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  return /^spot_[A-Za-z0-9_-]{1,64}$/.test(raw) ? raw : null;
+}
+
+/**
  * 収益アナリティクスイベントを記録（WP60 P1-3）
  * クライアント側計測が届かない経路（NFC/QR決済など）を可視化するため、
  * webhook 成功時にサーバー側から直接 analytics_events へ記録する。
@@ -252,6 +262,7 @@ async function logRevenueEvent(
   params: {
     userId?: string | null;
     gameId?: string | null;
+    spotId?: string | null;
     amountYen: number;
     method: 'nfc' | 'wallet' | 'subscription';
   }
@@ -262,6 +273,9 @@ async function logRevenueEvent(
       session_id: 'server:stripe-webhook',
       event_type: 'purchase',
       game_id: params.gameId ?? null,
+      // 拠点帰属。Payment Link に付けた client_reference_id から復元する
+      // （webhook はブラウザの spot コンテキストを見られないため、これが唯一の経路）。
+      spot_id: params.spotId ?? null,
       properties: { amount_yen: params.amountYen, method: params.method },
     });
     if (error) {
@@ -282,6 +296,8 @@ async function handleGamePaymentCompleted(
 ): Promise<void> {
   const gameId = session.metadata?.game_id;
   const amountYen = session.amount_total ?? 0;
+  // 拠点(NFCスポット)から来た決済なら client_reference_id に spot_id が入る
+  const spotId = normalizeSpotId(session.client_reference_id);
 
   if (!gameId) {
     throw new WebhookError('game_id missing from session metadata', false);
@@ -315,7 +331,7 @@ async function handleGamePaymentCompleted(
 
   console.log(`[GamePayment] Access token issued: game=${gameId} amount=¥${amountYen}`);
 
-  await logRevenueEvent(supabase, { gameId, amountYen, method: 'nfc' });
+  await logRevenueEvent(supabase, { gameId, spotId, amountYen, method: 'nfc' });
 }
 
 /**

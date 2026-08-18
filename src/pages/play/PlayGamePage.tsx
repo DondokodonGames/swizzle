@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabase';
 import EditorGameBridge from '../../services/editor/EditorGameBridge';
 import { GameProject } from '../../types/editor/GameProject';
 import { GameLoadingService } from '../../services/GameLoadingService';
-import { track } from '../../services/analytics/Analytics';
+import { track, getSpotId } from '../../services/analytics/Analytics';
 import { CodeGamePlayer } from '../../components/code-game/CodeGamePlayer';
 import { CodeGameProject } from '../../types/code-game/SwizzleGameAPI';
 import { ReportGameButton } from '../../components/report/ReportGameButton';
@@ -375,6 +375,16 @@ export function PlayGamePage() {
 
   const s = styles;
 
+  // Payment Link に拠点(spot)を載せる。Stripe は client_reference_id をそのまま
+  // webhook の session に返すため、「どの設置台で発生した売上か」を
+  // サーバー側の purchase イベント(analytics_events.spot_id)に残せる。
+  const payLinkHref = (url: string): string => {
+    const spotId = getSpotId();
+    if (!spotId) return url;
+    return `${url}${url.includes('?') ? '&' : '?'}client_reference_id=${encodeURIComponent(spotId)}`;
+  };
+
+
   if (pageState === 'loading' || pageState === 'exchanging' || pageState === 'validating') {
     const hint =
       pageState === 'exchanging' ? t('playGame.hintExchanging') :
@@ -404,7 +414,7 @@ export function PlayGamePage() {
         <p style={{ fontSize: 18, color: '#e2e8f0', marginBottom: 8 }}>{t('playGame.limitReachedTitle')}</p>
         <p style={s.hint}>{t('playGame.limitReachedHint')}</p>
         {config.payment_link_url && (
-          <a href={config.payment_link_url} style={s.payBtn}>
+          <a href={payLinkHref(config.payment_link_url)} style={s.payBtn}>
             {t('playGame.buyAgain')}
           </a>
         )}
@@ -420,7 +430,7 @@ export function PlayGamePage() {
         )}
         <h1 style={s.title}>{gameTitle}</h1>
         <p style={s.hint}>{t('playGame.paymentRequiredHint')}</p>
-        <a href={config.payment_link_url!} style={s.payBtn}>
+        <a href={payLinkHref(config.payment_link_url!)} style={s.payBtn}>
           {t('playGame.payToPlay', { price: config.price_yen?.toLocaleString() })}
         </a>
         {gameId && <div style={{ marginTop: 24 }}><ReportGameButton gameId={gameId} /></div>}
@@ -447,7 +457,7 @@ export function PlayGamePage() {
           <>
             <p style={s.hint}>{t('playGame.ticketUsedUp')}</p>
             {config.payment_link_url && (
-              <a href={config.payment_link_url} style={{ ...s.payBtn, marginTop: 24 }}>
+              <a href={payLinkHref(config.payment_link_url)} style={{ ...s.payBtn, marginTop: 24 }}>
                 {t('playGame.buyAgain')}
               </a>
             )}

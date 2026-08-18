@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
+import { track, setSpotContext } from '../../services/analytics/Analytics';
+import { pickLineupIndex } from './lineupRotation';
 
 type State = 'loading' | 'ready' | 'error';
 
@@ -52,6 +54,9 @@ export function NfcSpotPage() {
       return;
     }
 
+    // 以後このタブセッションの全イベントに spot_id が付く(拠点別集計の起点)
+    setSpotContext(spotId);
+
     const run = async () => {
       // セッションがなければ匿名で自動ログイン
       const { data: { session } } = await supabase.auth.getSession();
@@ -63,12 +68,16 @@ export function NfcSpotPage() {
         }
       }
 
-      // スポットに紐づいたゲームを取得
-      const { data: spot, error: spotErr } = await supabase
-        .from('nfc_spots')
-        .select('game_id')
-        .eq('id', spotId)
-        .maybeSingle();
+      // スポットとラインナップを取得
+      const [{ data: spot, error: spotErr }, { data: lineup }] = await Promise.all([
+        supabase.from('nfc_spots').select('game_id, active').eq('id', spotId).maybeSingle(),
+        supabase
+          .from('nfc_spot_games')
+          .select('game_id, sort_order, enabled')
+          .eq('spot_id', spotId)
+          .eq('enabled', true)
+          .order('sort_order', { ascending: true }),
+      ]);
 
       if (spotErr || !spot) {
         setErrorMsg('このスポットは見つかりませんでした');
@@ -76,13 +85,32 @@ export function NfcSpotPage() {
         return;
       }
 
-      if (!spot.game_id) {
+      // ラインナップがあれば巡回出題、無ければ従来の単体ゲーム設定にフォールバック
+      const games = (lineup ?? []).map((r) => r.game_id as string).filter(Boolean);
+      let gameId: string | null = null;
+      let index = 0;
+      if (games.length > 0) {
+        index = pickLineupIndex(spotId, games.length);
+        gameId = games[index];
+      } else {
+        gameId = spot.game_id ?? null;
+      }
+
+      if (!gameId) {
         setErrorMsg('このスポットにはゲームが設定されていません');
         setState('error');
         return;
       }
 
-      navigate(`/play/${spot.game_id}`, { replace: true });
+      // 到着を計測（プレイに至らなかったタップも母数として残す）
+      track('spot_enter', {
+        gameId,
+        lineupSize: games.length,
+        lineupIndex: games.length > 0 ? index : null,
+        active: spot.active !== false,
+      });
+
+      navigate(`/play/${gameId}`, { replace: true });
     };
 
     run().catch((err) => {

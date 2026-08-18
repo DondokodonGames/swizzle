@@ -2,10 +2,20 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { supabase } from '../../lib/supabase';
 
+// 拠点(NFCスポット)の運用画面。
+// 「どの拠点でどれが当たるか」を取るには、1拠点に複数ゲームを並べて巡回出題し、
+// 拠点メタ(業態/客層)で切って比較する必要がある。この画面はその設定と結果表示を担う。
+// 集計は admin_spot_stats / admin_spot_game_stats(20260818_venue_analytics.sql)。
+
 interface NfcSpot {
   id: string;
   name: string | null;
-  game_id: string | null;
+  game_id: string | null;   // 【非推奨】ラインナップが空のときだけ使われるフォールバック
+  venue_type: string | null;
+  audience: string | null;
+  area: string | null;
+  active: boolean;
+  notes: string | null;
   created_at: string;
 }
 
@@ -13,6 +23,51 @@ interface PublishedGame {
   id: string;
   title: string;
 }
+
+interface LineupRow {
+  spot_id: string;
+  game_id: string;
+  sort_order: number;
+  enabled: boolean;
+}
+
+interface SpotStat {
+  spot_id: string;
+  sessions: number;
+  plays: number;
+  plays_per_session: number | null;
+  revenue_yen: number | null;
+  revenue_per_30d: number | null;
+}
+
+interface SpotGameStat {
+  spot_id: string;
+  game_id: string;
+  title: string | null;
+  starts: number;
+  completion_pct: number | null;
+  plays_per_session: number | null;
+  revenue_yen: number | null;
+}
+
+const VENUE_TYPES = [
+  { value: '', label: '— 業態 —' },
+  { value: 'izakaya', label: '居酒屋' },
+  { value: 'bar', label: 'Bar' },
+  { value: 'shokudo', label: '食堂' },
+  { value: 'cafe', label: 'カフェ' },
+  { value: 'arcade', label: 'ゲームセンター' },
+  { value: 'hotel', label: 'ホテル/宿' },
+  { value: 'event', label: 'イベント' },
+  { value: 'other', label: 'その他' },
+];
+
+const AUDIENCES = [
+  { value: '', label: '— 客層 —' },
+  { value: 'local', label: '地元客' },
+  { value: 'inbound', label: '訪日客' },
+  { value: 'mixed', label: '混在' },
+];
 
 const BASE_URL = window.location.origin;
 
@@ -97,11 +152,6 @@ const s = {
     fontSize: 13,
     marginBottom: 12,
   } as React.CSSProperties,
-  success: {
-    color: '#4ade80',
-    fontSize: 13,
-    marginBottom: 12,
-  } as React.CSSProperties,
   row: {
     display: 'flex',
     alignItems: 'center',
@@ -109,22 +159,55 @@ const s = {
     flexWrap: 'wrap' as const,
     marginTop: 12,
   } as React.CSSProperties,
+  grid3: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+    gap: 12,
+  } as React.CSSProperties,
   spotId: {
     fontFamily: 'monospace',
     fontSize: 12,
     color: '#94a3b8',
   } as React.CSSProperties,
+  statRow: {
+    display: 'flex',
+    gap: 20,
+    flexWrap: 'wrap' as const,
+    padding: '10px 0',
+    borderTop: '1px solid #334155',
+    marginTop: 12,
+  } as React.CSSProperties,
+  statLabel: { fontSize: 11, color: '#94a3b8' } as React.CSSProperties,
+  statValue: { fontSize: 18, fontWeight: 700 } as React.CSSProperties,
+  table: { width: '100%', borderCollapse: 'collapse' as const, fontSize: 12, marginTop: 8 },
+  th: { textAlign: 'left' as const, padding: '6px 8px', color: '#94a3b8', borderBottom: '1px solid #334155' },
+  td: { padding: '6px 8px', borderBottom: '1px solid #0f172a' },
+  lineupItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    padding: '6px 0',
+  } as React.CSSProperties,
 };
+
+function fmtYen(n: number | null | undefined): string {
+  return `¥${Math.round(Number(n ?? 0)).toLocaleString()}`;
+}
 
 export function NfcSpotManagerPage() {
   const [spots, setSpots] = useState<NfcSpot[]>([]);
   const [games, setGames] = useState<PublishedGame[]>([]);
+  const [lineups, setLineups] = useState<LineupRow[]>([]);
+  const [spotStats, setSpotStats] = useState<SpotStat[]>([]);
+  const [spotGameStats, setSpotGameStats] = useState<SpotGameStat[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   // 新規作成フォーム
   const [newName, setNewName] = useState('');
-  const [newGameId, setNewGameId] = useState('');
+  const [newVenueType, setNewVenueType] = useState('');
+  const [newAudience, setNewAudience] = useState('');
+  const [newArea, setNewArea] = useState('');
   const [creating, setCreating] = useState(false);
 
   // QR表示対象
@@ -136,12 +219,23 @@ export function NfcSpotManagerPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [{ data: spotsData }, { data: gamesData }] = await Promise.all([
-      supabase.from('nfc_spots').select('id, name, game_id, created_at').order('created_at', { ascending: false }),
-      supabase.from('user_games').select('id, title').eq('is_published', true).order('title'),
-    ]);
-    setSpots(spotsData ?? []);
+    const [{ data: spotsData }, { data: gamesData }, { data: lineupData }, statsRes, gameStatsRes] =
+      await Promise.all([
+        supabase
+          .from('nfc_spots')
+          .select('id, name, game_id, venue_type, audience, area, active, notes, created_at')
+          .order('created_at', { ascending: false }),
+        supabase.from('user_games').select('id, title').eq('is_published', true).order('title'),
+        supabase.from('nfc_spot_games').select('spot_id, game_id, sort_order, enabled').order('sort_order'),
+        // 数字は取れなくても設定作業は続けられるべきなので、失敗しても致命扱いしない
+        supabase.rpc('admin_spot_stats', { p_days: 30 }),
+        supabase.rpc('admin_spot_game_stats', { p_days: 30, p_min_plays: 0 }),
+      ]);
+    setSpots((spotsData ?? []) as NfcSpot[]);
     setGames(gamesData ?? []);
+    setLineups((lineupData ?? []) as LineupRow[]);
+    setSpotStats((statsRes.data ?? []) as SpotStat[]);
+    setSpotGameStats((gameStatsRes.data ?? []) as SpotGameStat[]);
     setLoading(false);
   }, []);
 
@@ -158,7 +252,9 @@ export function NfcSpotManagerPage() {
     const { error: insertErr } = await supabase.from('nfc_spots').insert({
       id,
       name: newName.trim(),
-      game_id: newGameId || null,
+      venue_type: newVenueType || null,
+      audience: newAudience || null,
+      area: newArea.trim() || null,
     });
     setCreating(false);
     if (insertErr) {
@@ -166,18 +262,78 @@ export function NfcSpotManagerPage() {
       return;
     }
     setNewName('');
-    setNewGameId('');
+    setNewVenueType('');
+    setNewAudience('');
+    setNewArea('');
     load();
   };
 
-  const handleGameChange = async (spotId: string, gameId: string) => {
-    await supabase.from('nfc_spots').update({ game_id: gameId || null, updated_at: new Date().toISOString() }).eq('id', spotId);
-    load();
+  const updateSpot = async (spotId: string, patch: Partial<NfcSpot>) => {
+    const { error: updErr } = await supabase
+      .from('nfc_spots')
+      .update({ ...patch, updated_at: new Date().toISOString() })
+      .eq('id', spotId);
+    if (updErr) {
+      setError('更新に失敗しました: ' + updErr.message);
+      return;
+    }
+    setSpots((prev) => prev.map((sp) => (sp.id === spotId ? { ...sp, ...patch } : sp)));
   };
 
   const handleDelete = async (spotId: string) => {
     if (!window.confirm(`スポット "${spotId}" を削除しますか？`)) return;
     await supabase.from('nfc_spots').delete().eq('id', spotId);
+    load();
+  };
+
+  // ---- ラインナップ操作 ----------------------------------------------------
+  const lineupOf = (spotId: string) =>
+    lineups.filter((l) => l.spot_id === spotId).sort((a, b) => a.sort_order - b.sort_order);
+
+  const handleAddGame = async (spotId: string, gameId: string) => {
+    if (!gameId) return;
+    const current = lineupOf(spotId);
+    if (current.some((l) => l.game_id === gameId)) return;
+    const { error: insErr } = await supabase.from('nfc_spot_games').insert({
+      spot_id: spotId,
+      game_id: gameId,
+      sort_order: current.length,
+      enabled: true,
+    });
+    if (insErr) {
+      setError('ラインナップ追加に失敗しました: ' + insErr.message);
+      return;
+    }
+    load();
+  };
+
+  const handleRemoveGame = async (spotId: string, gameId: string) => {
+    await supabase.from('nfc_spot_games').delete().eq('spot_id', spotId).eq('game_id', gameId);
+    load();
+  };
+
+  const handleToggleGame = async (spotId: string, gameId: string, enabled: boolean) => {
+    await supabase
+      .from('nfc_spot_games')
+      .update({ enabled })
+      .eq('spot_id', spotId)
+      .eq('game_id', gameId);
+    setLineups((prev) =>
+      prev.map((l) => (l.spot_id === spotId && l.game_id === gameId ? { ...l, enabled } : l))
+    );
+  };
+
+  const handleMoveGame = async (spotId: string, gameId: string, direction: -1 | 1) => {
+    const current = lineupOf(spotId);
+    const idx = current.findIndex((l) => l.game_id === gameId);
+    const swapIdx = idx + direction;
+    if (idx < 0 || swapIdx < 0 || swapIdx >= current.length) return;
+    const a = current[idx];
+    const b = current[swapIdx];
+    await Promise.all([
+      supabase.from('nfc_spot_games').update({ sort_order: b.sort_order }).eq('spot_id', spotId).eq('game_id', a.game_id),
+      supabase.from('nfc_spot_games').update({ sort_order: a.sort_order }).eq('spot_id', spotId).eq('game_id', b.game_id),
+    ]);
     load();
   };
 
@@ -202,6 +358,7 @@ export function NfcSpotManagerPage() {
   };
 
   const spotUrl = (id: string) => `${BASE_URL}/nfc/${id}`;
+  const titleOf = (gameId: string) => games.find((g) => g.id === gameId)?.title ?? gameId;
 
   if (loading) {
     return (
@@ -226,17 +383,24 @@ export function NfcSpotManagerPage() {
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
         />
-        <p style={s.label}>紐づけるゲーム（任意）</p>
-        <select
-          style={s.select}
-          value={newGameId}
-          onChange={(e) => setNewGameId(e.target.value)}
-        >
-          <option value="">— ゲームを選択 —</option>
-          {games.map((g) => (
-            <option key={g.id} value={g.id}>{g.title}</option>
-          ))}
-        </select>
+        <div style={s.grid3}>
+          <div>
+            <p style={s.label}>業態</p>
+            <select style={s.select} value={newVenueType} onChange={(e) => setNewVenueType(e.target.value)}>
+              {VENUE_TYPES.map((v) => <option key={v.value} value={v.value}>{v.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <p style={s.label}>客層</p>
+            <select style={s.select} value={newAudience} onChange={(e) => setNewAudience(e.target.value)}>
+              {AUDIENCES.map((a) => <option key={a.value} value={a.value}>{a.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <p style={s.label}>エリア</p>
+            <input style={s.input} placeholder="例: 浅草" value={newArea} onChange={(e) => setNewArea(e.target.value)} />
+          </div>
+        </div>
         <button style={s.btn} onClick={handleCreate} disabled={creating}>
           {creating ? '作成中...' : 'スポットを作成'}
         </button>
@@ -255,49 +419,166 @@ export function NfcSpotManagerPage() {
       {spots.length === 0 ? (
         <p style={{ color: '#94a3b8' }}>スポットがまだありません</p>
       ) : (
-        spots.map((spot) => (
-          <div key={spot.id} style={s.card}>
-            <p style={{ margin: '0 0 4px', fontWeight: 600 }}>{spot.name ?? '(名前なし)'}</p>
-            <p style={{ ...s.spotId, margin: '0 0 12px' }}>{spot.id}</p>
+        spots.map((spot) => {
+          const lineup = lineupOf(spot.id);
+          const stat = spotStats.find((st) => st.spot_id === spot.id);
+          const perGame = spotGameStats.filter((st) => st.spot_id === spot.id);
+          const addable = games.filter((g) => !lineup.some((l) => l.game_id === g.id));
 
-            <p style={s.label}>紐づけるゲーム</p>
-            <select
-              style={s.select}
-              value={spot.game_id ?? ''}
-              onChange={(e) => handleGameChange(spot.id, e.target.value)}
-            >
-              <option value="">— 設定なし —</option>
-              {games.map((g) => (
-                <option key={g.id} value={g.id}>{g.title}</option>
-              ))}
-            </select>
+          return (
+            <div key={spot.id} style={{ ...s.card, opacity: spot.active ? 1 : 0.6 }}>
+              <p style={{ margin: '0 0 4px', fontWeight: 600 }}>{spot.name ?? '(名前なし)'}</p>
+              <p style={{ ...s.spotId, margin: '0 0 12px' }}>{spot.id}</p>
 
-            {/* QRコード表示トグル */}
-            {qrSpotId === spot.id ? (
-              <div style={{ marginBottom: 12 }}>
-                <QRCodeSVG value={spotUrl(spot.id)} size={160} />
-                <p style={{ ...s.spotId, marginTop: 8 }}>{spotUrl(spot.id)}</p>
-                <button style={s.btnSm} onClick={() => setQrSpotId(null)}>閉じる</button>
+              {/* 拠点メタ */}
+              <div style={s.grid3}>
+                <div>
+                  <p style={s.label}>業態</p>
+                  <select
+                    style={s.select}
+                    value={spot.venue_type ?? ''}
+                    onChange={(e) => updateSpot(spot.id, { venue_type: e.target.value || null })}
+                  >
+                    {VENUE_TYPES.map((v) => <option key={v.value} value={v.value}>{v.label}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <p style={s.label}>客層</p>
+                  <select
+                    style={s.select}
+                    value={spot.audience ?? ''}
+                    onChange={(e) => updateSpot(spot.id, { audience: e.target.value || null })}
+                  >
+                    {AUDIENCES.map((a) => <option key={a.value} value={a.value}>{a.label}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <p style={s.label}>エリア</p>
+                  <input
+                    style={s.input}
+                    value={spot.area ?? ''}
+                    onChange={(e) => setSpots((prev) => prev.map((sp) => sp.id === spot.id ? { ...sp, area: e.target.value } : sp))}
+                    onBlur={(e) => updateSpot(spot.id, { area: e.target.value || null })}
+                  />
+                </div>
               </div>
-            ) : null}
 
-            <div style={s.row}>
-              <button style={s.btnSm} onClick={() => setQrSpotId(qrSpotId === spot.id ? null : spot.id)}>
-                QRコード
-              </button>
-              <button
-                style={s.btnSm}
-                onClick={() => handleWriteNfc(spot.id)}
-                disabled={nfcWriting === spot.id}
+              <label style={{ ...s.label, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+                <input
+                  type="checkbox"
+                  checked={spot.active}
+                  onChange={(e) => updateSpot(spot.id, { active: e.target.checked })}
+                />
+                稼働中（外すと拠点別集計から除外）
+              </label>
+
+              {/* ラインナップ */}
+              <p style={s.label}>ラインナップ（タップごとに巡回出題）</p>
+              {lineup.length === 0 && (
+                <p style={{ fontSize: 12, color: '#94a3b8', margin: '0 0 8px' }}>
+                  未設定（この状態では旧・単体ゲーム設定にフォールバックします）
+                </p>
+              )}
+              {lineup.map((l, i) => (
+                <div key={l.game_id} style={s.lineupItem}>
+                  <span style={{ ...s.spotId, width: 20 }}>{i + 1}</span>
+                  <span style={{ flex: 1, fontSize: 13 }}>{titleOf(l.game_id)}</span>
+                  <label style={{ ...s.label, display: 'flex', alignItems: 'center', gap: 4, margin: 0 }}>
+                    <input
+                      type="checkbox"
+                      checked={l.enabled}
+                      onChange={(e) => handleToggleGame(spot.id, l.game_id, e.target.checked)}
+                    />
+                    有効
+                  </label>
+                  <button style={s.btnSm} onClick={() => handleMoveGame(spot.id, l.game_id, -1)} disabled={i === 0}>↑</button>
+                  <button style={s.btnSm} onClick={() => handleMoveGame(spot.id, l.game_id, 1)} disabled={i === lineup.length - 1}>↓</button>
+                  <button style={s.btnDanger} onClick={() => handleRemoveGame(spot.id, l.game_id)}>外す</button>
+                </div>
+              ))}
+              <select
+                style={{ ...s.select, marginTop: 8 }}
+                value=""
+                onChange={(e) => handleAddGame(spot.id, e.target.value)}
               >
-                {nfcWriting === spot.id ? '書き込み中...' : 'NFCタグに書き込む'}
-              </button>
-              <button style={s.btnDanger} onClick={() => handleDelete(spot.id)}>
-                削除
-              </button>
+                <option value="">＋ ゲームを追加</option>
+                {addable.map((g) => (
+                  <option key={g.id} value={g.id}>{g.title}</option>
+                ))}
+              </select>
+
+              {/* 直近30日の数字 */}
+              <div style={s.statRow}>
+                <div>
+                  <div style={s.statLabel}>セッション(30日)</div>
+                  <div style={s.statValue}>{stat?.sessions ?? 0}</div>
+                </div>
+                <div>
+                  <div style={s.statLabel}>プレイ(30日)</div>
+                  <div style={s.statValue}>{stat?.plays ?? 0}</div>
+                </div>
+                <div>
+                  <div style={s.statLabel}>プレイ/セッション</div>
+                  <div style={s.statValue}>{stat?.plays_per_session ?? '—'}</div>
+                </div>
+                <div>
+                  <div style={s.statLabel}>売上(30日)</div>
+                  <div style={s.statValue}>{fmtYen(stat?.revenue_yen)}</div>
+                </div>
+              </div>
+
+              {perGame.length > 0 && (
+                <table style={s.table}>
+                  <thead>
+                    <tr>
+                      <th style={s.th}>ゲーム</th>
+                      <th style={s.th}>プレイ</th>
+                      <th style={s.th}>完走率</th>
+                      <th style={s.th}>プレイ/セッション</th>
+                      <th style={s.th}>売上</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {perGame.map((st) => (
+                      <tr key={st.game_id}>
+                        <td style={s.td}>{st.title ?? titleOf(st.game_id)}</td>
+                        <td style={s.td}>{st.starts}</td>
+                        <td style={s.td}>{st.completion_pct ?? '—'}%</td>
+                        <td style={s.td}>{st.plays_per_session ?? '—'}</td>
+                        <td style={s.td}>{fmtYen(st.revenue_yen)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+
+              {/* QRコード表示トグル */}
+              {qrSpotId === spot.id ? (
+                <div style={{ marginTop: 12 }}>
+                  <QRCodeSVG value={spotUrl(spot.id)} size={160} />
+                  <p style={{ ...s.spotId, marginTop: 8 }}>{spotUrl(spot.id)}</p>
+                  <button style={s.btnSm} onClick={() => setQrSpotId(null)}>閉じる</button>
+                </div>
+              ) : null}
+
+              <div style={s.row}>
+                <button style={s.btnSm} onClick={() => setQrSpotId(qrSpotId === spot.id ? null : spot.id)}>
+                  QRコード
+                </button>
+                <button
+                  style={s.btnSm}
+                  onClick={() => handleWriteNfc(spot.id)}
+                  disabled={nfcWriting === spot.id}
+                >
+                  {nfcWriting === spot.id ? '書き込み中...' : 'NFCタグに書き込む'}
+                </button>
+                <button style={s.btnDanger} onClick={() => handleDelete(spot.id)}>
+                  削除
+                </button>
+              </div>
             </div>
-          </div>
-        ))
+          );
+        })
       )}
     </div>
   );

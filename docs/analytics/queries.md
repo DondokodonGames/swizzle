@@ -13,6 +13,7 @@
 | event_type | 発火箇所 | 主な properties / カラム |
 |---|---|---|
 | `session_start` | GameSequence（フィード開始） | — |
+| `spot_enter` | NfcSpotPage（NFC/QR で拠点から到着） | `game_id`, `spot_id`, `lineupSize`, `lineupIndex` |
 | `play_start` | GameSequence / PlayGamePage | `game_id`, `index`, `source` |
 | `play_end` | GameSequence / PlayGamePage | `game_id`, `duration`(秒), `result`(`success`/`failure`/`skip`), `score` |
 | `bridge_next` | GameSequence（連続プレイ） | `game_id`, `nextGameId` |
@@ -22,7 +23,12 @@
 | `topup_open` | TopUpButton | `amountYen`, `games` |
 | `topup_complete` | ProfilePage（`?topup=success`） | `status` |
 | `subscribe` | SubscriptionSuccess | `status` |
-| `purchase` | `stripe-webhook`（サーバー側、決済成功時） | `amount_yen`, `method`(`nfc`/`wallet`/`subscription`), `game_id`(nfcのみ) |
+| `purchase` | `stripe-webhook`（サーバー側、決済成功時） | `amount_yen`, `method`(`nfc`/`wallet`/`subscription`), `game_id`(nfcのみ), `spot_id`(拠点経由のみ) |
+
+**拠点(spot)の次元**: `/nfc/:spotId` から到着したタブセッションは、以降の全イベントに
+`analytics_events.spot_id` が付く（`setSpotContext`）。決済は webhook 経由でクライアントの
+コンテキストが届かないため、Payment Link に `client_reference_id=<spot_id>` を載せて
+サーバー側で復元している。`spot_id IS NULL` = 拠点経由でない通常のWeb流入。
 
 ---
 
@@ -253,4 +259,46 @@ WHERE event_type = 'purchase'
   AND created_at >= NOW() - INTERVAL '30 days'
 GROUP BY 1
 ORDER BY revenue_yen DESC;
+```
+
+---
+
+## 8. 拠点（設置台）別（WP65）
+
+拠点系は RPC 化済み。SQL Editor でも管理ダッシュボードからでも同じ数字が出る。
+
+| RPC | 返すもの |
+|---|---|
+| `admin_spot_stats(p_days)` | 拠点別のセッション/プレイ/売上と **30日換算売上**（1拠点あたり月次） |
+| `admin_spot_game_stats(p_spot_id, p_days, p_min_plays)` | **拠点×ゲーム**のプレイ数・完走率・売上（どの拠点でどれが当たるか） |
+| `admin_spot_daily(p_spot_id, p_days)` | 拠点の日次時系列（傾きを見る） |
+| `admin_spot_audience_stats(p_days)` | 客層×業態の集計（インバウンド拠点の優位性の検証） |
+
+```sql
+-- 1拠点あたり月次売上（事業計画 ¥24,000 / 実証値 ¥6,000 とのギャップ追跡）
+SELECT spot_name, venue_type, audience, plays, revenue_per_30d
+FROM admin_spot_stats(30)
+ORDER BY revenue_per_30d DESC;
+```
+
+```sql
+-- ある拠点で当たっているゲーム順
+SELECT title, starts, completion_pct, plays_per_session, revenue_yen
+FROM admin_spot_game_stats('spot_xxxxxxxx', 30, 5)
+ORDER BY starts DESC;
+```
+
+```sql
+-- タップしたが遊ばなかった率（拠点の導線・筐体まわりの問題を切り分ける）
+SELECT
+  spot_id,
+  COUNT(*) FILTER (WHERE event_type = 'spot_enter')  AS taps,
+  COUNT(*) FILTER (WHERE event_type = 'play_start')  AS plays,
+  ROUND(100.0 * COUNT(*) FILTER (WHERE event_type = 'play_start')
+        / NULLIF(COUNT(*) FILTER (WHERE event_type = 'spot_enter'), 0), 1) AS play_rate_pct
+FROM public.analytics_events
+WHERE spot_id IS NOT NULL
+  AND created_at >= NOW() - INTERVAL '30 days'
+GROUP BY spot_id
+ORDER BY taps DESC;
 ```

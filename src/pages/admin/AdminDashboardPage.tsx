@@ -53,6 +53,8 @@ export const AdminDashboardPage: React.FC = () => {
   const [gameStats, setGameStats] = useState<any[]>([]);
   const [revenueByGame, setRevenueByGame] = useState<any[]>([]);
   const [revenueByMethod, setRevenueByMethod] = useState<any[]>([]);
+  const [spotStats, setSpotStats] = useState<any[]>([]);
+  const [audienceStats, setAudienceStats] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -67,14 +69,18 @@ export const AdminDashboardPage: React.FC = () => {
       supabase.rpc('admin_game_completion_stats', { p_days: 30, p_min_plays: 10 }),
       supabase.rpc('admin_revenue_by_game', { p_days: 30 }),
       supabase.rpc('admin_revenue_by_method', { p_days: 30 }),
+      supabase.rpc('admin_spot_stats', { p_days: 30 }),
+      supabase.rpc('admin_spot_audience_stats', { p_days: 30 }),
     ])
-      .then(([dauRes, funnelRes, monetizationRes, gameStatsRes, revGameRes, revMethodRes]) => {
+      .then(([dauRes, funnelRes, monetizationRes, gameStatsRes, revGameRes, revMethodRes, spotRes, audienceRes]) => {
         if (dauRes.error) throw dauRes.error;
         if (funnelRes.error) throw funnelRes.error;
         if (monetizationRes.error) throw monetizationRes.error;
         if (gameStatsRes.error) throw gameStatsRes.error;
         if (revGameRes.error) throw revGameRes.error;
         if (revMethodRes.error) throw revMethodRes.error;
+        if (spotRes.error) throw spotRes.error;
+        if (audienceRes.error) throw audienceRes.error;
 
         setDau(dauRes.data || []);
         setFunnel(funnelRes.data?.[0] || null);
@@ -82,6 +88,8 @@ export const AdminDashboardPage: React.FC = () => {
         setGameStats((gameStatsRes.data || []).slice(0, 20));
         setRevenueByGame((revGameRes.data || []).slice(0, 20));
         setRevenueByMethod(revMethodRes.data || []);
+        setSpotStats(spotRes.data || []);
+        setAudienceStats(audienceRes.data || []);
       })
       .catch((err) => setError(err.message || String(err)))
       .finally(() => setLoading(false));
@@ -97,6 +105,18 @@ export const AdminDashboardPage: React.FC = () => {
   }
 
   const totalRevenue30d = revenueByMethod.reduce((sum, r) => sum + Number(r.revenue_yen || 0), 0);
+
+  // 1拠点あたり月次売上の中央値。事業計画(1拠点 月2.4万円)と実証値(月6,000円)の
+  // ギャップを追うための単一指標なので、少数の当たり台に引っ張られる平均ではなく中央値で見る。
+  const activeSpots = spotStats.filter((r) => r.active !== false);
+  const spotMonthlyMedian = (() => {
+    if (activeSpots.length === 0) return null;
+    const values = activeSpots
+      .map((r) => Number(r.revenue_per_30d || 0))
+      .sort((a, b) => a - b);
+    const mid = Math.floor(values.length / 2);
+    return values.length % 2 === 1 ? values[mid] : (values[mid - 1] + values[mid]) / 2;
+  })();
   const todayDau = dau[0]?.dau_logged_in ?? 0;
   const todaySessions = dau[0]?.active_sessions ?? 0;
 
@@ -120,6 +140,13 @@ export const AdminDashboardPage: React.FC = () => {
             <div style={s.card}>
               <div style={s.cardLabel}>30日間の総売上</div>
               <div style={s.cardValue}>{fmtYen(totalRevenue30d)}</div>
+            </div>
+            <div style={s.card}>
+              <div style={s.cardLabel}>1拠点あたり月次売上（中央値）</div>
+              <div style={s.cardValue}>{spotMonthlyMedian === null ? '—' : fmtYen(spotMonthlyMedian)}</div>
+              <div style={{ fontSize: 11, color: '#64748b', marginTop: 6 }}>
+                稼働 {activeSpots.length} 台 / 計画 ¥24,000
+              </div>
             </div>
             {funnel && (
               <div style={s.card}>
@@ -173,6 +200,77 @@ export const AdminDashboardPage: React.FC = () => {
                     <td style={s.td}>{r.method}</td>
                     <td style={s.td}>{r.purchase_count}</td>
                     <td style={s.td}>{fmtYen(r.revenue_yen)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div style={s.section}>
+            <div style={s.sectionTitle}>拠点別サマリ（設置台ごとの数字）</div>
+            <table style={s.table}>
+              <thead>
+                <tr>
+                  <th style={s.th}>拠点</th>
+                  <th style={s.th}>業態</th>
+                  <th style={s.th}>客層</th>
+                  <th style={s.th}>セッション</th>
+                  <th style={s.th}>プレイ</th>
+                  <th style={s.th}>プレイ/セッション</th>
+                  <th style={s.th}>売上</th>
+                  <th style={s.th}>月次換算</th>
+                </tr>
+              </thead>
+              <tbody>
+                {spotStats.length === 0 && (
+                  <tr><td style={s.td} colSpan={8}>拠点データがありません</td></tr>
+                )}
+                {spotStats.map((r) => (
+                  <tr key={r.spot_id}>
+                    <td style={s.td}>
+                      {r.spot_name || r.spot_id}
+                      {r.active === false && <span style={{ color: '#64748b' }}>（停止）</span>}
+                    </td>
+                    <td style={s.td}>{r.venue_type || '—'}</td>
+                    <td style={s.td}>{r.audience || '—'}</td>
+                    <td style={s.td}>{r.sessions}</td>
+                    <td style={s.td}>{r.plays}</td>
+                    <td style={s.td}>{r.plays_per_session ?? '—'}</td>
+                    <td style={s.td}>{fmtYen(Number(r.revenue_yen || 0))}</td>
+                    <td style={s.td}>{fmtYen(Number(r.revenue_per_30d || 0))}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div style={s.section}>
+            <div style={s.sectionTitle}>客層 × 業態（インバウンド拠点の優位性の検証）</div>
+            <table style={s.table}>
+              <thead>
+                <tr>
+                  <th style={s.th}>客層</th>
+                  <th style={s.th}>業態</th>
+                  <th style={s.th}>拠点数</th>
+                  <th style={s.th}>セッション</th>
+                  <th style={s.th}>プレイ</th>
+                  <th style={s.th}>売上</th>
+                  <th style={s.th}>1拠点あたり月次</th>
+                </tr>
+              </thead>
+              <tbody>
+                {audienceStats.length === 0 && (
+                  <tr><td style={s.td} colSpan={7}>拠点データがありません</td></tr>
+                )}
+                {audienceStats.map((r) => (
+                  <tr key={`${r.audience}-${r.venue_type}`}>
+                    <td style={s.td}>{r.audience}</td>
+                    <td style={s.td}>{r.venue_type}</td>
+                    <td style={s.td}>{r.spot_count}</td>
+                    <td style={s.td}>{r.sessions}</td>
+                    <td style={s.td}>{r.plays}</td>
+                    <td style={s.td}>{fmtYen(Number(r.revenue_yen || 0))}</td>
+                    <td style={s.td}>{fmtYen(Number(r.revenue_per_spot_30d || 0))}</td>
                   </tr>
                 ))}
               </tbody>

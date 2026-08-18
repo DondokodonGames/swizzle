@@ -17,6 +17,7 @@ import { supabase } from '../../lib/supabase';
 // 計測ポイント（最小セット）。contract 的な単一の真実として型を集約する。
 export type AnalyticsEventType =
   | 'session_start'
+  | 'spot_enter'      // NFC/QR で拠点から到着した
   | 'play_start'
   | 'play_end'
   | 'bridge_next'
@@ -32,12 +33,15 @@ interface QueuedEvent {
   session_id: string;
   event_type: string;
   game_id: string | null;
+  // 拠点(NFCスポット)帰属。拠点経由でない通常のWeb流入では null。
+  spot_id: string | null;
   properties: Record<string, unknown>;
   created_at: string;
 }
 
 const SESSION_ID_KEY = 'swizzle_analytics_session_id';
 const SESSION_START_KEY = 'swizzle_analytics_session_started';
+const SPOT_ID_KEY = 'swizzle_analytics_spot_id';
 const FLUSH_INTERVAL_MS = 4000;
 const MAX_BATCH = 20;
 
@@ -47,6 +51,7 @@ const MAX_BATCH = 20;
 let queue: QueuedEvent[] = [];
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
 let memorySessionId: string | null = null;
+let memorySpotId: string | null = null;
 
 // 認証状態は onAuthStateChange でキャッシュし、track 1 件ごとのネットワーク往復を避ける
 let currentUserId: string | null = null;
@@ -81,6 +86,38 @@ function getSessionId(): string {
     if (!memorySessionId) memorySessionId = generateId();
     return memorySessionId;
   }
+}
+
+/**
+ * 拠点(NFCスポット)コンテキストを設定する。
+ *
+ * NFCタグ/QR から `/nfc/:spotId` に到着した時点で一度だけ呼ぶ。以後、そのタブ
+ * セッションの全イベントに spot_id が付き、拠点別の集計(admin_spot_stats 系 RPC)が
+ * 成立する。sessionStorage に持たせているのは「その場で遊んだ1回」を1拠点セッションと
+ * 数えるため — 帰宅後に同じ端末で遊んだ分を店舗の数字に混ぜない。
+ */
+export function setSpotContext(spotId: string | null): void {
+  try {
+    memorySpotId = spotId;
+    if (spotId) {
+      sessionStorage.setItem(SPOT_ID_KEY, spotId);
+    } else {
+      sessionStorage.removeItem(SPOT_ID_KEY);
+    }
+  } catch {
+    // sessionStorage 不可: メモリ上のコンテキストだけで継続する
+  }
+}
+
+/** 現在の拠点コンテキスト(無ければ null)。 */
+export function getSpotId(): string | null {
+  if (memorySpotId) return memorySpotId;
+  try {
+    memorySpotId = sessionStorage.getItem(SPOT_ID_KEY);
+  } catch {
+    // ignore
+  }
+  return memorySpotId;
 }
 
 function ensureAuthListener(): void {
@@ -179,21 +216,23 @@ function beaconFlush(): void {
 /**
  * イベントを記録する（ベストエフォート・例外を投げない）。
  * @param eventType 計測ポイント種別
- * @param properties 任意プロパティ。`gameId` を含めると専用カラムに振り分ける。
+ * @param properties 任意プロパティ。`gameId` / `spotId` を含めると専用カラムに振り分ける。
+ *                   `spotId` 省略時は現在の拠点コンテキスト(setSpotContext)が自動で付く。
  */
 export function track(
   eventType: AnalyticsEventType,
-  properties: Record<string, unknown> & { gameId?: string | null } = {}
+  properties: Record<string, unknown> & { gameId?: string | null; spotId?: string | null } = {}
 ): void {
   try {
     ensureAuthListener();
     ensureLifecycle();
 
-    const { gameId, ...rest } = properties;
+    const { gameId, spotId, ...rest } = properties;
     queue.push({
       session_id: getSessionId(),
       event_type: eventType,
       game_id: gameId ?? null,
+      spot_id: spotId === undefined ? getSpotId() : spotId,
       properties: rest,
       created_at: new Date().toISOString(),
     });
@@ -240,11 +279,12 @@ export function _resetForTest(): void {
     flushTimer = null;
   }
   memorySessionId = null;
+  memorySpotId = null;
   currentUserId = null;
   currentAccessToken = null;
   authSubscribed = false;
   lifecycleRegistered = false;
 }
 
-const analytics = { track, startSession, getSessionId: getSessionId_public };
+const analytics = { track, startSession, getSessionId: getSessionId_public, setSpotContext, getSpotId };
 export default analytics;

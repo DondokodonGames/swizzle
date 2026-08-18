@@ -26,7 +26,7 @@ vi.mock('../../../lib/supabase', () => ({
   },
 }));
 
-import { track, startSession, _queueSize, _resetForTest, getSessionId_public } from '../Analytics';
+import { track, startSession, _queueSize, _resetForTest, getSessionId_public, setSpotContext, getSpotId } from '../Analytics';
 
 describe('Analytics.track', () => {
   beforeEach(() => {
@@ -101,5 +101,53 @@ describe('Analytics.startSession', () => {
     startSession();
     startSession();
     expect(_queueSize()).toBe(1);
+  });
+});
+
+// 拠点(NFCスポット)帰属 — 設置台の数字を拠点別に切り分けるための次元
+describe('Analytics 拠点コンテキスト', () => {
+  beforeEach(() => {
+    mockState.insertRows = [];
+    mockState.insertCalls = 0;
+    sessionStorage.clear();
+    _resetForTest();
+  });
+
+  it('拠点コンテキスト未設定なら spot_id は null（通常のWeb流入）', async () => {
+    for (let i = 0; i < 20; i++) track('play_start', { gameId: 'g1' });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(mockState.insertRows[0].spot_id).toBeNull();
+  });
+
+  it('setSpotContext 以降の全イベントに spot_id が付く', async () => {
+    setSpotContext('spot_abc');
+    expect(getSpotId()).toBe('spot_abc');
+    for (let i = 0; i < 20; i++) track('play_start', { gameId: 'g1' });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(mockState.insertRows.every((r) => r.spot_id === 'spot_abc')).toBe(true);
+    // spotId は properties に残さない（専用カラムへ振り分け）
+    expect((mockState.insertRows[0].properties as Record<string, unknown>).spotId).toBeUndefined();
+  });
+
+  it('拠点コンテキストは sessionStorage 経由で復元される', () => {
+    setSpotContext('spot_xyz');
+    _resetForTest();
+    expect(getSpotId()).toBe('spot_xyz');
+  });
+
+  it('spotId を明示的に null 指定すればコンテキストを上書きできる', async () => {
+    setSpotContext('spot_abc');
+    for (let i = 0; i < 20; i++) track('purchase', { gameId: 'g1', spotId: null });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(mockState.insertRows[0].spot_id).toBeNull();
+  });
+
+  it('setSpotContext(null) でコンテキストを解除できる', () => {
+    setSpotContext('spot_abc');
+    setSpotContext(null);
+    expect(getSpotId()).toBeNull();
   });
 });
