@@ -28,12 +28,14 @@ SKIP_UPLOAD=true npm run ai:neta:1    # Skip Supabase upload
 # Code games (the 800 examples)
 npm run games:smoke   # Runtime smoke test + screenshot contact sheet (Playwright)
 npm run games:ledger  # Regenerate per-game ledger (docs/work-plans/ledger/, measurements + summary)
+npm run games:ip      # IP safety scan (examples + neta idea files; --all for warnings)
 npm run ai:upload:examples            # Upload examples (OVERWRITE=true to update, PRICE_SYNC=true for tier pricing)
 ```
 
 ### Code-game quality standard v2.1 / play grammar v3
 
 The 800 code games (`src/ai/code/examples/*.js`) target **quality standard v2.1 + play grammar v3** (textless rule communication). The canon:
+- `docs/specifications/IP_SAFETY_RULES.md` — **rights rules**: genres/mechanics are free, proper nouns must be original. Enforced by `src/ai/code/IpSafetyChecker.ts` (runs inside `CodeGameValidator`, filters neta ideas before generation, scannable via `npm run games:ip`). CAPCOM / SNK are licensed exceptions
 - `docs/specifications/PLAY_GRAMMAR_V3.md` — **v3 canon**: textless techniques (ghost-hand demo, telegraph, hit-stop), duration bands per mechanic family, SE mapping, text whitelist
 - `docs/specifications/GAME_QUALITY_STANDARD_V2.md` — pass bar (scorer ≥80 + smoke PASS)
 - `docs/specifications/SANDBOX_API_V2.md` — the full `game.*` API (WebAudio chiptune synth, `game.feedback.good/bad`, multi-touch, sprites) + recipes

@@ -21,6 +21,7 @@ import { shouldAutoPublish } from '../v2/publishGate.js';
 import { CodeAssetPlanner, CodeAssetPlan } from './CodeAssetPlanner.js';
 import { CodeGameGenerator } from './CodeGameGenerator.js';
 import { CodeGameValidator } from './CodeGameValidator.js';
+import { filterIpSafeNetas } from './IpSafetyChecker.js';
 import { CodeQualityScorer } from './CodeQualityScorer.js';
 import { CodeGameProject } from '../../types/code-game/SwizzleGameAPI.js';
 import { GameConcept, AssetPlan, ObjectPlan, SoundPlan, BgmPlan } from '../v2/types.js';
@@ -318,7 +319,20 @@ export class CodeOrchestrator {
       processedIds = new Set<number>((saved.processedIds ?? []) as number[]);
     }
 
-    const pending = netaData.items.filter(item => !processedIds.has(item.id));
+    // 権利ルール（IP_SAFETY_RULES.md）: 固有名詞つきのネタから生成すると寄せたゲームが生まれる。
+    // 生成コストを払う前にネタ段階で落とす。落としたネタは処理済みにしないので、
+    // 固有名詞を外して書き換えれば次回の実行で拾われる。
+    const { safe: safeItems, rejected: ipRejected } = filterIpSafeNetas(netaData.items);
+    if (ipRejected.length > 0) {
+      console.warn(`\n⚠️  権利ルールにより ${ipRejected.length} 件のネタを除外しました（IP_SAFETY_RULES.md）:`);
+      for (const r of ipRejected.slice(0, 10)) {
+        console.warn(`   #${r.id} ${r.title} — ${r.terms.join(', ')}`);
+      }
+      if (ipRejected.length > 10) console.warn(`   ...他 ${ipRejected.length - 10} 件`);
+      console.warn('   固有名詞を外してネタを書き換えれば次回拾われます\n');
+    }
+
+    const pending = safeItems.filter(item => !processedIds.has(item.id));
     const toProcess = pending.slice(0, count);
     const remaining = Math.max(0, pending.length - toProcess.length);
 

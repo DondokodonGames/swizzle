@@ -222,3 +222,23 @@ describe('CodeGameValidator – v3 フラグ', () => {
     expect(r.errors.some(e => e.code === 'UNKNOWN_BGM')).toBe(true);
   });
 });
+
+// 権利ルール（IP_SAFETY_RULES.md）は量産の関門なので、v3 フラグの有無に関わらず常に効く
+describe('CodeGameValidator – 権利安全性', () => {
+  it('他社IPの固有名詞は error（IP_RISK）で公開不可', () => {
+    const r = v.validate(['// ゼルダ風の探索ゲーム', validCode()].join('\n'));
+    expect(r.valid).toBe(false);
+    expect(r.errors.some(e => e.code === 'IP_RISK')).toBe(true);
+  });
+
+  it('ハードウェア名は warning に留める（内部呼称は可）', () => {
+    const r = v.validate(['// ファミコン風のドット絵', validCode()].join('\n'));
+    expect(r.errors.some(e => e.code === 'IP_RISK')).toBe(false);
+    expect(r.warnings.some(e => e.code === 'IP_RISK')).toBe(true);
+  });
+
+  it('ジャンル名だけなら通る', () => {
+    const r = v.validate(['// マイクロゲーム集の一本', validCode()].join('\n'));
+    expect(r.errors.some(e => e.code === 'IP_RISK')).toBe(false);
+  });
+});

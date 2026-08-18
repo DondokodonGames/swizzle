@@ -13,7 +13,7 @@
   var W = game.canvas.width;
   var H = game.canvas.height;
 
-  // 90s 16bit(SNES風の土と葉)
+  // 90s 16bit(土と葉のパレット)
   var C = {
     sky: '#2a1e3c', leaf: '#3fa34d', leafDk: '#1e6b34', bark: '#7a4a24',
     ripe: '#ffcf3f', ripeGlow: '#fff29a', dull: '#8a6a3a', red: '#e0483b',

@@ -1,4 +1,5 @@
 import { MECHANIC_IDS, ALLOWED_SE_IDS, ALLOWED_BGM_IDS } from './mechanics-v3.js';
+import { checkIpSafety } from './IpSafetyChecker.js';
 
 export interface CodeValidationError {
   code: string;
@@ -57,6 +58,20 @@ export class CodeGameValidator {
       if (pattern.test(code)) {
         warnings.push({ code: errCode, message, severity: 'warning' });
       }
+    }
+
+    // 1.5 権利安全性チェック（IP_SAFETY_RULES.md）
+    // 自動量産では寄りすぎが人間の目をすり抜けるため、生成物の全文を機械的に走査する。
+    // error は公開不可（= valid:false）。warning は公開名に使わない等の注意喚起。
+    const ip = checkIpSafety(code);
+    for (const v of ip.violations) {
+      const entry = {
+        code: 'IP_RISK',
+        message: `権利上の危険語「${v.term}」(${v.owner}) L${v.line}: ${v.note}`,
+        severity: v.severity,
+      };
+      if (v.severity === 'error') errors.push(entry);
+      else warnings.push(entry);
     }
 
     // 2. 構文チェック

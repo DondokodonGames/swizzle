@@ -40,6 +40,7 @@ needed_current,needed_action,priority,wave,batch,fix_items,keep_items,status,sco
 
 ### 必読(この順で)
 
+0. `docs/specifications/IP_SAFETY_RULES.md` — **権利ルール**。ジャンル/メカニクスは自由、固有名詞は完全オリジナル
 1. `docs/specifications/PLAY_GRAMMAR_V3.md` — **正典**。5秒の文法・テキストレス技法・ホワイトリスト・SEマッピング
 2. `docs/specifications/GAME_QUALITY_STANDARD_V2.md` — 合格基準とチェックリスト
 3. `docs/specifications/SANDBOX_API_V2.md` — 使えるAPI全部とレシピ(**ここに無いAPIは使わない**)
@@ -85,6 +86,8 @@ needed_current,needed_action,priority,wave,batch,fix_items,keep_items,status,sco
 - 禁止: `window.*` / `document.*` / `AudioContext` / `localStorage` / `fetch` / 無限ループ(バリデーターで落ちる)
 - `src/services/code-game/` や `src/ai/code/*.ts` 等のエンジン側は**触らない**
 - ファイル名・slugのリネーム禁止(DB `template_id` と統計が紐づいている)
+- **権利ルール**: 世界観・タイトル・描画文字列に実在タイトル名/キャラ名/権利者名を入れない。
+  「〇〇風」で作らない・名付けない(IP_SAFETY_RULES.md)。違反はバリデーターが `IP_RISK` で落とす
 
 ### 1ゲームごとのゲート(全部通ってから次へ)
 
@@ -102,6 +105,8 @@ if (!v.valid || s.total < 80) process.exit(1);
 "
 # 2) 実行時スモーク(エラー0 + GAME_END + WARN 0 + attract_motion)
 npm run games:smoke -- --files <<file1>> <<file2>> <<file3>>
+# 2.5) 権利チェック(コミット前に1回でよい。error があれば必ず直す)
+npm run games:ip
 # 3) 台帳照合: MAX_TIME/NEEDED が assignments の duration_target/needed_action と一致していること(目視)
 ```
 

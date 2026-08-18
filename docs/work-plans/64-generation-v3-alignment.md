@@ -30,7 +30,10 @@
    telegraph / 失敗hit-stop / SEマッピング / 変化軸)をシステムプロンプトに追加。
    ネタ側に variation / spice が未指定なら生成時にランダム割当(シード付き)して
    ヘッダーコメントに記録する
-4. **生成ゲート**: 生成後に validator(v3) + scorer ≥80 + smoke を必須化
+4. **権利ルールの保全**: `CodeGameGenerator` / `GameConceptGenerator` のプロンプトには
+   権利ルール(IP_SAFETY_RULES.md)の段落が既に入っている。プロンプトを組み直すときも
+   **必ず残す**。few-shot に選ぶ手本自体も `npm run games:ip` で error 0 のものに限る
+5. **生成ゲート**: 生成後に validator(v3) + scorer ≥80 + smoke を必須化
    (既存のオーケストレーター内ゲートを v3 基準に更新)
 
 ## 守ること

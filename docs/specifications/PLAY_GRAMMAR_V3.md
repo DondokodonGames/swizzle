@@ -1,13 +1,15 @@
 # PLAY GRAMMAR v3 — テキストで説明しない「遊びの文法」
 
 対象: `src/ai/code/examples/*.js` の全ゲームと今後の新規ゲーム。
-本書は **v3 リファクタ(WP61〜63・WP56改訂)の正典**。メイドインワリオ(5秒で伝わる1動詞)、
-リズム天国(音が先生)、マリオパーティ(開始と結末の祭り)から「遊びの伝え方」を移植する。
+本書は **v3 リファクタ(WP61〜63・WP56改訂)の正典**。移植するのは「遊びの伝え方」であって
+特定タイトルの意匠ではない: マイクロゲーム集の**5秒で伝わる1動詞**、リズムゲームの**音が先生**、
+ボードパーティの**開始と結末の祭り**。
+**寄せるのは文法まで。固有名詞・キャラ・独特のUIは完全オリジナル**(→ [IP_SAFETY_RULES.md](./IP_SAFETY_RULES.md))。
 
 > v2(GAME_QUALITY_STANDARD_V2)との関係: v2 は「手応え・見た目・音の最低保証」。
 > v3 はその上に「**説明文を読まなくても、見れば遊べる**」を積む。矛盾したら本書が優先。
 
-関連: [GAME_QUALITY_STANDARD_V2.md](./GAME_QUALITY_STANDARD_V2.md) / [SANDBOX_API_V2.md](./SANDBOX_API_V2.md) / [MECHANICS_CATALOG_V2.md](./MECHANICS_CATALOG_V2.md) / [ARCADE_ART_DIRECTION.md](./ARCADE_ART_DIRECTION.md) / 台帳: `docs/work-plans/ledger/game-assignments.csv`
+関連: [IP_SAFETY_RULES.md](./IP_SAFETY_RULES.md) / [GAME_QUALITY_STANDARD_V2.md](./GAME_QUALITY_STANDARD_V2.md) / [SANDBOX_API_V2.md](./SANDBOX_API_V2.md) / [MECHANICS_CATALOG_V2.md](./MECHANICS_CATALOG_V2.md) / [ARCADE_ART_DIRECTION.md](./ARCADE_ART_DIRECTION.md) / 台帳: `docs/work-plans/ledger/game-assignments.csv`
 
 ---
 

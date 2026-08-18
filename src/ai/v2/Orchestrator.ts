@@ -35,6 +35,7 @@ import { FailurePatternTracker } from './FailurePatternTracker';
 import { shouldAutoPublish } from './publishGate';
 import { compilePhases } from './PhaseCompiler';
 import { SupabaseUploader } from '../publishers/SupabaseUploader';
+import { filterIpSafeNetas } from '../code/IpSafetyChecker.js';
 import {
   GameConcept,
   LogicGeneratorOutput,
@@ -936,7 +937,18 @@ export class Orchestrator {
     }
 
     // 未処理エントリを取得
-    const pendingItems = netaData.items.filter(item => !processedIds.has(item.id));
+    // 権利ルール（IP_SAFETY_RULES.md）: 固有名詞つきのネタは生成前に落とす。
+    // 落としたネタは処理済みにしないので、書き換えれば次回拾われる。
+    const { safe: ipSafeItems, rejected: ipRejected } = filterIpSafeNetas(netaData.items);
+    if (ipRejected.length > 0) {
+      console.warn(`   ⚠️  権利ルールにより ${ipRejected.length} 件のネタを除外（IP_SAFETY_RULES.md）`);
+      for (const r of ipRejected.slice(0, 10)) {
+        console.warn(`      #${r.id} ${r.title} — ${r.terms.join(', ')}`);
+      }
+      if (ipRejected.length > 10) console.warn(`      ...他 ${ipRejected.length - 10} 件`);
+    }
+
+    const pendingItems = ipSafeItems.filter(item => !processedIds.has(item.id));
 
     if (pendingItems.length === 0) {
       console.log('\n✅ ネタ帳消化完了！完全ランダム生成モードに切り替えます。');
