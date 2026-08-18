@@ -46,6 +46,59 @@ export interface IpSafetyResult {
   licensedHits: Array<{ term: string; owner: string; line: number }>;
 }
 
+/**
+ * 表現の指紋（共起ルール）。
+ *
+ * 固有名詞を消しただけの「名前なしクローン」を捕まえるためのもの。
+ * 「赤白のボールを投げて捕まえる」「土管と赤い帽子」のように、**複数の具体的な意匠が
+ * 同時に揃った**ときだけ反応する。
+ *
+ * 設計上の線引き（IP_SAFETY_RULES.md §1 と同じ）:
+ *   メカニクスは自由。だから「ブロックを回転して行を消す」「同種を合体させて育てる」
+ *   「固定砲台で隊列を撃つ」はここに入れない — 入れると作れるはずのものが作れなくなる。
+ *   入れるのは**そのタイトル固有の見た目・配役**の組み合わせだけ。
+ */
+export interface IpCompositeRule {
+  term: string;
+  owner: string;
+  /** すべて満たしたときだけ違反にする */
+  all: RegExp[];
+  note: string;
+}
+
+export const IP_COMPOSITE_RULES: IpCompositeRule[] = [
+  {
+    term: '赤白ボールで捕獲（意匠の複製）',
+    owner: '任天堂/クリーチャーズ/GF',
+    all: [/赤白|紅白|上半分.{0,6}赤|red.{0,10}white/i, /ボール|球体|\bball\b/i, /捕ま|捕獲|ゲット|capture/i],
+    note: '「投げて捕獲する」メカニクスは自由。赤白の球という意匠を外し、独自の捕獲装置にする',
+  },
+  {
+    term: '土管＋赤帽子キャラ（意匠の複製）',
+    owner: '任天堂',
+    all: [/土管|緑.{0,4}パイプ|green\s*pipe/i, /赤.{0,4}(帽子|キャップ)|赤い?帽|red\s*cap/i],
+    note: 'ジャンプ・踏みつけのメカニクスは自由。土管と赤帽子の組み合わせをやめ、独自の世界観にする',
+  },
+  {
+    term: '迷路＋ゴースト＋エサ（配役の複製）',
+    owner: 'バンダイナムコ',
+    all: [/迷路|maze/i, /ゴースト|幽霊|\bghost/i, /エサ|餌|ペレット|pellet|ドット/i],
+    note: '追跡回避のメカニクスは自由。迷路×ゴースト×エサという配役をやめ、独自の追跡者と収集物にする',
+  },
+  {
+    term: 'パチンコ＋鳥＋ブタ（配役の複製）',
+    owner: 'Rovio',
+    all: [/パチンコ|スリングショット|slingshot|カタパルト/i, /鳥|バード|\bbird/i, /ブタ|豚|\bpig/i],
+    note: '弾道を狙って撃つメカニクスは自由。鳥とブタという配役をやめる',
+  },
+  {
+    term: 'テトロミノ7種の名指し（意匠の複製）',
+    owner: 'The Tetris Company',
+    all: [/テトロミノ|tetromino/i, /[IJLOSTZ][\s,、・]?[IJLOSTZ]/],
+    note: '落ち物パズルのメカニクスは自由。7種ミノの名称・形状セットをそのまま使わない',
+  },
+];
+
 /** 許諾済み（NDA/契約下で寄せてよい）権利者 */
 export const LICENSED_OWNERS = ['CAPCOM', 'SNK'] as const;
 
@@ -214,6 +267,22 @@ export function checkIpSafety(code: string, opts?: { filename?: string }): IpSaf
       });
       break; // 同一語は1ファイル1件に丸める（レポートを読める量に保つ）
     }
+  }
+
+  // 共起ルールはファイル全体（複数行にまたがる意匠の組み合わせ）で判定する
+  const whole = opts?.filename ? `${opts.filename}\n${code}` : code;
+  for (const rule of IP_COMPOSITE_RULES) {
+    if (!rule.all.every((re) => re.test(whole))) continue;
+    // 何行目の話かは特定できないので、最初に当たった行を代表として示す
+    const hitLine = targets.find(({ text }) => rule.all.some((re) => re.test(text)));
+    violations.push({
+      term: rule.term,
+      owner: rule.owner,
+      severity: 'error',
+      line: hitLine?.line ?? 0,
+      excerpt: hitLine ? excerptAround(hitLine.text) : '',
+      note: rule.note,
+    });
   }
 
   for (const entry of LICENSED_TERMS) {

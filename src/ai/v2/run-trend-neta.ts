@@ -21,6 +21,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { fileURLToPath } from 'url';
 import Anthropic from '@anthropic-ai/sdk';
+import { filterIpSafeNetas } from '../code/IpSafetyChecker.js';
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
@@ -84,6 +85,13 @@ function buildPrompt(source: TrendSource, nextId: number): string {
 
 # タスク
 このトレンドを知っている人が「あ、あれだ！」と笑って、思わずシェアしたくなるミニゲームのネタを2件、JSON配列で出力してください。
+
+# 権利ルール(最優先 / docs/specifications/IP_SAFETY_RULES.md)
+トレンドが特定の作品・キャラ・商品の話題であっても、**そのものを再現しない**。
+- 実在のタイトル名・キャラクター名・ブランド名・権利者名を title / idea に書かない
+- 「〇〇風」で発想しない・名付けない。借りてよいのは**ジャンルとメカニクスと状況**だけ
+- 名前を消しても意匠が残っていればNG(赤白の球で捕獲 / 緑の土管と赤い帽子 等)
+- 例: 「新作RPGが話題」→ 作品名やキャラを出さず「初見のボスの弱点を見抜く」遊びにする
 
 # 制約
 - 操作は タップ / スワイプ / 長押し / ドラッグ / 引っ張って離す のいずれか(スマホ縦画面・片手)
@@ -158,7 +166,14 @@ async function convertSource(
         : 'flash',
     });
   }
-  return valid;
+  // LLM出力は権利ルールを外すことがあるので、書き出す前に落とす。
+  // トレンドは特定作品の話題であることが多く、ここが最も汚染されやすい入口。
+  const { safe, rejected } = filterIpSafeNetas(valid);
+  if (rejected.length > 0) {
+    console.warn(`   ⚠️  権利ルールにより ${rejected.length} 件を破棄（IP_SAFETY_RULES.md）`);
+    for (const r of rejected) console.warn(`      ${r.title} — ${r.terms.join(', ')}`);
+  }
+  return safe;
 }
 
 async function main() {

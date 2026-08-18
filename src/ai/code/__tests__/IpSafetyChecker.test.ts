@@ -134,3 +134,38 @@ describe('filterIpSafeNetas — ネタ段階のふるい', () => {
     expect(safe).toHaveLength(1);
   });
 });
+
+// 「名前だけ消したクローン」= 意匠の共起で捕まえる層。
+// メカニクスは自由なので、メカニクスの記述だけでは絶対に落とさないことも同時に固定する。
+describe('checkIpSafety — 意匠の共起（名前なしクローン）', () => {
+  it('赤白の球で捕獲する意匠を落とす（固有名詞ゼロでも）', () => {
+    const r = checkIpSafety(wrap('赤白のボールを投げて生き物を捕まえる。30回タップで捕獲成功'));
+    expect(r.ok).toBe(false);
+    expect(r.violations[0].term).toContain('赤白ボール');
+  });
+
+  it('緑の土管＋赤帽子キャラを落とす', () => {
+    const r = checkIpSafety(wrap('緑の土管を赤い帽子のキャラがジャンプで越えていく'));
+    expect(r.ok).toBe(false);
+  });
+
+  it('迷路×ゴースト×エサの配役を落とす', () => {
+    const r = checkIpSafety(wrap('迷路の中でゴーストに追われながらエサを集める'));
+    expect(r.ok).toBe(false);
+  });
+
+  it('要素が揃わなければ落とさない（ゴーストだけ / 迷路だけ）', () => {
+    expect(checkIpSafety(wrap('廃病院でゴーストの気配をタップで払う')).violations).toHaveLength(0);
+    expect(checkIpSafety(wrap('迷路の出口までドラッグで導く')).violations).toHaveLength(0);
+  });
+
+  it('メカニクスだけの記述は落とさない（回転して行を消す・同種合体・固定砲台）', () => {
+    expect(checkIpSafety(wrap('落ちてくる形を回転させ、隙間なく詰めて行を消す')).violations).toHaveLength(0);
+    expect(checkIpSafety(wrap('同じ果物どうしを合体させて大きく育てる')).violations).toHaveLength(0);
+    expect(checkIpSafety(wrap('隊列で降りてくる侵略者を固定砲台で撃つ')).violations).toHaveLength(0);
+  });
+
+  it('投げて捕獲するメカニクス自体は通す（赤白でなければよい）', () => {
+    expect(checkIpSafety(wrap('藍色の封印石を投げて妖を捕まえる')).violations).toHaveLength(0);
+  });
+});
