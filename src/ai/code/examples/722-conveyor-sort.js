@@ -1,159 +1,316 @@
 // 722-conveyor-sort.js
-// コンベアソート — ベルトで流れる荷物を色で見分けて上下のレーンへ振り分ける
-// 操作: 青(A)は画面上、橙(B)は画面下をタップ。上下スワイプでも仕分けできる
-// 成功: 12個 正確に仕分ける  失敗: 3回 ミス or 22秒
+// 郵袋仕分け — 流れてくる袋を、行き先の棚へ上下に振り分ける
+// 操作: 手元に来た袋を、行き先の側へ上または下にスワイプ
+// 成功: 12袋 仕分ける  失敗: 3回 誤配 or 13秒
+// @mechanic: swipe_direction
+// @theme: western
+// 世界観: 西部の駅馬車郵便局。行き先の違う袋が一本のベルトで流れてくる
+// variation: 精度型(ベルトが速くなり、袋の間隔が詰まっていく)
+// spice: 黄金ターゲット(稀に金の袋。正しく振ると得点3倍)
+// スタイル: 8bit HOME
 
 (function(game) {
   var W = game.canvas.width;   // 1080
   var H = game.canvas.height;  // 1920
 
-  // ── パレット（ネオンアーケード、荷物色は保持） ──
-  var C = { bg:'#060408', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
-  var BOX_A = '#00cfff', BOX_B = '#ff6600';
+  // 8bit HOME: 3色 + 黒。輪郭線は持たない
+  var C = { black: '#0b0b12', cream: '#e8d8a0', rust: '#c85a2a', sky: '#4a9ad4', white: '#ffffff' };
 
-  // ── ゲーム定数 ──
-  var GAME_TITLE  = 'CONVEYOR SORT';
-  var HOW_TO_PLAY = 'BLUE (A) TO THE TOP · ORANGE (B) TO THE BOTTOM · TAP OR SWIPE';
-  var MAX_TIME = 22;
-  var NEEDED   = 12;         // 修正2: 35 → 12
-  var MAX_ERR  = 3;          // 修正2: 8 → 3
-  var LANE_A_Y = snap(H * 0.30), LANE_B_Y = snap(H * 0.60), BELT_Y = snap(H * 0.45), BOX_W = 110, BOX_H = 90, BOX_SPEED = 300;
+  var GAME_TITLE = 'MAIL SORT';
+  var MAX_TIME = 13;
+  var NEEDED = 12;
+  var MISS_LIMIT = 3;
 
-  // ── ステート ──
+  var LANE_Y = H * 0.56;        // ベルトの高さ
+  var GATE_X = W * 0.30;        // ここを過ぎると仕分けできない
+  var TOP_Y = H * 0.30;
+  var BOT_Y = H * 0.80;
+
   var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
   var state = S.ATTRACT;
   var resultSuccess = false, finalScore = 0;
 
-  // ── ゲーム変数 ──
-  var currentBox, spawnTimer, sentAnim, score, errors, timeLeft, done, elapsed, particles, flash, flashCol, resultText, resultTimer;
+  var bags, sorted, misses, score, totalTime, done, spawnTimer, beltX;
+  var ready, hitStop, feedback, feedbackOk, shake;
 
-  // ── ピクセル描画ヘルパー ──
-  function snap(v) { return Math.round(v / 8) * 8; }
-
-  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
-
-  function arrow(cx, cy, size, dir, color) { cx = snap(cx); cy = snap(cy); var st = 8; for (var i = 0; i < size; i += st) { var w = size - i; if (dir === 'up') game.draw.rect(cx - w / 2, cy - i + size / 2 - st, w, st, color, 0.6); else game.draw.rect(cx - w / 2, cy + i - size / 2, w, st, color, 0.6); } }
+  // 郵袋(2フレーム: ベルトで揺れる)
+  var BAG_A = [
+    '.RRRR.',
+    'RRRRRR',
+    'RRKKRR',
+    'RRRRRR',
+    'RRRRRR',
+    '.RRRR.',
+  ];
+  var BAG_B = [
+    '.RRRR.',
+    'RRRRRR',
+    'RRRRRR',
+    'RRKKRR',
+    'RRRRRR',
+    '.RRRR.',
+  ];
+  var UP_COL = { R: C.sky, K: C.black };
+  var DOWN_COL = { R: C.rust, K: C.black };
+  var GOLD_COL = { R: C.cream, K: C.black };
 
   function txt(str, x, y, sz, color, align) {
-    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x + 3, y + 4, { size: sz, color: C.black, bold: true, align: align || 'center' });
     game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
+  function scanlines() { for (var sy = 0; sy < H; sy += 8) game.draw.rect(0, sy, W, 2, '#000000', 0.16); }
 
-  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
-
-  function timeBar() {
-    var t = Math.ceil(timeLeft / MAX_TIME * 12);
-    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.e : '#0a0608');
+  function officeBg() {
+    game.draw.gradient(0, H, [[0, '#4a3520'], [0.5, '#2c1f14'], [1, '#160f0a']]);
+    // 遠景: 板壁のタイル反復(8bit HOMEの要)
+    for (var ry = 0; ry < 12; ry++) {
+      for (var rx = 0; rx < 9; rx++) {
+        var px = rx * 128 + (ry % 2 ? 64 : 0);
+        game.draw.rect(px, ry * 170, 120, 10, '#6a4c2a');
+      }
+    }
+    // 上下の棚(行き先)。色が行き先そのもの
+    game.draw.rect(0, TOP_Y - 110, W, 150, C.sky, 0.45);
+    game.draw.rect(0, TOP_Y + 40, W, 12, C.sky);
+    game.draw.sprite(BAG_A, UP_COL, W * 0.5, TOP_Y - 34, 18, { anchor: 'center' });
+    game.draw.rect(0, BOT_Y - 40, W, 150, C.rust, 0.45);
+    game.draw.rect(0, BOT_Y - 52, W, 12, C.rust);
+    game.draw.sprite(BAG_A, DOWN_COL, W * 0.5, BOT_Y + 36, 18, { anchor: 'center' });
+    // ベルト(1方向スクロール)
+    game.draw.rect(0, LANE_Y - 70, W, 140, '#7a6244');
+    for (var t = 0; t < 20; t++) {
+      var tx = ((t * 90 + beltX) % (W + 180)) - 90;
+      game.draw.rect(tx, LANE_Y - 70, 44, 140, '#5c4830');
+    }
+    // 仕分け線(ここを過ぎると届かない = telegraph)
+    game.draw.rect(GATE_X, LANE_Y - 80, 6, 160, C.cream, 0.8);
   }
 
-  function background() { game.draw.clear(C.bg); }
+  function spawn() {
+    var tight = Math.min(1, sorted / NEEDED);
+    var gold = Math.random() < 0.12;
+    bags.push({
+      x: W + 80,
+      up: Math.random() < 0.5,
+      gold: gold,
+      speed: 300 + tight * 220,
+      state: 'belt',
+      vy: 0,
+      y: LANE_Y,
+      pop: 0,
+    });
+  }
 
-  function spawnBox() { currentBox = { type: Math.random() < 0.5 ? 'A' : 'B', x: -BOX_W / 2, y: BELT_Y, sent: false }; }
-
-  function initGame() { currentBox = null; spawnTimer = 0.4; sentAnim = null; score = 0; errors = 0; timeLeft = MAX_TIME; done = false; elapsed = 0; particles = []; flash = 0; flashCol = C.b; resultText = ''; resultTimer = 0; spawnBox(); }
+  function initGame() {
+    bags = []; sorted = 0; misses = 0; score = 0; totalTime = 0; done = false;
+    spawnTimer = 0.15; beltX = 0; ready = 0.8; hitStop = 0;
+    feedback = 0; feedbackOk = false; shake = 0;
+  }
 
   function finish(success) {
     if (done) return;
-    done = true; resultSuccess = success;
-    finalScore = success ? (score * 400 + Math.ceil(timeLeft) * 100) : score * 120;
-    game.audio.play(success ? 'se_success' : 'se_failure');
-    state = S.RESULT;
-    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
-  }
-
-  function sendBox(dir) {
-    if (!currentBox || currentBox.sent) return;
-    currentBox.sent = true;
-    var correct = (dir === 'up' && currentBox.type === 'A') || (dir === 'down' && currentBox.type === 'B');
-    sentAnim = { x: currentBox.x, y: currentBox.y, vy: dir === 'up' ? -700 : 700, type: currentBox.type, correct: correct, life: 0.4 };
-    if (correct) {
-      score++; flash = 0.2; flashCol = C.b; game.audio.play('se_tap', 0.1);
-      if (score >= NEEDED) { currentBox = null; finish(true); return; }
+    done = true;
+    resultSuccess = success;
+    finalScore = score;
+    game.audio.stopBgm();
+    if (success) {
+      game.audio.play('se_success');
     } else {
-      errors++; flash = 0.3; flashCol = C.a; resultText = 'WRONG!'; resultTimer = 0.4; game.audio.play('se_failure', 0.3);
-      if (errors >= MAX_ERR) { currentBox = null; finish(false); return; }
+      game.audio.play('se_failure');
+      hitStop = 0.5; shake = 0.5;
+      game.fx.flash(C.rust, 0.25);
     }
-    currentBox = null; spawnTimer = 0.3;
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1600);
   }
 
-  function drawScene() {
-    game.draw.rect(0, LANE_A_Y - 60, W, 120, '#0c4a6e', 0.7); pc(80, LANE_A_Y, 40, BOX_A, 0.85); txt('A', 80, LANE_A_Y + 16, 48, C.g); arrow(W * 0.5 - 90, LANE_A_Y, 44, 'up', BOX_A); txt('BLUE', W * 0.5 + 40, LANE_A_Y + 14, 40, '#00cfff88');
-    game.draw.rect(0, LANE_B_Y - 60, W, 120, '#7c2d12', 0.7); pc(80, LANE_B_Y, 40, BOX_B, 0.85); txt('B', 80, LANE_B_Y + 16, 48, C.g); arrow(W * 0.5 - 90, LANE_B_Y, 44, 'down', BOX_B); txt('ORANGE', W * 0.5 + 60, LANE_B_Y + 14, 40, '#ff660088');
-    game.draw.rect(0, BELT_Y - 28, W, 56, '#1c1917', 0.9);
-    for (var bs = 0; bs < 12; bs++) { var bsx = (bs * 100 - (elapsed * 320) % 100 + 100) % (W + 100) - 50; game.draw.line(bsx, BELT_Y - 28, bsx - 30, BELT_Y + 28, '#2d2825', 8); }
-    if (sentAnim) { var sa = sentAnim; game.draw.rect(snap(sa.x - BOX_W / 2), snap(sa.y - BOX_H / 2), BOX_W, BOX_H, sa.correct ? C.b : C.a, sa.life * 2); }
-    if (currentBox && !currentBox.sent) {
-      var bCol = currentBox.type === 'A' ? BOX_A : BOX_B;
-      game.draw.rect(snap(currentBox.x - BOX_W / 2), snap(currentBox.y - BOX_H / 2), BOX_W, BOX_H, bCol, 0.92);
-      game.draw.rect(snap(currentBox.x - BOX_W / 2), snap(currentBox.y - BOX_H / 2), BOX_W, 12, C.g, 0.22);
-      txt(currentBox.type, currentBox.x, currentBox.y + 20, 64, C.g);
+  function headBag() {
+    // 仕分け線より右にある、いちばん手前の袋
+    var best = null;
+    for (var i = 0; i < bags.length; i++) {
+      var b = bags[i];
+      if (b.state !== 'belt' || b.x < GATE_X) continue;
+      if (!best || b.x < best.x) best = b;
+    }
+    return best;
+  }
+
+  function sort(dir) {
+    var b = headBag();
+    if (!b) return;
+    var correct = (dir === 'up' && b.up) || (dir === 'down' && !b.up);
+    if (correct) {
+      sorted++;
+      var gain = b.gold ? 300 : 100;
+      score += gain;
+      b.state = 'fly';
+      b.vy = dir === 'up' ? -1500 : 1500;
+      b.pop = 0.2;
+      feedback = 0.3; feedbackOk = true;
+      game.feedback.good(b.x, b.y, { text: '+' + gain, color: b.gold ? C.cream : C.sky });
+      game.audio.play(b.gold ? 'se_milestone' : 'se_success', 0.5);
+      if (sorted >= NEEDED) finish(true);
+    } else {
+      misses++;
+      b.state = 'fly';
+      b.vy = dir === 'up' ? -1500 : 1500;
+      feedback = 0.4; feedbackOk = false;
+      hitStop = 0.3; shake = 0.3;
+      game.audio.play('se_failure', 0.6);
+      game.feedback.bad(b.x, b.y, { text: 'MISS' });
+      if (misses >= MISS_LIMIT) finish(false);
     }
   }
 
-  // ── 入力 ──
-  game.onTap(function(tx, ty) {
-    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+  function drawBag(b) {
+    var wob = Math.floor(game.time.elapsed * 10 + b.x * 0.02) % 2 === 0;
+    var col = b.gold ? GOLD_COL : (b.up ? UP_COL : DOWN_COL);
+    var scale = 21 * (1 + b.pop * 1.5);
+    // telegraph: 仕分け線に近い袋は足元が光り「次はこれ」と示す
+    if (b.state === 'belt' && b === headBag()) {
+      game.draw.circle(b.x, b.y + 70, 40, C.cream, 0.35);
+    }
+    if (b.gold) game.draw.circle(b.x, b.y, 70, C.cream, 0.22);
+    game.draw.sprite(wob ? BAG_A : BAG_B, col, b.x, b.y, scale, { anchor: 'center' });
+  }
+
+  game.onTap(function() {
+    if (state === S.ATTRACT) { game.audio.play('se_coin'); state = S.PLAYING; initGame(); return; }
     if (state === S.RESULT) { state = S.ATTRACT; return; }
-    if (done || !currentBox || currentBox.sent) return;
-    sendBox(ty < H / 2 ? 'up' : 'down');
   });
 
   game.onSwipe(function(dir) {
-    if (state !== S.PLAYING || done || !currentBox || currentBox.sent) return;
-    if (dir === 'up') sendBox('up'); else if (dir === 'down') sendBox('down');
+    if (state !== S.PLAYING || done || ready > 0 || hitStop > 0) return;
+    if (dir === 'up' || dir === 'down') sort(dir);
   });
 
-  // ── 更新 & 描画 ──
+  // ── ATTRACT ゴースト実演: 手が袋に添えられ、色の側へ振る ──
+  var demo = { t: 0, gx: W * 0.5, gy: LANE_Y, press: false, bx: W + 60, up: true };
+  function stepDemo(dt) {
+    demo.t += dt;
+    demo.bx -= 320 * dt;
+    if (demo.bx < GATE_X - 100) { demo.bx = W + 60; demo.up = !demo.up; }
+    var atGate = demo.bx < W * 0.62 && demo.bx > GATE_X;
+    if (atGate) {
+      var ty = demo.up ? TOP_Y : BOT_Y;
+      demo.gx += (demo.bx - demo.gx) * Math.min(1, dt * 5);
+      demo.gy += (ty - demo.gy) * Math.min(1, dt * 3);
+      if (!demo.press) {
+        demo.press = true;
+        game.feedback.good(demo.bx, LANE_Y, { text: '+100', color: demo.up ? C.sky : C.rust });
+      }
+    } else {
+      demo.press = false;
+      demo.gy += (LANE_Y - demo.gy) * Math.min(1, dt * 4);
+    }
+  }
+
   game.onUpdate(function(dt) {
     if (state === S.ATTRACT) {
-      if (!currentBox) initGame(); background(); drawScene();
-      txt(GAME_TITLE, W / 2, H * 0.10, 74, C.c);
-      txt(HOW_TO_PLAY, W / 2, H * 0.14, 20, C.b);
-      if (Math.floor(game.time.elapsed * 8) % 2 === 0) txt('► 100円 投入 ◄ TAP TO START', W / 2, H * 0.88, 40, C.a);
+      beltX = (beltX - 180 * dt) % 10000;
+      officeBg();
+      stepDemo(dt);
+      var wob0 = Math.floor(game.time.elapsed * 10) % 2 === 0;
+      game.draw.sprite(wob0 ? BAG_A : BAG_B, demo.up ? UP_COL : DOWN_COL, demo.bx, LANE_Y, 21, { anchor: 'center' });
+      game.draw.hand(demo.gx, demo.gy, { press: demo.press, scale: 16 });
+      txt(GAME_TITLE, W / 2, H * 0.10, 76, C.cream);
+      txt('BEST ' + String(game.best).padStart(6, '0'), W / 2, H * 0.15, 40, C.sky);
+      if (Math.floor(game.time.elapsed * 1.8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.90, 60, C.rust);
+        txt('TAP TO START', W / 2, H * 0.95, 46, C.cream);
+      } else {
+        txt('INSERT COIN', W / 2, H * 0.95, 38, '#7a6a48');
+      }
       scanlines();
       return;
     }
 
     if (state === S.RESULT) {
-      background();
-      txt(resultSuccess ? 'SHIPPED CLEAN!' : 'WRONG BIN', W / 2, H * 0.35, 58, resultSuccess ? C.b : C.a);
-      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
-      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      officeBg();
+      if (hitStop > 0) hitStop -= dt;
+      if (shake > 0) shake -= dt;
+      txt(resultSuccess ? 'CLEAR' : 'GAME OVER', W / 2, H * 0.44, 96, resultSuccess ? C.sky : C.rust);
+      txt('SCORE ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.55, 58, C.cream);
+      var best = Math.max(game.best, finalScore);
+      txt('BEST ' + String(best).padStart(6, '0'), W / 2, H * 0.62, 44, C.sky);
+      if (resultSuccess && finalScore > game.best && game.best > 0 && Math.floor(game.time.elapsed * 3) % 2 === 0) {
+        txt('NEW RECORD', W / 2, H * 0.70, 54, C.cream);
+      } else if (Math.floor(game.time.elapsed * 2) % 2 === 0) {
+        txt('TAP TO CONTINUE', W / 2, H * 0.75, 46, C.cream);
+      }
       scanlines();
       return;
     }
 
-    // PLAYING
+    // ── PLAYING ──
     if (!done) {
-      timeLeft -= dt; elapsed += dt;
-      if (timeLeft <= 0) { finish(false); return; }
-      if (flash > 0) flash -= dt * 3; if (resultTimer > 0) resultTimer -= dt;
-      if (currentBox && !currentBox.sent) {
-        currentBox.x += BOX_SPEED * dt;
-        if (currentBox.x > W + BOX_W / 2) {
-          errors++; flash = 0.3; flashCol = C.a; resultText = 'MISSED!'; resultTimer = 0.4; game.audio.play('se_failure', 0.3); currentBox = null; spawnTimer = 0.3;
-          if (errors >= MAX_ERR) { finish(false); return; }
+      if (hitStop > 0) {
+        hitStop -= dt;
+      } else if (ready > 0) {
+        ready -= dt;
+        if (ready <= 0) game.audio.play('se_tap');
+      } else {
+        totalTime += dt;
+        beltX = (beltX - 260 * dt) % 10000;
+        if (totalTime >= MAX_TIME) { finish(false); return; }
+        spawnTimer -= dt;
+        if (spawnTimer <= 0) {
+          spawn();
+          spawnTimer = Math.max(0.42, 0.85 - sorted * 0.035);
+        }
+        for (var i = bags.length - 1; i >= 0; i--) {
+          var b = bags[i];
+          if (b.state === 'belt') {
+            b.x -= b.speed * dt;
+            if (b.x < -80) {
+              // 仕分けそびれ = 誤配と同じ重さで数える
+              bags.splice(i, 1);
+              misses++;
+              feedback = 0.4; feedbackOk = false;
+              game.audio.play('se_failure', 0.5);
+              game.feedback.bad(60, LANE_Y, { text: 'MISS' });
+              if (misses >= MISS_LIMIT) { finish(false); return; }
+            }
+          } else {
+            b.y += b.vy * dt;
+            b.x -= b.speed * 0.3 * dt;
+            if (b.y < -100 || b.y > H + 100) bags.splice(i, 1);
+          }
+          if (b.pop > 0) b.pop -= dt;
         }
       }
-      if (spawnTimer > 0) { spawnTimer -= dt; if (spawnTimer <= 0 && !currentBox) spawnBox(); }
-      if (!currentBox && spawnTimer <= 0) spawnBox();
-      if (sentAnim) { sentAnim.y += sentAnim.vy * dt; sentAnim.life -= dt * 2.5; if (sentAnim.life <= 0) sentAnim = null; }
+      if (feedback > 0) feedback -= dt;
+      if (shake > 0) shake -= dt;
     }
 
-    // ---- 描画 ----
-    background(); drawScene();
-    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.08);
-    if (resultTimer > 0) txt(resultText, W / 2, snap(H * 0.75), 56, C.a);
+    // draw
+    officeBg();
+    for (var k = 0; k < bags.length; k++) drawBag(bags[k]);
 
-    timeBar();
-    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
-    txt(score + ' / ' + NEEDED, W / 2, 168, 48, C.b);
-    for (var ei = 0; ei < MAX_ERR; ei++) game.draw.rect(snap(W / 2 + (ei - (MAX_ERR - 1) / 2) * 56) - 10, 224, 20, 20, ei < errors ? C.a : '#0a0608');
+    // HUD
+    var frac = Math.max(0, 1 - totalTime / MAX_TIME);
+    game.draw.rect(60, 40, W - 120, 22, '#5c4830');
+    game.draw.rect(60, 40, (W - 120) * frac, 22, frac < 0.25 ? C.rust : C.sky);
+    txt('SCORE ' + String(score).padStart(6, '0'), W / 2, 92, 42, C.cream);
+    txt(sorted + ' / ' + NEEDED, W * 0.16, 150, 44, C.sky);
+    for (var m = 0; m < MISS_LIMIT; m++) {
+      game.draw.rect(W * 0.80 + m * 52, 134, 40, 30, m < (MISS_LIMIT - misses) ? C.cream : '#5c4830');
+    }
+
+    if (ready > 0) txt(ready > 0.35 ? 'READY?' : 'GO!', W / 2, H * 0.46, 96, C.cream);
+    if (feedback > 0 && !feedbackOk && NEEDED - sorted <= 3) txt('あと' + (NEEDED - sorted) + '袋', W / 2, H * 0.24, 50, C.cream);
+
     scanlines();
   });
 
   game.onStart(function() {
-    game.audio.bgm('bgm_main', 0.04);
+    // 8bit HOME: 矩形波2 + 三角ベースの素朴な行進曲
+    game.audio.melody(
+      [['G4', 0.25], ['G4', 0.25], ['E4', 0.5], ['G4', 0.25], ['A4', 0.25], ['G4', 0.5],
+       ['F4', 0.25], ['E4', 0.25], ['D4', 0.5], ['E4', 0.5], ['G4', 0.5]],
+      { tempo: 150, wave: 'square', volume: 0.09, loop: true,
+        bass: [['C3', 0.5], ['C3', 0.5], ['G2', 0.5], ['G2', 0.5]], bassWave: 'triangle', bassVolume: 0.07 }
+    );
     state = S.ATTRACT;
     initGame();
   });
