@@ -1,143 +1,287 @@
 // 572-balloon-pop.js
-// バルーンポップ — 上部に指定された色の風船だけをタップで割る。違う色を割るとミス
-// 操作: 指定色（バナー表示）の風船をタップで割る（誤った色を割ると指定色が変わる）
-// 成功: 指定色を 8個 割る  失敗: 3回 誤爆 or 18秒
+// 封印選び — 壁に浮かぶ無数の印から、掲げられた1つだけを見つけて潰す
+// 操作: 上に掲げられた印と同じ印をタップ
+// 成功: 8個 見つける  失敗: 3回 別の印を潰す or 13秒
+// @mechanic: spot
+// @theme: dungeon
+// 世界観: 遺跡の封印室。壁に浮く偽の印に触れると松明が1つ落ちる
+// variation: 精度型(印が小さくなり、似た形が混ざっていく)
+// spice: 黄金ターゲット(稀に光る印が出る。潰すと得点3倍)
+// 注: 様式が単色のため「色で見分ける」は成立しない。見分けの手がかりを色→印の形に置き換えた
+// スタイル: 70s MONO
 
 (function(game) {
   var W = game.canvas.width;   // 1080
   var H = game.canvas.height;  // 1920
 
-  // ── パレット（ネオンアーケード、縁日） ──
-  var C = { bg:'#0a0614', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
-  var BALLOONS = [
-    { fill: '#ff2079', name: 'PINK' },
-    { fill: '#00cfff', name: 'CYAN' },
-    { fill: '#00ff9f', name: 'GREEN' },
-    { fill: '#ffe600', name: 'YELLOW' },
-    { fill: '#7700ff', name: 'PURPLE' }
-  ];
+  // 70s MONO パレット(白ドット + 帯のセロハン単色)
+  var C = { white: '#ffffff', dim: '#9a9a9a', dark: '#2a2a2a', band1: '#39ff6a', band2: '#ff9a2a' };
 
-  // ── ゲーム定数 ──
-  var GAME_TITLE  = 'BALLOON POP';
-  var HOW_TO_PLAY = 'POP ONLY THE BALLOONS OF THE TARGET COLOR SHOWN ABOVE';
-  var MAX_TIME = 18;
-  var NEEDED   = 8;          // 修正2: 25 → 8
-  var MAX_WRONG = 3;         // 修正2: 10 → 3
+  var GAME_TITLE = 'SEAL HUNT';
+  var MAX_TIME = 13;
+  var NEEDED = 8;
+  var MISS_LIMIT = 3;
 
-  // ── ステート ──
   var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
   var state = S.ATTRACT;
   var resultSuccess = false, finalScore = 0;
 
-  // ── ゲーム変数 ──
-  var target, balloons, popped, wrongPops, timeLeft, done, particles, nextBalloon, flash, flashCol;
+  var seals, wanted, found, misses, score, totalTime, done;
+  var ready, hitStop, feedback, feedbackOk, shake, goldTimer;
 
-  // ── ピクセル描画ヘルパー ──
-  function snap(v) { return Math.round(v / 8) * 8; }
-
-  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+  // 印は4種の形。単色なので「形」だけが手がかりになる
+  var GLYPHS = [
+    ['.XX.', 'X..X', 'X..X', '.XX.'],   // 0: 環
+    ['XXXX', '.X..', '.X..', 'XXXX'],   // 1: 柱
+    ['X..X', '.XX.', '.XX.', 'X..X'],   // 2: 交差
+    ['XXXX', 'X...', 'X...', 'XXXX'],   // 3: 鉤
+  ];
+  var GLYPH_COL = { X: C.white };
+  var GLYPH_GOLD = { X: C.band2 };
 
   function txt(str, x, y, sz, color, align) {
-    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x + 3, y + 4, { size: sz, color: '#000000', bold: true, align: align || 'center' });
     game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
+  function scanlines() { for (var sy = 0; sy < H; sy += 8) game.draw.rect(0, sy, W, 2, '#000000', 0.22); }
 
-  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
-
-  function timeBar() {
-    var t = Math.ceil(timeLeft / MAX_TIME * 12);
-    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.f : '#140a20');
+  function stoneBg() {
+    game.draw.gradient(0, H, [[0, '#101010'], [0.5, '#050505'], [1, '#000000']]);
+    // 遠景: 石壁の目地
+    for (var ry = 0; ry < 14; ry++) {
+      game.draw.line(0, 180 + ry * 130, W, 180 + ry * 130, C.dark, 3);
+      var off = ry % 2 ? 130 : 0;
+      for (var rx = 0; rx < 5; rx++) game.draw.line(off + rx * 260, 180 + ry * 130, off + rx * 260, 310 + ry * 130, C.dark, 3);
+    }
+    // 70s MONO の要: 画面帯ごとの単色オーバーレイ(ブラウン管のセロハン)
+    game.draw.rect(0, 0, W, H * 0.30, C.band2, 0.12);
+    game.draw.rect(0, H * 0.62, W, H * 0.38, C.band1, 0.10);
   }
 
-  function background() { game.draw.clear(C.bg); }
+  function makeSeal(i) {
+    // 精度型: 進むほど小さく、似た形(環と交差)が混ざりやすくなる
+    var tight = Math.min(1, found / NEEDED);
+    var px = 16 - tight * 5;
+    return {
+      g: Math.floor(Math.random() * GLYPHS.length),
+      x: 120 + Math.random() * (W - 240),
+      y: H * 0.34 + Math.random() * (H * 0.50),
+      px: px,
+      gold: false,
+      pop: 0,
+      id: i,
+    };
+  }
 
-  function spawnBalloon() { var ci = Math.floor(Math.random() * BALLOONS.length), r = 50 + Math.random() * 26; balloons.push({ x: r + Math.random() * (W - r * 2), y: H + r + 20, r: r, colorIdx: ci, vy: -(140 + Math.random() * 100), vx: (Math.random() - 0.5) * 60, wobble: Math.random() * Math.PI * 2, wobbleSpeed: 2 + Math.random() * 2 }); }
+  function layout() {
+    seals = [];
+    var n = 9 + Math.min(6, found);
+    for (var i = 0; i < n; i++) seals.push(makeSeal(i));
+    // 正解が最低1つ含まれることを保証する
+    var has = false;
+    for (var k = 0; k < seals.length; k++) if (seals[k].g === wanted) has = true;
+    if (!has) seals[Math.floor(Math.random() * seals.length)].g = wanted;
+    // 黄金ターゲット: たまに1つだけ光る正解を混ぜる
+    if (goldTimer <= 0 && Math.random() < 0.3) {
+      for (var m = 0; m < seals.length; m++) {
+        if (seals[m].g === wanted) { seals[m].gold = true; goldTimer = 4; break; }
+      }
+    }
+  }
 
-  function initGame() { target = Math.floor(Math.random() * BALLOONS.length); balloons = []; popped = 0; wrongPops = 0; timeLeft = MAX_TIME; done = false; particles = []; nextBalloon = 0.5; flash = 0; flashCol = C.b; }
+  function initGame() {
+    wanted = Math.floor(Math.random() * GLYPHS.length);
+    found = 0; misses = 0; score = 0; totalTime = 0; done = false;
+    ready = 0.8; hitStop = 0; feedback = 0; feedbackOk = false; shake = 0; goldTimer = 0;
+    layout();
+  }
 
   function finish(success) {
     if (done) return;
-    done = true; resultSuccess = success;
-    finalScore = success ? (popped * 500 + Math.ceil(timeLeft) * 100) : popped * 150;
-    game.audio.play(success ? 'se_success' : 'se_failure');
+    done = true;
+    resultSuccess = success;
+    finalScore = score;
+    game.audio.stopBgm();
+    if (success) {
+      game.audio.play('se_success');
+    } else {
+      game.audio.play('se_failure');
+      hitStop = 0.5; shake = 0.5;
+      game.fx.flash(C.white, 0.2);
+    }
     state = S.RESULT;
-    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1600);
   }
 
-  function drawScene() {
-    for (var i = 0; i < balloons.length; i++) {
-      var b = balloons[i], col = BALLOONS[b.colorIdx].fill, wx = Math.sin(b.wobble) * 8, isT = b.colorIdx === target;
-      game.draw.rect(snap(b.x + wx) - 1, snap(b.y + b.r), 2, 80, '#8b7355', 0.9);
-      pc(b.x + wx, b.y, b.r, col, 0.9); pc(b.x + wx - b.r * 0.25, b.y - b.r * 0.25, b.r * 0.3, C.g, 0.5);
-      if (isT) pc(b.x + wx, b.y, b.r + 12, col, 0.2 + Math.sin(game.time.elapsed * 6) * 0.1);
+  function hit(s, x, y) {
+    if (s.g === wanted) {
+      found++;
+      var gain = s.gold ? 300 : 100;
+      score += gain;
+      s.pop = 0.25;
+      feedback = 0.35; feedbackOk = true;
+      game.feedback.good(x, y, { text: '+' + gain, color: C.white });
+      game.audio.play(s.gold ? 'se_milestone' : 'se_success', 0.5);
+      game.fx.burst(x, y, { color: s.gold ? C.band2 : C.white, count: 10, speed: 320 });
+      if (found >= NEEDED) { finish(true); return; }
+      // 次の一手: お題を変えて壁を組み直す
+      wanted = Math.floor(Math.random() * GLYPHS.length);
+      layout();
+    } else {
+      misses++;
+      feedback = 0.4; feedbackOk = false;
+      hitStop = 0.32; shake = 0.32;
+      game.audio.play('se_failure', 0.6);
+      game.feedback.bad(x, y, { text: 'MISS' });
+      if (misses >= MISS_LIMIT) finish(false);
     }
   }
 
-  // ── 入力 ──
-  game.onTap(function(tx, ty) {
-    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+  function drawSeal(s) {
+    var art = GLYPHS[s.g];
+    var scale = s.px * (1 + s.pop * 2);
+    var glow = s.gold && Math.floor(game.time.elapsed * 8) % 2 === 0;
+    if (s.gold) game.draw.circle(s.x, s.y, scale * 4, C.band2, glow ? 0.35 : 0.18);
+    game.draw.sprite(art, s.gold ? GLYPH_GOLD : GLYPH_COL, s.x, s.y, scale, { anchor: 'center' });
+  }
+
+  // 上部の掲示: 探す印(telegraph)
+  function wantedBoard(g, big) {
+    game.draw.rect(W / 2 - 190, 118, 380, 190, '#000000');
+    game.draw.rect(W / 2 - 190, 118, 380, 6, C.white, 0.7);
+    game.draw.rect(W / 2 - 190, 302, 380, 6, C.white, 0.7);
+    var pulse = big ? 26 + Math.sin(game.time.elapsed * 6) * 2 : 24;
+    game.draw.sprite(GLYPHS[g], GLYPH_COL, W / 2, 214, pulse, { anchor: 'center' });
+  }
+
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_coin'); state = S.PLAYING; initGame(); return; }
     if (state === S.RESULT) { state = S.ATTRACT; return; }
-    if (done) return;
-    for (var i = balloons.length - 1; i >= 0; i--) {
-      var b = balloons[i]; if (Math.hypot(tx - b.x, ty - b.y) < b.r + 10) {
-        var col = BALLOONS[b.colorIdx].fill; for (var pi = 0; pi < 10; pi++) { var a = Math.random() * Math.PI * 2; particles.push({ x: b.x, y: b.y, vx: Math.cos(a) * 220, vy: Math.sin(a) * 220, life: 0.5, col: col }); }
-        var isC = b.colorIdx === target; balloons.splice(i, 1);
-        if (isC) { popped++; flash = 0.2; flashCol = C.b; game.audio.play('se_success', 0.6); if (popped >= NEEDED) { finish(true); return; } }
-        else { wrongPops++; flash = 0.3; flashCol = C.a; game.audio.play('se_failure', 0.3); target = Math.floor(Math.random() * BALLOONS.length); if (wrongPops >= MAX_WRONG) { finish(false); return; } }
-        return;
-      }
+    if (done || ready > 0 || hitStop > 0) return;
+    for (var i = 0; i < seals.length; i++) {
+      var s = seals[i];
+      var r = s.px * 2.4;
+      if (Math.abs(x - s.x) < r && Math.abs(y - s.y) < r) { hit(s, x, y); return; }
     }
+    // 何も無い壁を叩いた: 空振りは減点しないが手応えは返す
+    game.feedback.bad(x, y, { text: 'MISS' });
+    feedback = 0.25; feedbackOk = false;
+    game.audio.play('se_tap', 0.3);
   });
 
-  // ── 更新 & 描画 ──
+  // ── ATTRACT ゴースト実演: 掲示の印と同じものへ手が伸びて潰す ──
+  var demo = { t: 0, gx: W / 2, gy: H * 0.5, press: false, target: null, want: 0 };
+  function demoSeals() {
+    return [
+      { g: 0, x: W * 0.30, y: H * 0.50, px: 16 },
+      { g: 1, x: W * 0.68, y: H * 0.44, px: 16 },
+      { g: 2, x: W * 0.50, y: H * 0.68, px: 16 },
+    ];
+  }
+  function stepDemo(dt) {
+    demo.t += dt;
+    var list = demoSeals();
+    var cyc = demo.t % 2.4;
+    demo.want = Math.floor(demo.t / 2.4) % 3;
+    var tgt = list[demo.want];
+    if (cyc < 1.4) {
+      demo.gx += (tgt.x - demo.gx) * Math.min(1, dt * 3.5);
+      demo.gy += (tgt.y - demo.gy) * Math.min(1, dt * 3.5);
+      demo.press = false;
+    } else if (cyc < 1.8) {
+      if (!demo.press) {
+        demo.press = true;
+        game.feedback.good(tgt.x, tgt.y, { text: '+100', color: C.white });
+      }
+    } else {
+      demo.press = false;
+    }
+    return list;
+  }
+
   game.onUpdate(function(dt) {
     if (state === S.ATTRACT) {
-      if (!balloons) initGame(); background(); drawScene();
-      txt(GAME_TITLE, W / 2, H * 0.30, 82, C.c);
-      txt(HOW_TO_PLAY, W / 2, H * 0.345, 20, C.b);
-      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
-        txt('► 100円 投入 ◄', W / 2, H * 0.52, 56, C.a);
-        txt('TAP TO START', W / 2, H * 0.56, 42, C.g);
+      stoneBg();
+      var list = stepDemo(dt);
+      wantedBoard(list[demo.want].g, true);
+      for (var i0 = 0; i0 < list.length; i0++) {
+        game.draw.sprite(GLYPHS[list[i0].g], GLYPH_COL, list[i0].x, list[i0].y, list[i0].px, { anchor: 'center' });
+      }
+      game.draw.hand(demo.gx, demo.gy, { press: demo.press, scale: 16 });
+      txt(GAME_TITLE, W / 2, H * 0.06, 74, C.white);
+      txt('BEST ' + String(game.best).padStart(6, '0'), W / 2, H * 0.10, 38, C.band1);
+      if (Math.floor(game.time.elapsed * 1.8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.86, 60, C.band2);
+        txt('TAP TO START', W / 2, H * 0.92, 46, C.white);
+      } else {
+        txt('INSERT COIN', W / 2, H * 0.92, 38, C.dim);
       }
       scanlines();
       return;
     }
 
     if (state === S.RESULT) {
-      background();
-      txt(resultSuccess ? 'ALL POPPED!' : 'TOO MANY MISSES', W / 2, H * 0.35, 62, resultSuccess ? C.b : C.a);
-      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
-      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      stoneBg();
+      if (hitStop > 0) hitStop -= dt;
+      if (shake > 0) shake -= dt;
+      txt(resultSuccess ? 'CLEAR' : 'GAME OVER', W / 2, H * 0.42, 96, C.white);
+      txt('SCORE ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.53, 58, C.band1);
+      var best = Math.max(game.best, finalScore);
+      txt('BEST ' + String(best).padStart(6, '0'), W / 2, H * 0.60, 44, C.dim);
+      if (resultSuccess && finalScore > game.best && game.best > 0 && Math.floor(game.time.elapsed * 3) % 2 === 0) {
+        txt('NEW RECORD', W / 2, H * 0.68, 54, C.band2);
+      } else if (Math.floor(game.time.elapsed * 2) % 2 === 0) {
+        txt('TAP TO CONTINUE', W / 2, H * 0.73, 46, C.white);
+      }
       scanlines();
       return;
     }
 
-    // PLAYING
+    // ── PLAYING ──
     if (!done) {
-      timeLeft -= dt;
-      if (timeLeft <= 0) { finish(false); return; }
-      if (flash > 0) flash -= dt * 4;
-      nextBalloon -= dt; if (nextBalloon <= 0) { spawnBalloon(); if (Math.random() < 0.3) spawnBalloon(); nextBalloon = 0.4 + Math.random() * 0.5; }
-      for (var i = balloons.length - 1; i >= 0; i--) { var b = balloons[i]; b.x += b.vx * dt; b.y += b.vy * dt; b.wobble += b.wobbleSpeed * dt; if (b.x - b.r < 0) { b.x = b.r; b.vx = Math.abs(b.vx); } if (b.x + b.r > W) { b.x = W - b.r; b.vx = -Math.abs(b.vx); } if (b.y + b.r < -20) balloons.splice(i, 1); }
-      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 300 * dt; p.life -= dt * 2; if (p.life <= 0) particles.splice(pp, 1); }
+      if (hitStop > 0) {
+        hitStop -= dt;
+      } else if (ready > 0) {
+        ready -= dt;
+        if (ready <= 0) game.audio.play('se_tap');
+      } else {
+        totalTime += dt;
+        if (goldTimer > 0) goldTimer -= dt;
+        if (totalTime >= MAX_TIME) { finish(false); return; }
+      }
+      for (var p = 0; p < seals.length; p++) if (seals[p].pop > 0) seals[p].pop -= dt;
+      if (feedback > 0) feedback -= dt;
+      if (shake > 0) shake -= dt;
     }
 
-    // ---- 描画 ----
-    background(); drawScene();
-    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 6, snap(particles[pp2].y) - 6, 12, 12, particles[pp2].col, particles[pp2].life * 1.5);
-    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.12);
+    // draw
+    stoneBg();
+    for (var i = 0; i < seals.length; i++) drawSeal(seals[i]);
+    wantedBoard(wanted, true);
 
-    var tc = BALLOONS[target];
-    pc(W / 2 - 180, 156, 30, tc.fill, 0.95); txt('POP ' + tc.name, W / 2 + 30, 170, 46, tc.fill);
-    timeBar();
-    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
-    txt(popped + ' / ' + NEEDED, W / 2, 232, 44, C.b);
-    for (var wi = 0; wi < MAX_WRONG; wi++) game.draw.rect(snap(W / 2 + (wi - (MAX_WRONG - 1) / 2) * 56) - 10, 268, 20, 20, wi < wrongPops ? C.a : '#140a20');
+    // HUD: 残時間 + スコア + 進捗 + 残り松明(ミス許容)
+    var frac = Math.max(0, 1 - totalTime / MAX_TIME);
+    game.draw.rect(60, 40, W - 120, 22, C.dark);
+    game.draw.rect(60, 40, (W - 120) * frac, 22, frac < 0.25 ? C.band2 : C.band1);
+    txt('SCORE ' + String(score).padStart(6, '0'), W / 2, 92, 42, C.white);
+    txt(found + ' / ' + NEEDED, W * 0.16, 214, 46, C.band1);
+    for (var t = 0; t < MISS_LIMIT; t++) {
+      game.draw.circle(W * 0.86 - t * 56, 214, 18, t < (MISS_LIMIT - misses) ? C.band2 : C.dark);
+    }
+
+    if (ready > 0) txt(ready > 0.35 ? 'READY?' : 'GO!', W / 2, H * 0.52, 96, C.white);
+    if (feedback > 0 && !feedbackOk && NEEDED - found <= 3) txt('あと' + (NEEDED - found) + '個', W / 2, H * 0.30, 50, C.band2);
+
     scanlines();
   });
 
   game.onStart(function() {
-    game.audio.bgm('bgm_main', 0.08);
+    // 70s MONO: 矩形波の単音。無音の間が緊張を作る
+    game.audio.melody(
+      [['A3', 0.5], ['R', 0.5], ['C4', 0.5], ['R', 0.5], ['E4', 0.5], ['R', 0.5], ['C4', 1],
+       ['G3', 0.5], ['R', 0.5], ['B3', 0.5], ['R', 1.5]],
+      { tempo: 120, wave: 'square', volume: 0.08, loop: true }
+    );
     state = S.ATTRACT;
     initGame();
   });
