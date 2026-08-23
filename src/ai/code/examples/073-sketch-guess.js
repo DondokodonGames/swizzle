@@ -1,152 +1,307 @@
 // 073-sketch-guess.js
-// スケッチゲス — 少しずつ現れるスケッチが何かを当てる早押しクイズ
-// 操作: 3択からタップで回答
-// 成功: 1問正解  失敗: 3問不正解 or 25秒
+// スケッチゲス — 線が引かれ切る前に、その正体を当てる
+// 操作: 下の3つの絵から、描かれつつある線画と同じものをタップ
+// 成功: 5問 正解  失敗: 3問 誤答 or 13秒
+// @mechanic: judge
+// @theme: custom
+// 世界観: お絵かきクイズ番組。少しずつ現れる線画の正体を3択で当てる
+// variation: 加速型(線が引かれるテンポが問題ごとに速くなる)
+// spice: サドンデス演出(台帳は二重課題だが、13秒で5問の尺に二問同時は成立しない。同リスト内で変更)
+// スタイル: 70s MONO
 
 (function(game) {
   var W = game.canvas.width;   // 1080
   var H = game.canvas.height;  // 1920
 
-  // ── パレット（ネオンアーケード） ──
-  var C = { bg:'#1a0028', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
+  // 70s MONO: 白の線画 + 画面帯ごとの単色オーバーレイ
+  var C = { white: '#ffffff', dim: '#8a8a8a', dark: '#1e1e1e', band1: '#39ff6a', band2: '#ff9a2a' };
 
-  var GAME_TITLE  = 'SKETCH GUESS';
-  var HOW_TO_PLAY = 'GUESS THE DRAWING (3 CHOICES)';
-  var MAX_TIME = 25;
-  var NEEDED = 1;           // 修正2: 5 → 1
-  var MAX_WRONG = 3, REVEAL_TIME = 3.0;
-  var SCX = W / 2, SCY = H * 0.4, BTN_Y = H * 0.72;
-
-  var PUZZLES = [
-    { answer: 0, choices: ['SUN', 'MOON', 'STAR'], draw: function(t) {
-        game.draw.rect(SCX - 60 * t, SCY - 60 * t, 120 * t, 120 * t, C.c);
-        for (var i = 0; i < 8; i++) { var a = i / 8 * Math.PI * 2; game.draw.line(SCX + Math.cos(a) * 80 * t, SCY + Math.sin(a) * 80 * t, SCX + Math.cos(a) * 120 * t, SCY + Math.sin(a) * 120 * t, C.d, 6 * t); } } },
-    { answer: 2, choices: ['CAR', 'PLANE', 'TRAIN'], draw: function(t) {
-        game.draw.rect(SCX - 130 * t, SCY - 60 * t, 260 * t, 100 * t, C.e);
-        for (var w = 0; w < 3; w++) game.draw.rect(SCX - 100 * t + w * 84 * t, SCY - 44 * t, 56 * t, 40 * t, C.g);
-        game.draw.rect(SCX - 90 * t, SCY + 40 * t, 40 * t, 40 * t, C.d); game.draw.rect(SCX + 50 * t, SCY + 40 * t, 40 * t, 40 * t, C.d); } },
-    { answer: 0, choices: ['APPLE', 'GRAPE', 'LEMON'], draw: function(t) {
-        game.draw.rect(SCX - 80 * t, SCY - 60 * t, 160 * t, 150 * t, C.a);
-        game.draw.rect(SCX - 8 * t, SCY - 120 * t, 16 * t, 60 * t, C.f); game.draw.rect(SCX + 8 * t, SCY - 120 * t, 40 * t, 24 * t, C.b); } },
-    { answer: 1, choices: ['TENT', 'MOUNTAIN', 'ARROW'], draw: function(t) {
-        for (var row = 0; row < 140; row += 8) { var rw = row / 140 * 220 * t; game.draw.rect(SCX - rw, SCY - 140 * t + row * t, rw * 2, 8 * t + 1, '#888888'); }
-        for (var sr = 0; sr < 40; sr += 8) { var srw = sr / 40 * 56 * t; game.draw.rect(SCX - srw, SCY - 140 * t + sr * t, srw * 2, 8 * t + 1, C.g); } } }
-  ];
+  var GAME_TITLE = 'SKETCH GUESS';
+  var MAX_TIME = 13;
+  var NEEDED = 5;
+  var MISS_LIMIT = 3;
+  var SUDDEN = 3.0;   // 残りこの秒数からはサドンデス
 
   var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
   var state = S.ATTRACT;
   var resultSuccess = false, finalScore = 0;
 
-  var puzzles, cur, revealTimer, phase, selected, feedbackTimer, score, wrongs, timeLeft, done;
+  var answer, choices, shown, drawRate, solved, misses, score, totalTime, done;
+  var ready, hitStop, feedback, feedbackOk, lockout;
+
+  // 線画: [x1,y1,x2,y2] を 0..1 の単位座標で。順に引かれていく
+  var SHAPES = [
+    { id: 'house', seg: [[0.2,0.7,0.2,0.35],[0.2,0.35,0.5,0.12],[0.5,0.12,0.8,0.35],[0.8,0.35,0.8,0.7],[0.2,0.7,0.8,0.7],[0.42,0.7,0.42,0.5],[0.58,0.7,0.58,0.5]] },
+    { id: 'fish',  seg: [[0.15,0.5,0.45,0.24],[0.45,0.24,0.75,0.5],[0.75,0.5,0.45,0.76],[0.45,0.76,0.15,0.5],[0.75,0.5,0.92,0.3],[0.75,0.5,0.92,0.7],[0.92,0.3,0.92,0.7]] },
+    { id: 'tree',  seg: [[0.45,0.85,0.45,0.5],[0.55,0.85,0.55,0.5],[0.45,0.85,0.55,0.85],[0.5,0.5,0.2,0.5],[0.2,0.5,0.5,0.12],[0.5,0.12,0.8,0.5],[0.8,0.5,0.5,0.5]] },
+    { id: 'boat',  seg: [[0.15,0.66,0.85,0.66],[0.15,0.66,0.28,0.82],[0.85,0.66,0.72,0.82],[0.28,0.82,0.72,0.82],[0.5,0.66,0.5,0.16],[0.5,0.16,0.78,0.6],[0.78,0.6,0.5,0.6]] },
+    { id: 'key',   seg: [[0.22,0.5,0.62,0.5],[0.62,0.5,0.62,0.66],[0.72,0.5,0.72,0.7],[0.22,0.5,0.22,0.34],[0.22,0.34,0.38,0.34],[0.38,0.34,0.38,0.5],[0.72,0.5,0.86,0.5]] },
+    { id: 'star',  seg: [[0.5,0.12,0.62,0.44],[0.62,0.44,0.94,0.44],[0.94,0.44,0.68,0.64],[0.68,0.64,0.78,0.92],[0.78,0.92,0.5,0.74],[0.5,0.74,0.22,0.92],[0.22,0.92,0.32,0.64]] },
+  ];
+
+  // 司会者(2フレーム: 口が動く)。番組という世界観の担い手
+  var HOST_A = [
+    '..WWWW..',
+    '.WWWWWW.',
+    'WWKWWKWW',
+    'WWWWWWWW',
+    'WWWKKWWW',
+    '.WWWWWW.',
+    '..WWWW..',
+    '.W.WW.W.',
+  ];
+  var HOST_B = [
+    '..WWWW..',
+    '.WWWWWW.',
+    'WWKWWKWW',
+    'WWWWWWWW',
+    'WWKKKKWW',
+    '.WWWWWW.',
+    '..WWWW..',
+    'W..WW..W',
+  ];
+  var HOST_COL = { W: '#ffffff', K: '#1e1e1e' };
+
+  function drawHost(x, y, scale) {
+    var wob = Math.floor(game.time.elapsed * 5) % 2 === 0;
+    game.draw.sprite(wob ? HOST_A : HOST_B, HOST_COL, x, y, scale, { anchor: 'center' });
+  }
 
   function txt(str, x, y, sz, color, align) {
-    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
-    game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
+    game.draw.text(str, x + 3, y + 4, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
-  function scanlines() { for (var sy = 0; sy < H; sy += 8) game.draw.rect(0, sy, W, 2, '#000000', 0.18); }
-  function timeBar() {
-    var blocks = 12, lit = Math.ceil(timeLeft / MAX_TIME * blocks);
-    for (var i = 0; i < blocks; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#003b00');
+  function scanlines() { for (var sy = 0; sy < H; sy += 8) game.draw.rect(0, sy, W, 2, '#000000', 0.22); }
+
+  function studioBg() {
+    game.draw.gradient(0, H, [[0, '#101010'], [0.5, '#060606'], [1, '#000000']]);
+    // 遠景: スタジオの吊り照明と観覧席の影
+    for (var l = 0; l < 5; l++) {
+      game.draw.line(W * 0.1 + l * W * 0.2, 0, W * 0.1 + l * W * 0.2, 90, C.dark, 6);
+      game.draw.circle(W * 0.1 + l * W * 0.2, 106, 26, C.white, 0.22);
+    }
+    for (var a = 0; a < 14; a++) game.draw.circle(50 + a * 78, H * 0.94, 34, C.dark);
+    // 70s MONO の要: 帯ごとの単色セロハン
+    game.draw.rect(0, 0, W, H * 0.28, C.band2, 0.10);
+    game.draw.rect(0, H * 0.68, W, H * 0.32, C.band1, 0.09);
+  }
+
+  // 線画を描く: n本目まで、最後の1本は伸びる途中
+  function drawShape(sh, cx, cy, size, n, partial, color, width) {
+    for (var i = 0; i < sh.seg.length; i++) {
+      if (i > n) break;
+      var s = sh.seg[i];
+      var t = (i === n) ? Math.max(0, Math.min(1, partial)) : 1;
+      var x1 = cx + (s[0] - 0.5) * size, y1 = cy + (s[1] - 0.5) * size;
+      var x2 = cx + (s[2] - 0.5) * size, y2 = cy + (s[3] - 0.5) * size;
+      game.draw.line(x1, y1, x1 + (x2 - x1) * t, y1 + (y2 - y1) * t, color, width);
+    }
+  }
+
+  function newQuestion() {
+    var pool = SHAPES.slice();
+    answer = Math.floor(Math.random() * pool.length);
+    var others = [];
+    for (var i = 0; i < pool.length; i++) if (i !== answer) others.push(i);
+    others.sort(function() { return Math.random() - 0.5; });
+    choices = [answer, others[0], others[1]];
+    choices.sort(function() { return Math.random() - 0.5; });
+    shown = 0;
+    // 加速型: 問題が進むほど線が速く引かれる = 考える時間が減る
+    drawRate = 1.6 + solved * 0.55;
+    lockout = 0;
   }
 
   function initGame() {
-    puzzles = PUZZLES.slice();
-    for (var s = puzzles.length - 1; s > 0; s--) { var r = Math.floor(Math.random() * (s + 1)); var t = puzzles[s]; puzzles[s] = puzzles[r]; puzzles[r] = t; }
-    cur = 0; revealTimer = 0; phase = 'reveal'; selected = -1; feedbackTimer = 0; score = 0; wrongs = 0; timeLeft = MAX_TIME; done = false;
+    solved = 0; misses = 0; score = 0; totalTime = 0; done = false;
+    ready = 0.8; hitStop = 0; feedback = 0; feedbackOk = false;
+    newQuestion();
   }
-  function nextPuzzle() { cur = (cur + 1) % puzzles.length; revealTimer = 0; phase = 'reveal'; selected = -1; }
 
   function finish(success) {
     if (done) return;
-    done = true;
-    resultSuccess = success;
-    finalScore = success ? (score * 300 + Math.ceil(timeLeft) * 40) : score * 100;
-    game.audio.play(success ? 'se_success' : 'se_failure');
+    done = true; resultSuccess = success; finalScore = score;
+    game.audio.stopBgm();
+    if (success) { game.audio.play('se_success'); }
+    else {
+      game.audio.play('se_failure');
+      hitStop = 0.5;
+      game.fx.flash(C.white, 0.18);
+    }
     state = S.RESULT;
-    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1600);
+  }
+
+  function answerWith(idx, x, y) {
+    if (choices[idx] === answer) {
+      solved++;
+      // 早いほど高い: 引かれた線が少ないうちに当てるほど得点が伸びる
+      var speedBonus = Math.max(0, Math.round((SHAPES[answer].seg.length - shown) * 40));
+      var gain = 100 + speedBonus;
+      score += gain;
+      feedback = 0.3; feedbackOk = true;
+      game.feedback.good(x, y, { text: '+' + gain, color: C.band1 });
+      game.audio.play('se_success', 0.5);
+      game.fx.burst(x, y, { color: C.white, count: 10, speed: 300 });
+      if (solved >= NEEDED) { finish(true); return; }
+      // 走行中のマイルストーン: 折り返しを祝う
+      if (solved === Math.ceil(NEEDED / 2)) {
+        game.fx.popup(solved + ' / ' + NEEDED, W / 2, H * 0.30, { color: C.band1, size: 72 });
+        game.audio.play('se_milestone', 0.6);
+      }
+      newQuestion();
+    } else {
+      misses++;
+      feedback = 0.4; feedbackOk = false;
+      hitStop = 0.3;
+      game.audio.play('se_failure', 0.6);
+      game.feedback.bad(x, y, { text: 'MISS' });
+      // サドンデス: 残り時間が僅かなら1回の誤答で終わる
+      if (misses >= MISS_LIMIT || (MAX_TIME - totalTime) <= SUDDEN) { finish(false); return; }
+      lockout = 0.4;
+    }
+  }
+
+  function choiceBox(i) {
+    return { x: W * (0.2 + i * 0.3), y: H * 0.80, r: 150 };
   }
 
   game.onTap(function(x, y) {
-    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
-    if (state === S.RESULT)  { state = S.ATTRACT; return; }
-    if (done || phase !== 'choose') return;
+    if (state === S.ATTRACT) { game.audio.play('se_coin'); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done || ready > 0 || hitStop > 0 || lockout > 0) return;
     for (var i = 0; i < 3; i++) {
-      var bx = W / 2 + (i - 1) * 300;
-      if (Math.abs(x - bx) < 130 && y >= BTN_Y - 20 && y <= BTN_Y + 180) {
-        selected = i; var pz = puzzles[cur];
-        if (i === pz.answer) { score++; game.audio.play('se_tap', 0.9); } else { wrongs++; game.audio.play('se_failure', 0.6); }
-        phase = 'feedback'; feedbackTimer = 0.7;
-        if (score >= NEEDED) finish(true); else if (wrongs >= MAX_WRONG) finish(false);
-        break;
-      }
+      var b = choiceBox(i);
+      if (Math.abs(x - b.x) < b.r * 0.6 && Math.abs(y - b.y) < b.r * 0.6) { answerWith(i, b.x, b.y); return; }
     }
+    game.audio.play('se_tap', 0.25);
   });
 
-  // 世界観: お絵かきクイズ番組。少しずつ現れる線画の正体を3択で当てる。
-  function background() {
-    game.draw.clear('#0a0018');
-    game.draw.rect(100, H * 0.2, W - 200, H * 0.42, '#12102a');
-    game.draw.rect(112, H * 0.2 + 12, W - 224, H * 0.42 - 24, '#05000f');
-    txt('QUIZ SHOW', W / 2, H * 0.16, 34, C.b);
-  }
-
-  function drawButtons() {
-    var pz = puzzles[cur];
-    txt('WHAT IS IT?', W / 2, H * 0.66, 52, C.c);
-    for (var i = 0; i < 3; i++) {
-      var bx = W / 2 + (i - 1) * 300, sel = selected === i;
-      var ok = phase === 'feedback' && i === pz.answer, ng = phase === 'feedback' && sel && i !== pz.answer;
-      var col = ok ? C.b : (ng ? C.a : (sel ? C.d : '#1a0a2a'));
-      game.draw.rect(bx - 120, BTN_Y, 240, 170, col);
-      txt(pz.choices[i], bx, BTN_Y + 90, 44, C.g);
+  // ── ATTRACT ゴースト実演: 線が2本引かれた時点で手が正解へ落ちる ──
+  var demo = { t: 0, ans: 0, gx: W / 2, gy: H * 0.6, press: false, pick: 1 };
+  function stepDemo(dt) {
+    demo.t += dt;
+    var cyc = demo.t % 3.0;
+    if (cyc < 0.05) {
+      demo.ans = Math.floor(Math.random() * SHAPES.length);
+      demo.pick = Math.floor(Math.random() * 3);
     }
+    var b = choiceBox(demo.pick);
+    if (cyc > 1.4) {
+      demo.gx += (b.x - demo.gx) * Math.min(1, dt * 5);
+      demo.gy += (b.y - demo.gy) * Math.min(1, dt * 5);
+      if (cyc > 1.9 && !demo.press) {
+        demo.press = true;
+        game.feedback.good(b.x, b.y, { text: '+220', color: C.band1 });
+      }
+    } else {
+      demo.press = false;
+      demo.gx += (W / 2 - demo.gx) * Math.min(1, dt * 3);
+      demo.gy += (H * 0.62 - demo.gy) * Math.min(1, dt * 3);
+    }
+    return cyc;
   }
 
   game.onUpdate(function(dt) {
     if (state === S.ATTRACT) {
-      if (!puzzles) initGame();
-      background();
-      puzzles[cur].draw(1);
-      txt(GAME_TITLE,  W / 2, H * 0.68, 76, C.c);
-      txt(HOW_TO_PLAY, W / 2, H * 0.74, 34, C.b);
-      if (Math.floor(game.time.elapsed * 1.67) % 2 === 0) {
-        txt('► 100円 投入 ◄', W / 2, H * 0.86, 64, C.a);
-        txt('TAP TO START', W / 2, H * 0.91, 48, C.g);
+      studioBg();
+      var cyc = stepDemo(dt);
+      var sh = SHAPES[demo.ans];
+      drawShape(sh, W / 2, H * 0.36, 560, Math.floor(cyc * 2.2), (cyc * 2.2) % 1, C.white, 10);
+      for (var i0 = 0; i0 < 3; i0++) {
+        var b0 = choiceBox(i0);
+        game.draw.rect(b0.x - 130, b0.y - 130, 260, 260, C.dark);
+        var s0 = i0 === demo.pick ? sh : SHAPES[(demo.ans + i0 + 1) % SHAPES.length];
+        drawShape(s0, b0.x, b0.y, 190, 99, 1, C.dim, 5);
+      }
+      drawHost(W * 0.12, H * 0.62, 14);
+      game.draw.hand(demo.gx, demo.gy, { press: demo.press, scale: 16 });
+      txt(GAME_TITLE, W / 2, H * 0.08, 72, C.white);
+      txt('BEST ' + String(game.best).padStart(6, '0'), W / 2, H * 0.13, 38, C.band1);
+      if (Math.floor(game.time.elapsed * 1.8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.95, 56, C.band2);
+      } else {
+        txt('TAP TO START', W / 2, H * 0.95, 46, C.white);
       }
       scanlines();
       return;
     }
+
     if (state === S.RESULT) {
-      background();
-      txt(resultSuccess ? 'CONGRATULATIONS!' : 'GAME OVER', W / 2, H * 0.35, 80, resultSuccess ? C.c : C.a);
-      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 64, C.g);
-      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 54, C.b);
+      studioBg();
+      if (hitStop > 0) hitStop -= dt;
+      drawHost(W / 2, H * 0.22, 20);
+      txt(resultSuccess ? 'CLEAR' : 'GAME OVER', W / 2, H * 0.40, 96, C.white);
+      txt('SCORE ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.50, 58, C.band1);
+      var best = Math.max(game.best, finalScore);
+      txt('BEST ' + String(best).padStart(6, '0'), W / 2, H * 0.57, 44, C.dim);
+      if (resultSuccess && finalScore > game.best && game.best > 0 && Math.floor(game.time.elapsed * 3) % 2 === 0) {
+        txt('NEW RECORD', W / 2, H * 0.65, 54, C.band2);
+      } else if (Math.floor(game.time.elapsed * 2) % 2 === 0) {
+        txt('TAP TO CONTINUE', W / 2, H * 0.70, 46, C.white);
+      }
       scanlines();
       return;
     }
 
-    // PLAYING
+    // ── PLAYING ──
+    var sudden = (MAX_TIME - totalTime) <= SUDDEN;
     if (!done) {
-      timeLeft -= dt;
-      if (timeLeft <= 0) { finish(false); return; }
-      if (phase === 'reveal') { revealTimer += dt; if (revealTimer >= REVEAL_TIME) { phase = 'choose'; game.audio.play('se_tap', 0.3); } }
-      else if (phase === 'feedback') { feedbackTimer -= dt; if (feedbackTimer <= 0 && !done) nextPuzzle(); }
+      if (hitStop > 0) {
+        hitStop -= dt;
+      } else if (ready > 0) {
+        ready -= dt;
+        if (ready <= 0) game.audio.play('se_tap');
+      } else {
+        totalTime += dt;
+        if (totalTime >= MAX_TIME) { finish(solved >= NEEDED); return; }
+        shown += drawRate * dt;
+        if (lockout > 0) lockout -= dt;
+        // 線を引き切っても答えないと、次の線が無いまま時間だけ減る(欲張りの逆)
+      }
+      if (feedback > 0) feedback -= dt;
     }
 
-    // ---- draw ----
-    background();
-    var t = Math.min(1, revealTimer / REVEAL_TIME);
-    puzzles[cur].draw(t);
-    if (phase === 'reveal') { game.draw.rect(112, H * 0.63, (W - 224) * t, 12, C.e, 0.7); txt('REVEALING...', W / 2, H * 0.66, 40, '#555577'); }
-    else drawButtons();
-    timeBar();
-    for (var s = 0; s < NEEDED; s++) game.draw.rect(W / 2 - 20, 130, 40, 40, s < score ? C.b : '#113322');
-    for (var w = 0; w < MAX_WRONG; w++) game.draw.rect(W / 2 + (w - 1) * 64 - 20, 190, 40, 40, w < wrongs ? C.a : '#330011');
+    // draw
+    studioBg();
+    var sh2 = SHAPES[answer];
+    var n = Math.floor(shown);
+    drawShape(sh2, W / 2, H * 0.36, 560, n, shown % 1, C.white, 12);
+
+    // 3択(完成形の小さな線画。文字は使わない)
+    for (var i = 0; i < 3; i++) {
+      var b = choiceBox(i);
+      game.draw.rect(b.x - 130, b.y - 130, 260, 260, C.dark);
+      game.draw.rect(b.x - 130, b.y - 130, 260, 6, sudden ? C.band2 : C.dim, 0.8);
+      drawShape(SHAPES[choices[i]], b.x, b.y, 190, 99, 1, C.white, 5);
+    }
+
+    // 司会者はサドンデスで身を乗り出す(telegraphの一部)
+    drawHost(W * 0.10, sudden ? H * 0.60 : H * 0.62, sudden ? 16 : 14);
+
+    var frac = Math.max(0, 1 - totalTime / MAX_TIME);
+    game.draw.rect(60, 40, W - 120, 22, C.dark);
+    game.draw.rect(60, 40, (W - 120) * frac, 22, sudden ? C.band2 : C.band1);
+    txt('SCORE ' + String(score).padStart(6, '0'), W / 2, 92, 42, C.white);
+    txt(solved + ' / ' + NEEDED, W * 0.16, 150, 44, C.band1);
+    for (var m = 0; m < MISS_LIMIT; m++) {
+      game.draw.circle(W * 0.86 - m * 54, 146, 18, m < (MISS_LIMIT - misses) ? C.white : C.dark);
+    }
+
+    if (ready > 0) txt(ready > 0.35 ? 'READY?' : 'GO!', W / 2, H * 0.36, 96, C.white);
+    if (sudden && Math.floor(game.time.elapsed * 6) % 2 === 0) txt('あと' + (NEEDED - solved) + '問', W / 2, H * 0.60, 52, C.band2);
+    if (feedback > 0 && !feedbackOk) txt('MISS', W / 2, H * 0.60, 56, C.band2);
+
     scanlines();
   });
 
   game.onStart(function() {
-    game.audio.bgm('bgm_main', 0.3);
+    // 70s MONO: 矩形波の単音。間が緊張を作る
+    game.audio.melody(
+      [['C4', 0.5], ['R', 0.25], ['E4', 0.5], ['R', 0.25], ['G4', 0.5], ['R', 0.5],
+       ['F4', 0.5], ['R', 0.25], ['D4', 0.5], ['R', 0.75]],
+      { tempo: 132, wave: 'square', volume: 0.08, loop: true }
+    );
     state = S.ATTRACT;
     initGame();
   });

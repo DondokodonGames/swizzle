@@ -1,158 +1,291 @@
 // 048-tower-defense.js
-// タワーディフェンス — 迫りくる敵をタップで撃退するシンプルな防衛戦
-// 操作: 画面をタップして敵を撃つ
-// 成功: 5秒生き残る  失敗: 5体の敵がゴールに到達
+// タワーディフェンス — 回る装甲の隙間から覗く核だけを撃ち抜く
+// 操作: 露出した核をタップ（装甲を撃つと弾かれる）
+// 成功: 10基 撃破  失敗: 3基 基地に到達 or 20秒
+// @mechanic: aim_shoot
+// @theme: space
+// 世界観: 宇宙基地の防衛砲。降下する機雷は装甲を回しており、核が覗く一瞬しか通らない
+// variation: 精度型(装甲の隙間が狭まり、回転が速くなる)
+// spice: フィーバータイム(中盤数秒だけ全機の装甲が開く。得点2倍)
+// スタイル: 80s NEON
 
 (function(game) {
   var W = game.canvas.width;   // 1080
   var H = game.canvas.height;  // 1920
 
-  // ── パレット（クラシックアーケード） ──
-  var C = { bg:'#000011', a:'#0000ff', b:'#00ffff', c:'#ffffff', d:'#ffff00', e:'#ff0000', f:'#00ff00', g:'#ff00ff' };
+  // 80s NEON: 発光4色制限(シアン/マゼンタ/イエロー/白) + 濃紺の闇
+  var C = {
+    cyan: '#00e5ff', magenta: '#ff3df0', yellow: '#ffe600', white: '#ffffff',
+    dim: '#2a1c4a', deep: '#0a0018',
+  };
 
-  var GAME_TITLE  = 'TOWER DEFENSE';
-  var HOW_TO_PLAY = 'TAP TO SHOOT INVADERS';
-  var MAX_TIME = 5;          // 修正2: 生存系 20s → 5s
-  var TOWER_X = W / 2, TOWER_Y = H * 0.84;   // 修正1: 砲台は最下部
-  var ENEMY_R = 48, BULLET_R = 14, BULLET_SPEED = 900;
+  var GAME_TITLE = 'CORE SHOT';
+  var MAX_TIME = 20;
+  var NEEDED = 10;
+  var LEAK_LIMIT = 3;
+  var BASE_Y = H * 0.86;
 
   var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
   var state = S.ATTRACT;
   var resultSuccess = false, finalScore = 0;
 
-  var enemies, bullets, spawnTimer, lives, timeLeft, done, kills, muzzleFlash, explosions;
+  var mines, killed, leaked, score, combo, totalTime, done, spawnTimer, fever;
+  var ready, hitStop, feedback, feedbackOk, shake;
 
-  function snap(v) { return Math.round(v / 8) * 8; }
-  function drawPixelCircle(px, py, r, color, alpha) {
-    var step = 8; px = snap(px); py = snap(py);
-    for (var yy = -r; yy <= r; yy += step)
-      for (var xx = -r; xx <= r; xx += step)
-        if (xx * xx + yy * yy <= r * r) game.draw.rect(px + xx, py + yy, step, step, color, alpha);
-  }
+  // 機雷(装甲)。核は別に円で描く
+  var MINE = [
+    '..CC..',
+    '.CCCC.',
+    'CC..CC',
+    'CC..CC',
+    '.CCCC.',
+    '..CC..',
+  ];
+  var MINE_COL = { C: C.cyan };
+  var MINE_HOT = { C: C.magenta };
+
   function txt(str, x, y, sz, color, align) {
-    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
-    game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
+    game.draw.text(str, x + 3, y + 4, { size: sz, color: '#12001f', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
-  function scanlines() { for (var sy = 0; sy < H; sy += 8) game.draw.rect(0, sy, W, 2, '#000000', 0.18); }
-  function timeBar() {
-    var blocks = 12, lit = Math.ceil(timeLeft / MAX_TIME * blocks);
-    for (var i = 0; i < blocks; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#003b00');
+  function scanlines() { for (var sy = 0; sy < H; sy += 8) game.draw.rect(0, sy, W, 2, '#000000', 0.16); }
+
+  function spaceBg() {
+    game.draw.gradient(0, H, [[0, '#12002a'], [0.55, C.deep], [1, '#050010']]);
+    for (var s0 = 0; s0 < 30; s0++) {
+      game.draw.rect((s0 * 137) % W, (s0 * 211) % (H * 0.7), 4, 4, C.white, 0.55);
+    }
+    // 遠景: ネオングリッドの地平 + 基地
+    for (var i = 0; i <= 9; i++) game.draw.line(0, BASE_Y + i * i * 2.4, W, BASE_Y + i * i * 2.4, C.dim, 2);
+    for (var gx = 0; gx <= 10; gx++) game.draw.line(gx / 10 * W, BASE_Y, (gx - 4.5) * 300 + W / 2, H, C.dim, 2);
+    game.draw.rect(W * 0.18, BASE_Y - 70, W * 0.64, 70, C.dim);
+    game.draw.rect(W * 0.18, BASE_Y - 70, W * 0.64, 8, C.cyan, 0.8);
+    for (var d = 0; d < 5; d++) game.draw.circle(W * 0.26 + d * W * 0.12, BASE_Y - 34, 16, C.yellow, 0.7);
   }
 
-  function spawnEnemy() { enemies.push({ x: game.random(80, W - 80), y: -ENEMY_R, speed: 160 + Math.random() * 100 + (MAX_TIME - timeLeft) * 30, hit: false }); }
-  function initGame() { enemies = []; bullets = []; spawnTimer = 0.6; lives = 5; timeLeft = MAX_TIME; done = false; kills = 0; muzzleFlash = 0; explosions = []; spawnEnemy(); }
+  function initGame() {
+    mines = []; killed = 0; leaked = 0; score = 0; combo = 0; totalTime = 0;
+    done = false; spawnTimer = 0.15; fever = 0; ready = 0.8; hitStop = 0;
+    feedback = 0; feedbackOk = false; shake = 0;
+  }
 
   function finish(success) {
     if (done) return;
-    done = true;
-    resultSuccess = success;
-    finalScore = success ? (300 + kills * 50 + lives * 40) : kills * 30;
-    game.audio.play(success ? 'se_success' : 'se_failure');
+    done = true; resultSuccess = success; finalScore = score;
+    game.audio.stopBgm();
+    if (success) { game.audio.play('se_success'); }
+    else {
+      game.audio.play('se_failure');
+      hitStop = 0.5; shake = 0.5;
+      game.fx.flash(C.magenta, 0.3);
+    }
     state = S.RESULT;
-    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1600);
+  }
+
+  function spawn() {
+    // 精度型: 進むほど回転が速く、核の露出が短くなる
+    var tight = Math.min(1, killed / NEEDED);
+    mines.push({
+      x: 140 + Math.random() * (W - 280),
+      y: 250,
+      vy: 250 + tight * 120,
+      ang: Math.random() * Math.PI * 2,
+      spin: (1.5 + tight * 1.9) * (Math.random() < 0.5 ? 1 : -1),
+      open: 0.9 - tight * 0.42,   // 核が「覗いている」と判定する角度幅(ラジアン)
+      r: 78,
+      pop: 0,
+    });
+  }
+
+  // 核の位置(装甲の隙間)。露出しているのは画面手前=下向きのとき
+  function corePos(m) {
+    return { x: m.x + Math.cos(m.ang) * m.r * 0.62, y: m.y + Math.sin(m.ang) * m.r * 0.62 };
+  }
+  function isExposed(m) {
+    if (fever > 0) return true;
+    // 下向き(=プレイヤー側)を向いている間だけ通る
+    var a = Math.atan2(Math.sin(m.ang), Math.cos(m.ang));
+    return Math.abs(a - Math.PI / 2) < m.open || Math.abs(a + Math.PI * 1.5) < m.open;
+  }
+
+  function kill(m, p) {
+    killed++;
+    combo++;
+    var gain = (fever > 0 ? 200 : 100) + Math.min(200, (combo - 1) * 25);
+    score += gain;
+    feedback = 0.3; feedbackOk = true;
+    game.feedback.good(p.x, p.y, { text: '+' + gain, color: C.yellow });
+    game.audio.play('se_success', 0.5);
+    game.fx.burst(p.x, p.y, { color: C.yellow, count: 12, speed: 380 });
+    if (killed === 5) { fever = 3.0; game.audio.play('se_milestone'); }
+    if (killed >= NEEDED) finish(true);
+  }
+
+  function deflect(m, x, y) {
+    combo = 0;
+    feedback = 0.35; feedbackOk = false;
+    hitStop = 0.22; shake = 0.2;
+    game.audio.play('se_failure', 0.45);
+    game.feedback.bad(x, y, { text: 'MISS' });
+  }
+
+  function leak(m) {
+    leaked++;
+    combo = 0;
+    feedback = 0.4; feedbackOk = false;
+    hitStop = 0.3; shake = 0.35;
+    game.audio.play('se_failure', 0.6);
+    game.feedback.bad(m.x, BASE_Y - 70, { text: 'MISS' });
+    if (leaked >= LEAK_LIMIT) finish(false);
+  }
+
+  function drawMine(m) {
+    var exposed = isExposed(m);
+    var scale = 13 * (1 + m.pop * 2);
+    // 疑似グロー(80s NEONの要): 外周に薄い同色を重ねる
+    game.draw.circle(m.x, m.y, m.r * 1.15, exposed ? C.magenta : C.cyan, 0.18);
+    game.draw.sprite(MINE, exposed ? MINE_HOT : MINE_COL, m.x, m.y, scale, { anchor: 'center' });
+    var p = corePos(m);
+    if (exposed) {
+      // telegraph: 撃てる瞬間だけ核が黄色く強く光る
+      var blink = Math.floor(game.time.elapsed * 14) % 2 === 0;
+      game.draw.circle(p.x, p.y, 34, C.yellow, blink ? 0.45 : 0.25);
+      game.draw.circle(p.x, p.y, 18, C.yellow);
+      game.draw.circle(p.x, p.y, 9, C.white);
+    } else {
+      game.draw.circle(p.x, p.y, 14, C.dim);
+    }
   }
 
   game.onTap(function(x, y) {
-    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
-    if (state === S.RESULT)  { state = S.ATTRACT; return; }
-    if (done) return;
-    var dx = x - TOWER_X, dy = y - TOWER_Y, dist = Math.sqrt(dx * dx + dy * dy) || 1;
-    bullets.push({ x: TOWER_X, y: TOWER_Y, vx: dx / dist * BULLET_SPEED, vy: dy / dist * BULLET_SPEED });
-    muzzleFlash = 0.08; game.audio.play('se_tap', 0.5);
+    if (state === S.ATTRACT) { game.audio.play('se_coin'); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done || ready > 0 || hitStop > 0) return;
+    for (var i = mines.length - 1; i >= 0; i--) {
+      var m = mines[i];
+      var p = corePos(m);
+      if (Math.abs(x - p.x) < 46 && Math.abs(y - p.y) < 46 && isExposed(m)) {
+        kill(m, p); mines.splice(i, 1); return;
+      }
+      if (Math.abs(x - m.x) < m.r && Math.abs(y - m.y) < m.r) { deflect(m, x, y); return; }
+    }
+    if (combo > 0) { combo = 0; game.feedback.bad(x, y, { text: 'MISS' }); }
+    else game.audio.play('se_tap', 0.25);
+    feedback = 0.2; feedbackOk = false;
   });
 
-  // 世界観: 宇宙基地の防衛砲。上空から降るインベーダーを迎撃する。
-  function background() {
-    game.draw.clear('#000011');
-    for (var i = 0; i < 40; i++) { var sx = (i * 137) % W, sy = (i * 219 + game.time.elapsed * 40) % H; game.draw.rect(snap(sx), snap(sy), 8, 8, C.c, 0.3); }
-    game.draw.rect(0, TOWER_Y + 40, W, H, '#0a0a22');  // 地表
-    txt('DEFENSE BASE', W / 2, H * 0.08, 36, C.b);
-  }
-
-  function drawEnemy(x, y) {
-    var bx = snap(x), by = snap(y);
-    game.draw.rect(bx - 40, by - 16, 80, 40, C.e);        // 胴
-    game.draw.rect(bx - 24, by - 32, 48, 16, C.e);        // 頭
-    game.draw.rect(bx - 16, by - 8, 12, 12, C.g);         // 目
-    game.draw.rect(bx + 4,  by - 8, 12, 12, C.g);
-    game.draw.rect(bx - 40, by + 24, 16, 16, C.e);        // 脚
-    game.draw.rect(bx + 24, by + 24, 16, 16, C.e);
-  }
-  function drawTower() {
-    var bx = snap(TOWER_X), by = snap(TOWER_Y);
-    game.draw.rect(bx - 60, by - 8, 120, 80, '#333366');  // 基部
-    game.draw.rect(bx - 20, by - 72, 40, 72, '#5555aa');  // 砲身
-    drawPixelCircle(bx, by - 8, 40, C.a, 1);              // ドーム
-    drawPixelCircle(bx, by - 8, 16, C.b, 1);
-    if (muzzleFlash > 0) drawPixelCircle(bx, by - 72, 40, C.c, muzzleFlash / 0.08);
+  // ── ATTRACT ゴースト実演: 核が光った瞬間に手が落ちる ──
+  var demo = { t: 0, y: -60, ang: 0, gx: W / 2, gy: H * 0.6, press: false };
+  function stepDemo(dt) {
+    demo.t += dt;
+    demo.y += 150 * dt;
+    demo.ang += 2.0 * dt;
+    var exposed = Math.abs(Math.atan2(Math.sin(demo.ang), Math.cos(demo.ang)) - Math.PI / 2) < 0.9;
+    var cx = W * 0.5 + Math.cos(demo.ang) * 48, cy = demo.y + Math.sin(demo.ang) * 48;
+    demo.gx += (cx - demo.gx) * Math.min(1, dt * 5);
+    demo.gy += (cy + 60 - demo.gy) * Math.min(1, dt * 4);
+    demo.press = exposed && demo.y > H * 0.3;
+    if (demo.press && demo.y < H * 0.62) {
+      game.feedback.good(cx, cy, { text: '+100', color: C.yellow });
+      demo.y = -60;
+    }
+    if (demo.y > BASE_Y) demo.y = -60;
   }
 
   game.onUpdate(function(dt) {
     if (state === S.ATTRACT) {
-      if (!enemies) initGame();
-      background();
-      drawEnemy(W / 2, H * 0.35); drawTower();
-      txt(GAME_TITLE,  W / 2, H * 0.16, 76, C.d);
-      txt(HOW_TO_PLAY, W / 2, H * 0.23, 40, C.b);
-      if (Math.floor(game.time.elapsed * 1.67) % 2 === 0) {
-        txt('► 100円 投入 ◄', W / 2, H * 0.55, 72, C.g);
-        txt('TAP TO START', W / 2, H * 0.62, 52, C.c);
+      spaceBg();
+      stepDemo(dt);
+      var exposed = Math.abs(Math.atan2(Math.sin(demo.ang), Math.cos(demo.ang)) - Math.PI / 2) < 0.9;
+      game.draw.circle(W / 2, demo.y, 88, exposed ? C.magenta : C.cyan, 0.18);
+      game.draw.sprite(MINE, exposed ? MINE_HOT : MINE_COL, W / 2, demo.y, 13, { anchor: 'center' });
+      var dcx = W / 2 + Math.cos(demo.ang) * 48, dcy = demo.y + Math.sin(demo.ang) * 48;
+      game.draw.circle(dcx, dcy, exposed ? 18 : 14, exposed ? C.yellow : C.dim);
+      game.draw.hand(demo.gx, demo.gy, { press: demo.press, scale: 16 });
+      txt(GAME_TITLE, W / 2, H * 0.10, 76, C.cyan);
+      txt('BEST ' + String(game.best).padStart(6, '0'), W / 2, H * 0.15, 40, C.yellow);
+      if (Math.floor(game.time.elapsed * 1.8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.92, 60, C.magenta);
+        txt('TAP TO START', W / 2, H * 0.97, 46, C.white);
+      } else {
+        txt('INSERT COIN', W / 2, H * 0.97, 38, C.dim);
       }
-      txt('INSERT COIN', W / 2, H * 0.7, 42, '#888888');
-      scanlines();
-      return;
-    }
-    if (state === S.RESULT) {
-      background();
-      txt(resultSuccess ? 'CONGRATULATIONS!' : 'GAME OVER', W / 2, H * 0.35, 80, resultSuccess ? C.d : C.e);
-      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 64, C.c);
-      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 54, C.b);
       scanlines();
       return;
     }
 
-    // PLAYING
+    if (state === S.RESULT) {
+      spaceBg();
+      if (hitStop > 0) hitStop -= dt;
+      if (shake > 0) shake -= dt;
+      txt(resultSuccess ? 'CLEAR' : 'GAME OVER', W / 2, H * 0.42, 96, resultSuccess ? C.cyan : C.magenta);
+      txt('SCORE ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.52, 58, C.white);
+      var best = Math.max(game.best, finalScore);
+      txt('BEST ' + String(best).padStart(6, '0'), W / 2, H * 0.58, 44, C.yellow);
+      if (resultSuccess && finalScore > game.best && game.best > 0 && Math.floor(game.time.elapsed * 3) % 2 === 0) {
+        txt('NEW RECORD', W / 2, H * 0.66, 54, C.magenta);
+      } else if (Math.floor(game.time.elapsed * 2) % 2 === 0) {
+        txt('TAP TO CONTINUE', W / 2, H * 0.71, 46, C.cyan);
+      }
+      scanlines();
+      return;
+    }
+
+    // ── PLAYING ──
     if (!done) {
-      timeLeft -= dt;
-      if (timeLeft <= 0) { finish(true); return; }
-      spawnTimer -= dt;
-      if (spawnTimer <= 0) { spawnEnemy(); spawnTimer = Math.max(0.4, 0.9 - (MAX_TIME - timeLeft) * 0.08); }
-      for (var b = bullets.length - 1; b >= 0; b--) {
-        var bul = bullets[b]; bul.x += bul.vx * dt; bul.y += bul.vy * dt;
-        if (bul.x < 0 || bul.x > W || bul.y < 0 || bul.y > H) { bullets.splice(b, 1); continue; }
-        for (var e = 0; e < enemies.length; e++) {
-          var en = enemies[e];
-          if (!en.hit && Math.abs(bul.x - en.x) < ENEMY_R + BULLET_R && Math.abs(bul.y - en.y) < ENEMY_R + BULLET_R) {
-            en.hit = true; kills++; explosions.push({ x: en.x, y: en.y, r: 0, life: 0.35 }); game.audio.play('se_tap', 0.7); bullets.splice(b, 1); break;
-          }
+      if (hitStop > 0) {
+        hitStop -= dt;
+      } else if (ready > 0) {
+        ready -= dt;
+        if (ready <= 0) game.audio.play('se_tap');
+      } else {
+        totalTime += dt;
+        if (fever > 0) fever -= dt;
+        if (totalTime >= MAX_TIME) { finish(killed >= NEEDED); return; }
+        spawnTimer -= dt;
+        if (spawnTimer <= 0) { spawn(); spawnTimer = Math.max(0.5, 1.0 - killed * 0.045); }
+        for (var i = mines.length - 1; i >= 0; i--) {
+          var m = mines[i];
+          m.y += m.vy * dt;
+          m.ang += m.spin * dt;
+          if (m.pop > 0) m.pop -= dt;
+          if (m.y >= BASE_Y - 70) { mines.splice(i, 1); leak(m); if (done) return; }
         }
       }
-      for (var i = enemies.length - 1; i >= 0; i--) {
-        var en2 = enemies[i]; if (en2.hit) { enemies.splice(i, 1); continue; }
-        var dx = TOWER_X - en2.x, dy = TOWER_Y - en2.y, dist = Math.sqrt(dx * dx + dy * dy) || 1;
-        en2.x += dx / dist * en2.speed * dt; en2.y += dy / dist * en2.speed * dt;
-        if (dist < ENEMY_R + 60) { enemies.splice(i, 1); lives--; game.audio.play('se_failure', 0.5); if (lives <= 0) { finish(false); return; } }
-      }
-      for (var ex = explosions.length - 1; ex >= 0; ex--) { explosions[ex].r += 140 * dt; explosions[ex].life -= dt; if (explosions[ex].life <= 0) explosions.splice(ex, 1); }
-      if (muzzleFlash > 0) muzzleFlash -= dt;
+      if (feedback > 0) feedback -= dt;
+      if (shake > 0) shake -= dt;
     }
 
-    // ---- draw ----
-    background();
-    for (var j = 0; j < enemies.length; j++) drawEnemy(enemies[j].x, enemies[j].y);
-    for (var bu = 0; bu < bullets.length; bu++) game.draw.rect(snap(bullets[bu].x) - BULLET_R, snap(bullets[bu].y) - BULLET_R, BULLET_R * 2, BULLET_R * 2, C.d);
-    for (var e2 = 0; e2 < explosions.length; e2++) drawPixelCircle(explosions[e2].x, explosions[e2].y, explosions[e2].r, C.f, explosions[e2].life / 0.35 * 0.7);
-    drawTower();
-    timeBar();
-    txt('SURVIVE ' + Math.ceil(timeLeft) + 's', W / 2, 96, 48, C.c);
-    for (var lv = 0; lv < 5; lv++)
-      game.draw.rect(W / 2 + (lv - 2) * 56 - 18, 150, 36, 36, lv < lives ? C.f : '#330000');
-    txt('TAP TO SHOOT!', W / 2, H - 60, 44, C.b);
+    // draw
+    spaceBg();
+    for (var k = 0; k < mines.length; k++) drawMine(mines[k]);
+
+    var frac = Math.max(0, 1 - totalTime / MAX_TIME);
+    game.draw.rect(60, 40, W - 120, 24, C.dim);
+    game.draw.rect(60, 40, (W - 120) * frac, 24, fever > 0 ? C.magenta : C.cyan);
+    txt('SCORE ' + String(score).padStart(6, '0'), W / 2, 100, 46, C.white);
+    txt(killed + ' / ' + NEEDED, W * 0.16, 158, 44, C.yellow);
+    for (var l = 0; l < LEAK_LIMIT; l++) {
+      game.draw.circle(W * 0.84 + l * 52, 152, 18, l < (LEAK_LIMIT - leaked) ? C.cyan : C.dim);
+    }
+    if (combo >= 3) txt('x' + combo, W / 2, 162, 46, C.yellow);
+    if (fever > 0 && Math.floor(game.time.elapsed * 6) % 2 === 0) txt('FEVER', W / 2, H * 0.26, 58, C.magenta);
+
+    if (ready > 0) txt(ready > 0.35 ? 'READY?' : 'GO!', W / 2, H * 0.46, 96, C.yellow);
+    if (feedback > 0 && !feedbackOk && NEEDED - killed <= 3) txt('あと' + (NEEDED - killed) + '基', W / 2, H * 0.22, 50, C.magenta);
+
     scanlines();
   });
 
   game.onStart(function() {
-    game.audio.bgm('bgm_main', 0.35);
+    // 80s NEON: 緊迫した迎撃のループ
+    game.audio.melody(
+      [['D4', 0.25], ['A4', 0.25], ['D5', 0.5], ['C5', 0.25], ['A4', 0.25], ['F4', 0.5],
+       ['G4', 0.25], ['D5', 0.25], ['C5', 0.5], ['A4', 1]],
+      { tempo: 158, wave: 'square', volume: 0.09, loop: true,
+        bass: [['D2', 0.5], ['D2', 0.5], ['F2', 0.5], ['G2', 0.5]], bassWave: 'triangle', bassVolume: 0.08 }
+    );
     state = S.ATTRACT;
     initGame();
   });
