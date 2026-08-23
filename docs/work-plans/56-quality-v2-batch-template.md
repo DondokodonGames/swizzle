@@ -87,6 +87,10 @@ needed_current,needed_action,priority,wave,batch,fix_items,keep_items,status,sco
 - 禁止: `window.*` / `document.*` / `AudioContext` / `localStorage` / `fetch` / 無限ループ(バリデーターで落ちる)
 - `src/services/code-game/` や `src/ai/code/*.ts` 等のエンジン側は**触らない**
 - ファイル名・slugのリネーム禁止(DB `template_id` と統計が紐づいている)
+- **重複の判定は slug と遊びの中身で行う**（メカニクスIDでは判定しない。1つのIDに平均14.9の
+  異なる遊びが入っており、IDが同じでも別の遊びは成立する）。重複群に当たったら
+  **1本目は今の遊びのまま磨き、2本目以降は別の遊びにする**。メカニクスIDを変えるかは自由だが、
+  変えるなら空いている G族(1台で2人) / H族(射幸・演出) を優先する
 - **制作順序**: 世界観は**遊びの型から導出**する（PRODUCTION_ORDER.md）。
   台帳の `theme` 列は割当済みだが**参考**扱い。型から導けない世界観なら、型に合うものへ差し替えてよい
   （変更理由を notes に書く）。様式（style_pack）は最後に当てる分類で、差別化手段ではない。
