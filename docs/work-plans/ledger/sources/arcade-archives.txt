@@ -1,0 +1,553 @@
+#! source=memory
+# アーケードアーカイブス / ACA NEOGEO の配信タイトル。MAME 側と一致した行に mame+aca の印が付く。
+
+# ACA 任天堂
+Donkey Kong
+Donkey Kong Jr.
+Donkey Kong 3
+Mario Bros.
+VS. Super Mario Bros.
+VS. Balloon Fight
+VS. Excitebike
+VS. Ice Climber
+VS. Clu Clu Land
+VS. Pinball
+VS. Wrecking Crew
+VS. Tennis
+VS. Baseball
+VS. Duck Hunt
+VS. Hogan's Alley
+VS. Mach Rider
+VS. Soccer
+VS. Gumshoe
+VS. The Goonies
+VS. Castlevania
+VS. Gradius
+VS. Ninja Jajamaru-kun
+VS. Mighty Bomb Jack
+VS. TKO Boxing
+VS. Super Xevious
+VS. Star Luster
+VS. Atari R.B.I. Baseball
+Popeye
+Sky Skipper
+Punch-Out!!
+Super Punch-Out!!
+Arm Wrestling
+
+# ACA ナムコ
+Pac-Man
+Ms. Pac-Man
+Super Pac-Man
+Pac & Pal
+Pac-Land
+Pac-Mania
+Galaga
+Galaxian
+Gaplus
+Galaga '88
+Xevious
+Super Xevious
+Dig Dug
+Dig Dug II
+Mappy
+Hopping Mappy
+Rally-X
+New Rally-X
+Libble Rabble
+The Tower of Druaga
+The Return of Ishtar
+Dragon Buster
+Dragon Spirit
+Valkyrie no Densetsu
+Genpei Toumaden
+Youkai Douchuuki
+Rolling Thunder
+Rolling Thunder 2
+Mirai Ninja
+Sky Kid
+Sky Kid Deluxe
+Toy Pop
+Baraduke
+Metro-Cross
+Motos
+Blazer
+Bosconian
+Pole Position
+Pole Position II
+Grobda
+Phozon
+Pac-Land
+Splatterhouse
+Marchen Maze
+Assault
+Ordyne
+Burning Force
+Cosmo Gang the Video
+Cosmo Gang the Puzzle
+Tank Force
+Phelios
+Dangerous Seed
+Wonder Momo
+Bravoman
+Face Off
+Finest Hour
+
+# ACA コナミ
+Gradius
+Gradius II
+Gradius III
+Salamander
+Life Force
+TwinBee
+Detana!! TwinBee
+Parodius Da!
+Gokujou Parodius
+Haunted Castle
+Hyper Olympic
+Track & Field
+Hyper Sports
+Scramble
+Super Cobra
+Time Pilot
+Time Pilot '84
+Frogger
+Gyruss
+Circus Charlie
+Yie Ar Kung-Fu
+Road Fighter
+Jail Break
+Green Beret
+Rush'n Attack
+Contra
+Super Contra
+A-Jax
+Thunder Cross
+Thunder Cross II
+Crime Fighters
+Vendetta
+Sunset Riders
+Teenage Mutant Ninja Turtles
+X-Men
+The Simpsons
+Mystic Warriors
+Metamorphic Force
+Trigon
+Lightning Fighters
+Xexex
+Surprise Attack
+Pooyan
+Tutankham
+Mega Zone
+Jackal
+Iron Horse
+Nemesis
+Hexion
+Quarth
+Block Hole
+
+# ACA アイレム
+R-Type
+R-Type II
+R-Type Leo
+Moon Patrol
+10-Yard Fight
+Spelunker
+Kaiketsu Yanchamaru
+Ninja Spirit
+In the Hunt
+Image Fight
+Dragon Breed
+Jigoku Meguri
+Mr. Heli
+X Multiply
+Air Duel
+Battle Chopper
+Hammerin' Harry
+Kung-Fu Master
+Lode Runner
+Lode Runner II
+Zippy Race
+Vigilante
+Gunforce
+Gunforce II
+Undercover Cops
+Hook
+Major Title
+Superior Soldiers
+Mystic Riders
+Lethal Thunder
+Cosmic Cop
+Kid Niki
+
+# ACA データイースト
+Karate Champ
+BurgerTime
+Peter Pepper's Ice Cream Factory
+Chelnov
+Dark Seal
+Magical Drop
+Magical Drop II
+Magical Drop III
+Joe & Mac
+Edward Randy
+Robocop
+Heavy Barrel
+Midnight Resistance
+Darwin 4078
+Super Real Darwin
+The Great Ragtime Show
+Trio the Punch
+Bad Dudes
+Sly Spy
+Boulder Dash
+Lock 'n' Chase
+Mania Challenge
+Ring King
+Kuhga
+Tumblepop
+Diet Go Go
+Crude Buster
+Wolf Fang
+Rohga
+Fighter's History
+Fighter's History Dynamite
+Suiko Enbu
+Night Slashers
+Vapor Trail
+Act-Fancer
+Gate of Doom
+Wizard Fire
+Captain America and the Avengers
+Two Crude
+Spinmaster
+Windjammers
+Street Hoop
+
+# ACA テクノス
+Double Dragon
+Double Dragon II
+Double Dragon 3
+Renegade
+Nekketsu Kouha Kunio-kun
+Super Dodge Ball
+Nekketsu Koukou Dodgeball Bu
+Kunio-kun no Nekketsu Soccer League
+The Combatribes
+Shadow Force
+WWF WrestleFest
+WWF Superstars
+Xain'd Sleena
+Battle Lane Vol. 5
+China Gate
+Mysterious Stones
+Tag Team Wrestling
+Mat Mania
+Block Out
+Voltage Fighter Gowcaizer
+
+# ACA 東亜プラン・彩京・ビデオシステム・ほか
+Kyukyoku Tiger
+Twin Cobra
+Tiger-Heli
+Hishouzame
+Same! Same! Same!
+Fire Shark
+Tatsujin
+Truxton
+Tatsujin Ou
+Daisenpu
+Zero Wing
+Out Zone
+Snow Bros.
+Hellfire
+Wardner
+Slap Fight
+Rally Bike
+Vimana
+Dogyuun
+Batsugun
+V-V
+Knuckle Bash
+Strikers 1945
+Strikers 1945 II
+Strikers 1945 III
+Gunbird
+Gunbird 2
+Sengoku Ace
+Sengoku Blade
+Dragon Blaze
+Zero Gunner 2
+Sol Divide
+Tengai
+Space Bomber
+Aero Fighters
+Sonic Wings
+Rabio Lepus
+Turbo Force
+Super Volleyball
+Karate Blazers
+Crimson Tide
+Bakuretsu Breaker
+Raiden
+Raiden II
+Raiden DX
+Raiden Fighters
+Raiden Fighters 2
+Raiden Fighters Jet
+Viper Phase 1
+Cross Blades!
+Task Force Harrier
+Thunder Dragon
+Thunder Dragon 2
+Saint Dragon
+Mahou Daisakusen
+Shippu Mahou Daisakusen
+Battle Garegga
+Armed Police Batrider
+Battle Bakraid
+Seibu Cup Soccer
+Ikari Warriors
+Victory Road
+Ikari III
+ASO
+Alpha Mission II
+Athena
+Psycho Soldier
+Ozma Wars
+Vanguard
+Marvin's Maze
+Mad Crasher
+TNK III
+Guerrilla War
+P.O.W.
+Prehistoric Isle
+Sasuke vs. Commander
+Fantasy
+Mega Twins
+Tetris (Sega)
+Bloxeed
+Columns
+Puyo Puyo
+Puyo Puyo 2
+Flicky
+Pengo
+Zaxxon
+Congo Bongo
+Champion Baseball
+Head On
+Monaco GP
+Ninja Princess
+Wonder Boy
+Wonder Boy in Monster Land
+Fantasy Zone
+Fantasy Zone II
+Space Harrier
+After Burner
+After Burner II
+Out Run
+Turbo Out Run
+Power Drift
+Galaxy Force II
+Thunder Blade
+Rad Mobile
+Hang-On
+Enduro Racer
+Alien Syndrome
+Altered Beast
+Golden Axe
+Shinobi
+Shadow Dancer
+Quartet
+SDI
+Crack Down
+Bonanza Bros.
+E-SWAT
+Cotton
+Crazy Climber
+Crazy Climber 2
+Moon Cresta
+Terra Cresta
+Terra Force
+Armed F
+Magmax
+UFO Robo Dangar
+Ninja Emaki
+Legion
+Tokushu Butai U.A.G.
+Formation Z
+Exerion
+Field Combat
+Argus
+Butasan
+Momoko 120%
+City Connection
+Psychic 5
+Bomb Jack
+Solomon's Key
+Tecmo Bowl
+Ninja Gaiden
+Rygar
+Argus no Senshi
+Star Force
+Star Soldier
+Ikki
+Mr. Goemon
+Pinball Action
+Gemini Wing
+Silk Worm
+Wild Fang
+Tecmo World Cup '90
+Super Locomotive
+Ninja Kid
+Route 16
+Dragon Ninja
+Fantasy Land
+Atomic Robo-Kid
+Blue Shark
+Nova 2001
+Mutant Night
+Time Soldiers
+Sky Soldiers
+Ninja Kazan
+Bakutotsu Kijuutei
+Ordyne
+Shingen Samurai-Fighter
+Jumping Cross
+Meikyu Jima
+Mr. Do!
+Mr. Do's Castle
+Mr. Do's Wild Ride
+Do! Run Run
+Ladybug
+Cosmic Avenger
+Warp & Warp
+Cutie Q
+Bomb Bee
+Gee Bee
+
+# ACA NEOGEO
+Fatal Fury
+Fatal Fury 2
+Fatal Fury Special
+Fatal Fury 3
+Real Bout Fatal Fury
+Real Bout Fatal Fury Special
+Real Bout Fatal Fury 2
+Garou: Mark of the Wolves
+Art of Fighting
+Art of Fighting 2
+Art of Fighting 3
+Samurai Shodown
+Samurai Shodown II
+Samurai Shodown III
+Samurai Shodown IV
+Samurai Shodown V
+Samurai Shodown V Special
+The King of Fighters '94
+The King of Fighters '95
+The King of Fighters '96
+The King of Fighters '97
+The King of Fighters '98
+The King of Fighters '99
+The King of Fighters 2000
+The King of Fighters 2001
+The King of Fighters 2002
+The King of Fighters 2003
+World Heroes
+World Heroes 2
+World Heroes 2 Jet
+World Heroes Perfect
+Fighter's History Dynamite
+Savage Reign
+Kizuna Encounter
+The Last Blade
+The Last Blade 2
+Metal Slug
+Metal Slug 2
+Metal Slug X
+Metal Slug 3
+Metal Slug 4
+Metal Slug 5
+Shock Troopers
+Shock Troopers: 2nd Squad
+Ikari III: The Rescue
+Alpha Mission II
+Ninja Commando
+Ninja Master's
+Blazing Star
+Pulstar
+Last Resort
+Andro Dunos
+Aero Fighters 2
+Aero Fighters 3
+Strikers 1945 Plus
+Prehistoric Isle 2
+Ghost Pilots
+Zed Blade
+Twinkle Star Sprites
+Puzzle Bobble
+Puzzle Bobble 2
+Magical Drop II
+Magical Drop III
+Puzzled
+Bang Bead
+Neo Turf Masters
+Super Sidekicks
+Super Sidekicks 2
+Super Sidekicks 3
+Neo Geo Cup '98
+Top Hunter
+Top Player's Golf
+2020 Super Baseball
+Baseball Stars Professional
+Baseball Stars 2
+Football Frenzy
+Windjammers
+Street Hoop
+Stakes Winner
+Stakes Winner 2
+Soccer Brawl
+Big Tournament Golf
+Sengoku
+Sengoku 2
+Sengoku 3
+Mutation Nation
+Burning Fight
+Robo Army
+King of the Monsters
+King of the Monsters 2
+Cyber-Lip
+Eightman
+Crossed Swords
+Magician Lord
+Nam-1975
+The Super Spy
+Riding Hero
+Thrash Rally
+League Bowling
+Nightmare in the Dark
+Spinmaster
+Karnov's Revenge
+Galaxy Fight
+Waku Waku 7
+Breakers
+Breakers Revenge
+Aggressors of Dark Kombat
+Gururin
+Money Puzzle Exchanger
+Neo Mr. Do!
+Over Top
+Rage of the Dragons
+Power Instinct Matrimelee
+Matrimelee
+Ninja Combat
+Mahjong Kyo Retsuden
+Minnasan no Okagesamadesu
+Quiz Daisousa Sen
+Quiz King of Fighters
+Tecmo World Soccer '96
+Metal Slug 6
+Samurai Shodown Sen
+Ganryu
+Art of Fighting 3: The Path of the Warrior

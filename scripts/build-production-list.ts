@@ -53,16 +53,26 @@ function readLines(p: string): string[] {
     .filter((l) => l.length > 0);
 }
 
-/** 貼り込み書式: `# 区分` 行が以降の行の platform になる。それ以外はタイトル */
-function readPaste(file: string): { platform: string; title: string }[] {
-  const out: { platform: string; title: string }[] = [];
+/**
+ * 貼り込み書式: `# 区分` 行が以降の行の platform になる。それ以外はタイトル。
+ * `#! source=memory` のような先頭指令でファイル全体の出どころを上書きできる
+ * (検証済み一覧を貼ったら指令を消せば source=paste に戻る)。
+ */
+function readPaste(file: string): { platform: string; title: string; source: string }[] {
+  const out: { platform: string; title: string; source: string }[] = [];
   let platform = '';
+  let source = 'paste';
   for (const l of readLines(path.join(SRC_DIR, file))) {
+    if (l.startsWith('#!')) {
+      const m = l.match(/source\s*=\s*(\S+)/);
+      if (m) source = m[1];
+      continue;
+    }
     if (l.startsWith('#')) {
       platform = l.replace(/^#+\s*/, '');
       continue;
     }
-    out.push({ platform, title: l });
+    out.push({ platform, title: l, source });
   }
   return out;
 }
@@ -125,7 +135,7 @@ const push = (shelf: string, platform: string, title: string, source: string, pl
   rows.push({ id: nextId(shelf, platform), shelf, platform, title, source, play, status });
 
 // D スマホ(貼り込み)
-for (const { platform, title } of readPaste('mobile.txt')) push('D', platform || 'MOBILE', title, 'paste');
+for (const { platform, title, source } of readPaste('mobile.txt')) push('D', platform || 'MOBILE', title, source);
 
 // E ハード別(raw) + Switch(貼り込み)
 const rawFiles = fs.existsSync(RAW_DIR) ? fs.readdirSync(RAW_DIR).sort() : [];
@@ -137,7 +147,7 @@ for (const f of rawFiles) {
   const source = /^(PS|PS2|PS3|PSP|SS|DC|GC|Wii|XBOX|X360|PCECD|MCD|NGCD|PCFX|PC98|CDI)$/.test(plat) ? 'redump' : 'no-intro';
   for (const title of readLines(path.join(RAW_DIR, f))) push('E', plat, title, source);
 }
-for (const { platform, title } of readPaste('switch.txt')) push('E', platform || 'NSW', title, 'paste');
+for (const { platform, title, source } of readPaste('switch.txt')) push('E', platform || 'NSW', title, source);
 
 // F アーケード(raw)。アーケードアーカイブスの貼り込みがあれば該当行に印
 const aca = new Set(readPaste('arcade-archives.txt').map((r) => r.title.toLowerCase()));
@@ -146,8 +156,8 @@ for (const title of readLines(path.join(RAW_DIR, 'F-arcade.txt'))) {
 }
 // 貼り込みにあって MAME 側に無いものは F に足す(表記ゆれで突き合わなかった分)
 const fTitles = new Set(rows.filter((r) => r.shelf === 'F').map((r) => r.title.toLowerCase()));
-for (const { platform, title } of readPaste('arcade-archives.txt')) {
-  if (!fTitles.has(title.toLowerCase())) push('F', platform || 'ACA', title, 'paste');
+for (const { platform, title, source } of readPaste('arcade-archives.txt')) {
+  if (!fTitles.has(title.toLowerCase())) push('F', platform || 'ACA', title, source);
 }
 
 // G/H SIMPLE 題材(raw: 機種<TAB>タイトル)
@@ -157,9 +167,9 @@ for (const l of readLines(path.join(RAW_DIR, 'GH-simple.txt'))) {
 }
 
 // I / J / K(貼り込み)
-for (const { platform, title } of readPaste('warioware.txt')) push('I', platform || 'WARIOWARE', title, 'paste');
-for (const { platform, title } of readPaste('marioparty.txt')) push('J', platform || 'MARIOPARTY', title, 'paste');
-for (const { platform, title } of readPaste('rhythm.txt')) push('K', platform || 'RHYTHM', title, 'paste');
+for (const { platform, title, source } of readPaste('warioware.txt')) push('I', platform || 'WARIOWARE', title, source);
+for (const { platform, title, source } of readPaste('marioparty.txt')) push('J', platform || 'MARIOPARTY', title, source);
+for (const { platform, title, source } of readPaste('rhythm.txt')) push('K', platform || 'RHYTHM', title, source);
 
 // L 既存(raw: `L-NNN タイトル / slug — フック`)。フックは play に入れて existing 扱い
 for (const l of readLines(path.join(RAW_DIR, 'L-existing-797.txt'))) {

@@ -1,0 +1,335 @@
+#! source=memory
+
+# N64 マリオパーティ 4人用
+Buried Treasure
+Treasure Divers
+Hot Bob-omb
+Musical Mushroom
+Crazy Cutter
+Face Lift
+Balloon Burst
+Coin Block Blitz
+Skateboard Scamper
+Box Mountain Mayhem
+Platform Peril
+Mushroom Mix-Up
+Grab Bag
+Bumper Balls
+Tipsy Tourney
+Bombs Away
+Mario Bandstand
+Shy Guy Says
+Cast Aways
+Key-pa-Way
+Running of the Bulb
+Hot Rope Jump
+Hammer Drop
+Slot Car Derby
+Bobsled Run
+Desert Dash
+Bombsketball
+Handcar Havoc
+Deep Sea Divers
+
+# N64 マリオパーティ 1vs3
+Pipe Maze
+Bash 'n' Cash
+Bowl Over
+Coin Shower Flower
+Crane Game
+Paddle Battle
+Piranha's Pursuit
+Tug o' War
+
+# N64 マリオパーティ 1人用
+Ghost Guess
+Ground Pound
+Limbo Dance
+Memory Match
+Shell Game
+Slot Machine
+Whack-a-Plant
+Teetering Towers
+Knock Block Tower
+Pedal Power
+Mecha-Marathon
+
+# N64 マリオパーティ2 4人用
+Bumper Balloon Cars
+Lava Tile Isle
+Shell Shocked
+Toad in the Box
+Roll Call
+Abandon Ship
+Totem Pole Pound
+Honeycomb Havoc
+Hexagon Heat
+Sneak 'n' Snore
+Driver's Ed
+Bowser's Big Blast
+Rainbow Run
+Move to the Music
+Bob-omb Barrage
+Look Away
+Shock Drop or Roll
+Lights Out
+Dungeon Dash
+Magnet Carta
+Cake Factory
+Dizzy Dancing
+Tile Driver
+Deep Sea Salvage
+Speed Hockey
+Torpedo Targets
+Destruction Duel
+Day at the Races
+Rakin' 'em In
+Filet Relay
+Archer-ival
+Quicksand Cache
+Bumper Balls
+Bombs Away
+Tipsy Tourney
+Skateboard Scamper
+Slot Car Derby
+Shy Guy Says
+Crane Game
+Hot Rope Jump
+Platform Peril
+Mecha-Marathon
+Bobsled Run
+Handcar Havoc
+Balloon Burst
+Face Lift
+Crazy Cutter
+Hot Bob-omb
+Bowl Over
+Grab Bag
+Tug o' War
+
+# N64 マリオパーティ3 4人用
+Eatsa Pizza
+Ice Rink Risk
+Mario's Puzzle Party
+Pipe Cleaners
+Snowball Summit
+Chip Shot Challenge
+Toadstool Titan
+Cheep Cheep Chase
+Log Jam
+Bounce 'n' Trounce
+Tidal Toss
+Aces High
+Vine with Me
+Hey Batter Batter
+Storm Chasers
+Etch 'n' Catch
+Water Whirled
+Curtain Call
+Locked Out
+Frigid Bridges
+Awful Tower
+Rockin' Raceway
+Messy Memory
+Picture Perfect
+Three Door Monty
+Parasol Plummet
+Pumper Cars
+Ridiculous Relay
+Thwomp Pull
+River Raiders
+Tick Tock Hop
+Motor Rooter
+Slap Down
+Slot Synch
+Coconut Conk
+Spotlight Swim
+Crazy Cogs
+Hide and Sneak
+Baby Bowser Broadside
+Treadmill Grill
+Toad's Nightmare
+Fowl Play
+Silly Screws
+Crowd Cover
+Popgun Pick-Off
+End of the Line
+Eye Sore
+Bowser Toss
+Stardust Battle
+Dorrie Dip
+Swinging with Sharks
+Swing 'n' Swipe
+Puddle Paddle
+Ice Rink Risk
+Hand, Line and Sinker
+Bowser's Ballroom
+Chomp Romp
+Cosmic Coaster
+Game Guy's Roulette
+Game Guy's Lucky 7
+Game Guy's Magic Boxes
+Game Guy's Sweet Surprise
+
+# GC マリオパーティ4
+Manta Rings
+Slime Time
+Booksquirm
+Trace Race
+Mario Medley
+Avalanche!
+Domination
+Paratrooper Plunge
+Toad's Quick Draw
+Three Throw
+Photo Finish
+Mr. Blizzard's Brigade
+Bob-omb Breakers
+Long Claw of the Law
+Stamp Out!
+Candlelight Flight
+Makin' Waves
+Hide and Go Boom
+Tree Stomp
+Fish n' Drips
+Hop or Pop
+Money Belts
+GOOOOOOAL!!
+Blame it on the Crane
+The Great Deflate
+Revers-a-Bomb
+Right Oar Left?
+Cliffhangers
+Team Treasure Trek
+Pair-a-sailing
+Order Up
+Dungeon Duos
+Beach Volley Folly
+Cheep Cheep Sweep
+Darts of Doom
+Fruits of Doom
+Balloon of Doom
+Chain Chomp Fever
+Paths of Peril
+Bowser's Bigger Blast
+Butterfly Blitz
+Barrel Baron
+Mario Speedwagons
+Bowser Bop
+Mushroom Medic
+Doors of Doom
+Bob-omb X-ing
+Goomba's Chip Flip
+Mystic Match 'Em
+Archaeologuess
+Bowser Wrestling
+Panel Panic
+Trap Ease Artist
+Take a Breather
+Bowser's Lovely Lift
+Rumble Fishing
+Jigsaw Jitters
+
+# 3DS/DS ほか（DS・アイランドツアー・スターラッシュ・TOP100 — 新規分のみ）
+Dust Buddies
+Feed and Seed
+Cherry-Go-Round
+Get the Lead Out
+Peek-a-Boo
+Camera Shy
+Boogie Beam
+Toppling Terror
+Twist and Route
+Sprinkler Scalers
+Track Star
+Trace Cadets
+Shorty Scorers
+Boo Tag
+Big Blue Bounce
+Mushroom Marathon
+Zoom Tube
+Barrel Peril
+Jump the Gun
+Pinball Panic
+Rolling Coaster
+Speedy Skaters
+Big Bee Bother
+Flower Tower
+Tropical Trampoline
+Gyro for the Gold
+Blooper Bay Blast
+Hover Rover
+Sweet Spot
+Fruit Picker
+Gyro Guys
+Slot Cardigan
+Cheep Cheep Cheep
+Bowser's Block Battle
+
+# Switch スーパーマリオパーティ（新規分）
+Slaparazzi
+Sizzling Stakes
+Trike Harder
+Nut Cases
+Rumble Fishing
+Time to Shine
+Fiddler on the Hoof
+Absent Minded
+Pep Rally
+Croozin' for a Bruisin'
+Bumper Brawl
+Sphere Mongers
+Metal Detectors
+Don't Wake Wiggler!
+Strike It Rich
+Miner Setbacks
+Miner Setbacks
+Look Sharp
+Penguin Pushers
+Off the Chain
+Take a Stab
+Soak or Croak
+Drop Quiz
+Pie Hard
+Making Faces
+Fetch Quest
+Puzzle Hustle
+Stake Your Claim
+Precision Gardening
+Crew Cut
+Sidewinders
+Tow the Line
+Wiped Out
+Gridiron Gauntlet
+
+# Switch マリオパーティ ジャンボリー（新規分）
+Bobsled Bash
+Cutting Corners
+Paint Job
+Crazy Cars
+Toy Story Tussle
+Bobbing Bombs
+Heist Race
+Rhythm Rescue
+Whack-a-Boo
+Stamp Champ
+Peeking Pushers
+Hurry Curry
+Snow Shovers
+Barrel Roll
+Spiky Ascent
+Fungus Frenzy
+Bank Shot
+Plundering Pipes
+Bumper Bots
+Cheep Cheep Tug
+Deep Dive Duel
+Balloon Bust
+Track Attack
+Cover Your Ears
+Rope Rally
+Lucky Blocks
+Shell Shuffle
+Goomba Goalie
+Tile Trial
+Wire Walkers

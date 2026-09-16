@@ -1,0 +1,349 @@
+#! source=memory
+
+# 2009-2012
+Angry Birds
+Angry Birds Rio
+Angry Birds Space
+Cut the Rope
+Cut the Rope: Experiments
+Fruit Ninja
+Doodle Jump
+Tiny Wings
+Temple Run
+Temple Run 2
+Jetpack Joyride
+Plants vs. Zombies
+Where's My Water?
+Bad Piggies
+Draw Something
+Words with Friends
+Tap Tap Revenge
+Infinity Blade
+Real Racing
+Asphalt
+Zombieville USA
+Canabalt
+Robot Unicorn Attack
+Osmos
+Flight Control
+Harbor Master
+Pocket God
+Rolando
+Trism
+Zen Bound
+Spider: The Secret of Bryce Manor
+Enigmo
+Bookworm
+Peggle
+Bejeweled
+Bejeweled Blitz
+Zuma
+Chuzzle
+Tetris
+Solitaire
+Sudoku
+Mahjong
+Minesweeper
+Paper Toss
+Tap Tap Ants
+Line Runner
+Ninjump
+Stick Cricket
+Pocket Frogs
+Tiny Tower
+Pocket Planes
+Hay Day
+Bloons TD
+Kingdom Rush
+Fieldrunners
+World of Goo
+Sword & Sworcery
+Puzzle & Dragons
+パズル&ドラゴンズ
+怪盗ロワイヤル
+釣りスタ
+サンシャイン牧場
+ドラゴンコレクション
+探検ドリランド
+神撃のバハムート
+農園ホッコリーナ
+拡散性ミリオンアーサー
+戦国コレクション
+LINE POP
+LINE バブル
+LINE ポコパン
+LINE ウィンドランナー
+ケリ姫スイーツ
+チャリ走
+ねこあつめ
+ぐんまのやぼう
+にゃんこ大戦争
+Ingress
+Clash of Clans
+
+# 2013-2016
+Flappy Bird
+2048
+Threes!
+Crossy Road
+Monument Valley
+Hearthstone
+Clash Royale
+Boom Beach
+Candy Crush Saga
+Candy Crush Soda Saga
+Farm Heroes Saga
+Pet Rescue Saga
+Bubble Witch Saga
+Dots
+TwoDots
+Alto's Adventure
+Badland
+Leo's Fortune
+Limbo
+The Room
+The Room Two
+Lifeline
+Reigns
+Device 6
+80 Days
+Her Story
+Fallout Shelter
+Trivia Crack
+QuizUp
+Piano Tiles
+Don't Tap the White Tile
+Geometry Dash
+Smash Hit
+Does not Commute
+Duet
+Dumb Ways to Die
+Swing Copters
+Timberman
+Color Switch
+Rolling Sky
+Stack
+ZigZag
+Ballz
+Dune!
+Twist
+Sling Drift
+Helix Jump
+Lara Croft GO
+Hitman GO
+Framed
+Prune
+Threes
+Blek
+Hundreds
+Ridiculous Fishing
+Super Hexagon
+Desert Golfing
+Mini Metro
+Plague Inc.
+Fire Emblem Heroes
+Super Mario Run
+Pokémon GO
+モンスターストライク
+白猫プロジェクト
+妖怪ウォッチ ぷにぷに
+LINE ディズニー ツムツム
+LINE レンジャー
+LINE ポコポコ
+実況パワフルプロ野球
+刀剣乱舞
+艦隊これくしょん
+グランブルーファンタジー
+Fate/Grand Order
+剣と魔法のログレス
+逆転オセロニア
+遊戯王 デュエルリンクス
+アイドルマスター シンデレラガールズ スターライトステージ
+ラブライブ! スクールアイドルフェスティバル
+バンドリ! ガールズバンドパーティ!
+消滅都市
+テラバトル
+ブレイブフロンティア
+チェインクロニクル
+シャドウバース
+ドラゴンクエストモンスターズ スーパーライト
+星のドラゴンクエスト
+ファイナルファンタジー ブレイブエクスヴィアス
+クロッシーロード
+どうぶつタワーバトル
+Slither.io
+Agar.io
+Diep.io
+
+# 2017-2021
+Aquapark.io
+Paper.io
+Paper.io 2
+Hole.io
+Crowd City
+Stack Ball
+Rise Up
+Draw Climber
+Perfect Slices
+Going Balls
+Flip Trickster
+Knife Hit
+Fun Race 3D
+Run Race 3D
+Join Clash
+Count Masters
+Bridge Race
+Tangle Master 3D
+Pull the Pin
+Hero Rescue
+Save the Girl
+Water Sort Puzzle
+Parking Jam 3D
+Wood Nuts & Bolts
+Screw Puzzle
+Sort It 3D
+Ball Sort Puzzle
+Hoop Stars
+Dunk Hit
+Tiles Hop
+Magic Tiles 3
+Beat Fire
+Subway Surfers
+Talking Tom Gold Run
+Brawl Stars
+PUBG MOBILE
+荒野行動
+Fortnite
+Among Us
+Call of Duty: Mobile
+原神
+ウマ娘 プリティーダービー
+プロジェクトセカイ カラフルステージ!
+あんさんぶるスターズ!! Music
+アイドリッシュセブン
+崩壊3rd
+アズールレーン
+ドールズフロントライン
+ポケモンマスターズ
+ポケモンユナイト
+マリオカート ツアー
+どうぶつの森 ポケットキャンプ
+ピクミン ブルーム
+Archero
+Survivor.io
+Vampire Survivors
+Homescapes
+Gardenscapes
+Fishdom
+Toon Blast
+Toy Blast
+Coin Master
+Royal Match
+Merge Dragons
+Merge Mansion
+Idle Miner Tycoon
+AdVenture Capitalist
+Cookie Clicker
+Tap Titans
+Snake.io
+Worms Zone
+Sand Balls
+Tricky Test
+Brain Out
+Brain Test
+Word Cookies
+Wordscapes
+Word Connect
+Tiles Hop
+Dancing Line
+Dancing Road
+Sky Ball
+Jump Ball
+Color Bump 3D
+Color Road
+Roller Splat
+Kick the Buddy
+Happy Glass
+Love Balls
+Draw It
+Dig This
+Sandwich!
+Hair Challenge
+High Heels!
+Tall Man Run
+Shortcut Run
+Fat 2 Fit
+Blob Runner 3D
+Giant Rush
+Merge Master
+Cube Surfer
+Shape Shifter
+Stacky Dash
+Slice It All
+ASMR Slicing
+Soap Cutting
+Kinetic Sand
+Slime Simulator
+Fidget Trading
+
+# 2022-2026
+スイカゲーム
+Suika Game
+Wordle
+Connections
+Block Blast
+Hexa Sort
+Screw Jam
+Zen Match
+Tile Busters
+Goods Sort
+Color Water Sort
+Traffic Escape
+Car Out
+Bus Jam
+Bus Out
+Match Factory
+Triple Match 3D
+Monopoly GO!
+Pokémon TCG Pocket
+ポケポケ
+学園アイドルマスター
+幻塔
+ゼンレスゾーンゼロ
+鳴潮
+崩壊:スターレイル
+勝利の女神:NIKKE
+ブルーアーカイブ
+モンスターハンターNow
+ドラゴンクエストウォーク
+Capybara Go!
+Whiteout Survival
+Last War: Survival
+Kingshot
+Save the Doge
+Hide N Seek
+Merge Fellas
+Merge Cannon
+Squad Busters
+Mob Control
+Magic Sort
+Twisted Tangle
+Nuts and Bolts
+Hexa Puzzle
+Seat Away
+Screw Pin Jam
+Pin Out
+Cat Sort
+Jam Sort
+Wood Blocks
+Tetris Block Puzzle
+Dungeon Crawl idle
+Legend of Mushroom
+Cookie Run: Kingdom
+Honkai: Star Rail
+Palworld Mobile
+BitLife
+Sprunki
+Incredibox
+Geometry Dash 2.2
+Balatro Mobile
