@@ -41,6 +41,12 @@
 先頭に `#! source=memory` と書くと、そのファイルの行は `source=memory`（記憶ベース・未検証）になる。
 検証済みの一覧を貼ったらこの行を消す（`source=paste` に戻る）。
 
+## plays/ — 手書きの遊び（制作の本体）
+
+`plays/<棚>.tsv` に `id<TAB>遊びの一文[<TAB>status]` で書く。固有名詞を入れない。
+同じ題材が何本あっても**遊びは1本ずつ別**にする（800本すべての型を相異なるものにするため）。
+書いた行は `status=play-written` になる（status 列を書けばそれが優先）。
+
 ## production-list.csv の列
 
 | 列 | 意味 |

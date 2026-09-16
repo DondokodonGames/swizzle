@@ -184,6 +184,22 @@ for (const r of rows) {
   const e = existing.get(r.id);
   if (e) { r.play = e.play || r.play; r.status = e.status || r.status; }
 }
+// 手書きの遊び(sources/plays/*.tsv: id<TAB>play[<TAB>status])。CSV の引き継ぎより優先する
+const PLAYS_DIR = path.join(SRC_DIR, 'plays');
+const byId = new Map(rows.map((r) => [r.id, r]));
+let playsApplied = 0;
+for (const f of fs.existsSync(PLAYS_DIR) ? fs.readdirSync(PLAYS_DIR).sort() : []) {
+  if (!f.endsWith('.tsv')) continue;
+  for (const l of readLines(path.join(PLAYS_DIR, f))) {
+    if (l.startsWith('#')) continue;
+    const [id, play, status] = l.split('\t');
+    const r = byId.get(id?.trim());
+    if (!r || !play) continue;
+    r.play = play.trim();
+    r.status = (status?.trim()) || (r.status === 'todo' ? 'play-written' : r.status);
+    playsApplied++;
+  }
+}
 
 const byShelf = new Map<string, number>();
 for (const r of rows) byShelf.set(r.shelf, (byShelf.get(r.shelf) ?? 0) + 1);
@@ -192,6 +208,7 @@ for (const s of ['A', 'B', 'C', 'D', 'E', 'F', 'GH', 'I', 'J', 'K', 'L']) {
   console.log(`  ${s.padEnd(3)} ${String(byShelf.get(s) ?? 0).padStart(6)}`);
 }
 console.log(`  計  ${String(rows.length).padStart(6)}`);
+console.log(`  play 記入済み ${String(rows.filter((r) => r.play && r.shelf !== 'L').length).padStart(6)}  (plays/*.tsv から ${playsApplied})`);
 const empty = ['D', 'I', 'J', 'K'].filter((s) => !byShelf.get(s));
 if (empty.length) console.log(`  貼り込み待ち: ${empty.join(' / ')}  (sources/README.md)`);
 
