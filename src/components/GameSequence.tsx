@@ -37,6 +37,8 @@ interface GameScore {
   best?: number;
   /** 既存ベストを更新した場合 true */
   isNewRecord?: boolean;
+  /** 運型の結果文字(stats.label)。点より先に見せる */
+  label?: string;
 }
 
 interface GameSequenceProps {
@@ -358,7 +360,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
       track('play_start', { gameId: currentGame.id, index: currentIndex });
       markPlayed(currentGame.id);
 
-      const onGameEnd = (result: { success?: boolean; score?: number; timeElapsed?: number; best?: number; isNewRecord?: boolean }) => {
+      const onGameEnd = (result: { success?: boolean; score?: number; timeElapsed?: number; best?: number; isNewRecord?: boolean; label?: string }) => {
         setGameStartTime(null);
         track('play_end', {
           gameId: currentGame.id,
@@ -372,6 +374,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
           success: result.success || false,
           best: result.best,
           isNewRecord: result.isNewRecord,
+          label: result.label,
         });
         currentGameRef.current = null;
         setGameState('bridge');
@@ -386,7 +389,8 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
             currentGame.projectData as unknown as CodeGameProject,
             canvasRef.current!,
             // record(記録型)は失敗で終わるがスコアは残る → 得点のある完走として扱う
-            (r) => onGameEnd({ success: r.result !== 'failure', score: r.score, best: r.best, isNewRecord: r.isNewRecord }),
+            // stats.label は運型(占い・当てもの)の結果文字(例: '大吉')。点より先に見せる
+            (r) => onGameEnd({ success: r.result !== 'failure', score: r.score, best: r.best, isNewRecord: r.isNewRecord, label: typeof r.stats?.label === 'string' ? r.stats.label : undefined }),
             (errMsg) => {
               console.error(`❌ コードゲームエラー: "${currentGame.title}"`, errMsg);
               codeRunnerRef.current = null;

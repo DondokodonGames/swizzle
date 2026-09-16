@@ -84,6 +84,8 @@ interface GameSmokeResult {
   /** ATTRACT 2枚のサンプリング pixel-diff 率(0..1) */
   attractDiff: number | null;
   tapResponsive: boolean | null;
+  /** コードが使っている入力(tap/swipe/hold/drag/multi)。smoke はこれに合わせて指を動かす */
+  inputKinds: string[];
   coverage: ZoneCoverage | null;
   durationMs: number;
   /** START→GAME_END の実測ms(台帳の尺検収用) */
@@ -211,7 +213,7 @@ async function smokeOne(
   const base = path.basename(file, '.js');
   const screenshots: string[] = [];
   let gameEnd = false;
-  let endResult: 'success' | 'failure' | undefined;
+  let endResult: 'success' | 'failure' | 'record' | undefined;
 
   const capMs = opts.quick ? 6000 : 15000;
 
@@ -284,6 +286,48 @@ async function smokeOne(
     if (!box) return;
     await page.mouse.click(box.x + box.width * fx, box.y + box.height * fy).catch(() => {});
   };
+  // なぞり / 2点同時タッチ: iframe は touchstart/move/end の changedTouches を見るので、
+  // 合成 TouchEvent を #c に投げれば onPress/onMove/onRelease と game.touches が動く。
+  // page.mouse.click 単点だけだと drag_follow や 1台で2人 の型を検査できない(WP: 制作リスト 手順2)。
+  type Pt = { x: number; y: number };
+  const touchFrames = async (frames: Pt[][], stepMs = 40) => {
+    if (!box) return;
+    const abs = frames.map((f) => f.map((p) => ({ x: box.x + box.width * p.x, y: box.y + box.height * p.y })));
+    await page
+      .evaluate(
+        async ({ frames, stepMs }) => {
+          const c = document.getElementById('c');
+          if (!c) return;
+          const mk = (id: number, p: { x: number; y: number }) =>
+            new Touch({ identifier: id, target: c, clientX: p.x, clientY: p.y, pageX: p.x, pageY: p.y });
+          const fire = (type: string, changed: Touch[], all: Touch[]) =>
+            c.dispatchEvent(new TouchEvent(type, { touches: all, targetTouches: all, changedTouches: changed, bubbles: true, cancelable: true }));
+          const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+          let cur = frames[0].map((p, i) => mk(i, p));
+          fire('touchstart', cur, cur);
+          for (let k = 1; k < frames.length; k++) {
+            await sleep(stepMs);
+            cur = frames[k].map((p, i) => mk(i, p));
+            fire('touchmove', cur, cur);
+          }
+          await sleep(stepMs);
+          fire('touchend', cur, []);
+        },
+        { frames: abs, stepMs }
+      )
+      .catch(() => {});
+  };
+  const drag = async (from: Pt, to: Pt, steps = 8) =>
+    touchFrames(Array.from({ length: steps + 1 }, (_, k) => [{ x: from.x + ((to.x - from.x) * k) / steps, y: from.y + ((to.y - from.y) * k) / steps }]));
+  const twoFingerTap = async (a: Pt, b: Pt) => touchFrames([[a, b], [a, b]], 60);
+
+  const inputKinds: string[] = [];
+  if (/game\.onTap/.test(code)) inputKinds.push('tap');
+  if (/game\.onSwipe/.test(code)) inputKinds.push('swipe');
+  if (/game\.onHold/.test(code)) inputKinds.push('hold');
+  if (/game\.on(Press|Move|Release)/.test(code)) inputKinds.push('drag');
+  if (/game\.touches/.test(code)) inputKinds.push('multi');
+
   await tap(0.5, 0.5);
   await page.waitForTimeout(250);
   const after = await canvasFingerprint(page);
@@ -299,12 +343,13 @@ async function smokeOne(
   // GAME_END までタップ連打(quick モードでは打ち切りのみ)
   let playMs: number | null = null;
   const deadline = started + capMs + 6000;
+  let tick = 0;
   while (Date.now() < deadline) {
     const events = await readEvents();
     const end = events.find((e) => e.type === 'GAME_END');
     if (end) {
       gameEnd = true;
-      endResult = end.result as 'success' | 'failure';
+      endResult = end.result as 'success' | 'failure' | 'record';
       if (end.__t !== undefined) playMs = Math.round(end.__t - startAt);
       break;
     }
@@ -314,7 +359,12 @@ async function smokeOne(
       break;
     }
     if (opts.quick && Date.now() - started > 5500) break;
-    await tap(0.15 + Math.random() * 0.7, 0.2 + Math.random() * 0.65);
+    const rx = () => 0.15 + Math.random() * 0.7;
+    const ry = () => 0.2 + Math.random() * 0.65;
+    const turn = tick++ % 3;
+    if (inputKinds.includes('drag') && turn === 1) await drag({ x: rx(), y: ry() }, { x: rx(), y: ry() });
+    else if (inputKinds.includes('multi') && turn === 2) await twoFingerTap({ x: 0.25, y: ry() }, { x: 0.75, y: ry() });
+    else await tap(rx(), ry());
     await page.waitForTimeout(350);
   }
 
@@ -341,6 +391,7 @@ async function smokeOne(
     attractMotion,
     attractDiff: attractDiff === null ? null : +attractDiff.toFixed(4),
     tapResponsive,
+    inputKinds,
     coverage,
     durationMs: Date.now() - started,
     playMs,
@@ -366,7 +417,7 @@ function writeContactSheet(outDir: string, results: GameSmokeResult[]): void {
         : '';
       const playMsStr = r.playMs !== null ? ` | 実測尺: ${r.playMs}ms` : '';
       return `<div class="game"><h3>${badge} ${r.file}</h3><div class="shots">${shots}</div>` +
-        `<div class="meta">end: ${r.gameEnd ? r.endResult : 'none'} | attract動き: ${motion} | tap反応: ${r.tapResponsive === null ? '?' : r.tapResponsive ? 'yes' : 'NO'} | 被覆率: ${cov}${playMsStr} | ${r.durationMs}ms</div>${warnHtml}${errs}</div>`;
+        `<div class="meta">end: ${r.gameEnd ? r.endResult : 'none'} | attract動き: ${motion} | tap反応: ${r.tapResponsive === null ? '?' : r.tapResponsive ? 'yes' : 'NO'} | 入力: ${r.inputKinds.join('+') || '-'} | 被覆率: ${cov}${playMsStr} | ${r.durationMs}ms</div>${warnHtml}${errs}</div>`;
     })
     .join('\n');
 
@@ -431,7 +482,7 @@ async function main() {
           file: path.basename(file), ok: false, gameEnd: false,
           errors: [`harness: ${err instanceof Error ? err.message : String(err)}`],
           warns: [], attractMotion: null, attractDiff: null, playMs: null,
-          tapResponsive: null, coverage: null, durationMs: 0, screenshots: [],
+          tapResponsive: null, inputKinds: [], coverage: null, durationMs: 0, screenshots: [],
         };
       }
       results.push(result);

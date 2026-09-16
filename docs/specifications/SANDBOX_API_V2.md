@@ -26,6 +26,7 @@ game.draw.image(id, x, y, w, h, rotation?)  // アセット登録時のみ
 game.end.success(score, stats?)          // stats は {goods: 5, ...} 任意
 game.end.failure(stats?)                 // スコアは 0 になる
 game.end.record(score, stats?)           // 記録型: 失敗で終わるがスコアは残る(スコアアタック / どこまで伸びたか)
+                                         // 運型(占い・当てもの)は stats.label に結果文字: game.end.record(0, { label: '大吉' })
 ```
 
 ## 音 — WebAudioチップチューン合成(v2)

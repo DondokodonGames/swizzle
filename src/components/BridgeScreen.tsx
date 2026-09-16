@@ -26,6 +26,8 @@ interface GameScore {
   best?: number;
   /** 既存ベストを更新した場合 true */
   isNewRecord?: boolean;
+  /** 運型(占い・当てもの)の結果文字。game.end.record(0, { label: '大吉' }) で届く */
+  label?: string;
 }
 
 interface BridgeScreenProps {
@@ -446,6 +448,18 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
                 }}>
                   {(score.points || 0).toLocaleString()}
                 </div>
+                {score.label && (
+                  <div style={{
+                    marginTop: '6px',
+                    fontFamily: "'Space Grotesk', 'Inter', sans-serif",
+                    fontWeight: 700,
+                    fontSize: '28px',
+                    lineHeight: 1.1,
+                    color: '#111111',
+                  }}>
+                    {score.label}
+                  </div>
+                )}
                 {score.isNewRecord && (
                   <div style={{
                     display: 'inline-block',
