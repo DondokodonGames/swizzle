@@ -1,0 +1,386 @@
+3DS	Simple Series for Nintendo 3DS Vol. 1 - The Mahjong
+3DS	Simple Series for Nintendo 3DS Vol. 2 - The Misshitsu Kara no Dasshutsu Archives 1
+3DS	Simple Series for Nintendo 3DS Vol. 3 - The Misshitsu Kara no Dasshutsu Archives 2
+DC	Simple 2000 Series DC Vol. 01 - Bittersweet Fools - The Ren'ai Adventure
+DC	Simple 2000 Series DC Vol. 02 - Natsuiro Celebration - The Ren'ai Simulation
+DC	Simple 2000 Series DC Vol. 03 - Fureai - The Ren'ai Simulation
+DC	Simple 2000 Series DC Vol. 04 - Okaeri! The Ren'ai Adventure
+DS	Simple DS Series Vol. 1 - The Mahjong
+DS	Simple DS Series Vol. 11 - Mou Ichido Kayoeru - The Otona no Shougakkou
+DS	Simple DS Series Vol. 12 - The Party Unou Quiz
+DS	Simple DS Series Vol. 13 - Ijoukishou o Tsuppashire - The Arashi no Drift Rally
+DS	Simple DS Series Vol. 14 - The Jidousha Kyoushuujo DS
+DS	Simple DS Series Vol. 15 - The Kanshikikan 2 - Aratanaru Yattsu no Jiken o Touch Seyo
+DS	Simple DS Series Vol. 16 - The Sagasou Fushigi na Konchuu no Mori
+DS	Simple DS Series Vol. 17 - The Nezumi no Action Game - Mouse Town Roddy to Rita no Daibouken
+DS	Simple DS Series Vol. 18 - The Soukou Kihei Gun Ground
+DS	Simple DS Series Vol. 19 - Yareba Dekiru! - The Micro Step Gijutsu de Oboeru Eitango
+DS	Simple DS Series Vol. 2 - The Billiard
+DS	Simple DS Series Vol. 20 - The Senkan
+DS	Simple DS Series Vol. 21 - The Hohei - Butai de Shutsugeki! Senjou no Inu-tachi
+DS	Simple DS Series Vol. 22 - Age Age - The Zero-Yon Midnight
+DS	Simple DS Series Vol. 23 - The Puzzle Quest - Agaria no Kishi
+DS	Simple DS Series Vol. 24 - The Sensha
+DS	Simple DS Series Vol. 25 - The Koushounin
+DS	Simple DS Series Vol. 26 - The Quiz 30,000 Mon
+DS	Simple DS Series Vol. 27 - The Misshitsu kara no Dasshutsu - The Suiri Bangai Hen
+DS	Simple DS Series Vol. 28 - The Illust Puzzle & Suuji Puzzle 2
+DS	Simple DS Series Vol. 29 - The Sports Daishuugou - Yakyuu, Tennis, Volleyball, Futsal, Golf
+DS	Simple DS Series Vol. 3 - The Mushitori Oukoku - Shinshu Hakken! Nokogiri Kabuto!
+DS	Simple DS Series Vol. 30 - The Table Game - Mahjong, Igo, Shougi, Card, Hanafuda, Reversi, Gomoku Narabe
+DS	Simple DS Series Vol. 31 - The Chou Dangan!! Custom Sensha
+DS	Simple DS Series Vol. 32 - The Zombie Crisis
+DS	Simple DS Series Vol. 33 - The Crossword & Kanji Puzzle
+DS	Simple DS Series Vol. 34 - The Haisha-san
+DS	Simple DS Series Vol. 35 - The Genshijin
+DS	Simple DS Series Vol. 39 - The Shouboutai
+DS	Simple DS Series Vol. 4 - The Block Kuzushi
+DS	Simple DS Series Vol. 40 - The Gekai
+DS	Simple DS Series Vol. 41 - The Bakudan Shorihan
+DS	Simple DS Series Vol. 42 - The Haioku Byoutou - Norowareta Byouin kara no Dasshutsu
+DS	Simple DS Series Vol. 43 - The Host Shiyouze! - DX Night King
+DS	Simple DS Series Vol. 44 - The Gal Mahjong
+DS	Simple DS Series Vol. 45 - The Misshitsu kara no Dasshutsu 2
+DS	Simple DS Series Vol. 46 - The Hikyou Tankentai - Choujou Special 'Kyoui! Jinrui Mitou no Sekai Kakuchi ni Nazo no Mikakunin Seibutsu wa Sonzai Shita!!'
+DS	Simple DS Series Vol. 47 - The Suiri - Shinshou 2009
+DS	Simple DS Series Vol. 48 - The Saibanin - 1-tsu no Shinjitsu, 6-tsu no Kotae
+DS	Simple DS Series Vol. 5 - The Trump
+DS	Simple DS Series Vol. 6 - The Party Game
+DS	Simple DS Series Vol. 7 - The Illust Puzzle & Suuji Puzzle
+DS	Simple DS Series Vol. 8 - The Kanshikikan - Kinkyuu Shutsudou! Jiken Genba o Touch Seyo!
+DS	Simple DS Series Vol. 9 - Atama ga Yokunaru - The Me no Training
+DS	Simple Wii Series Vol. 3 - The Casino Party
+FC	Simple Platformer Game, A
+GBA	Simple 2960 Tomodachi Series Vol. 1 - The Table Game Collection - Mahjong, Shougi, Hanafuda, Reversi
+GBA	Simple 2960 Tomodachi Series Vol. 2 - The Block Kuzushi
+GBA	Simple 2960 Tomodachi Series Vol. 4 - The Trump - Minna de Asoberu 12 Shurui no Trump Game
+PS	Simple 1500 Jitsuyou Series Vol. 01 - Norikae Annai - 2000-nenban
+PS	Simple 1500 Jitsuyou Series Vol. 02 - Katei no Fuusui
+PS	Simple 1500 Jitsuyou Series Vol. 03 - Seimei Handan
+PS	Simple 1500 Jitsuyou Series Vol. 04 - Ryouri - Teiban Ryouri Recipe-shuu
+PS	Simple 1500 Jitsuyou Series Vol. 05 - Kusuri no Jiten - Pill Book 2001-nenban
+PS	Simple 1500 Jitsuyou Series Vol. 06 - Cocktail no Recipe
+PS	Simple 1500 Jitsuyou Series Vol. 07 - Tanoshiku Manabu Unten Menkyo
+PS	Simple 1500 Jitsuyou Series Vol. 08 - 1-jikan de Wakaru Kabushiki Toushi
+PS	Simple 1500 Jitsuyou Series Vol. 09 - Watashi Style no Aromatherapy
+PS	Simple 1500 Jitsuyou Series Vol. 10 - Tarot Uranai
+PS	Simple 1500 Jitsuyou Series Vol. 11 - Katei de Dekiru Tsubo Shiatsu
+PS	Simple 1500 Jitsuyou Series Vol. 12 - Katei no Igaku - Shindan Jiten
+PS	Simple 1500 Jitsuyou Series Vol. 13 - Shinri Game - Soreike x Kokology - Kokoro no Uso no Makafushigi
+PS	Simple 1500 Jitsuyou Series Vol. 14 - Kurashi no Manner - Kankon Sousai-hen
+PS	Simple 1500 Jitsuyou Series Vol. 15 - Inu no Kaikata - Sekai no Inu Catalog
+PS	Simple 1500 Jitsuyou Series Vol. 16 - Neko no Kaikata - Sekai no Neko Catalog
+PS	Simple 1500 Jitsuyou Series Vol. 17 - Planetarium
+PS	Simple 1500 Jitsuyou Series Vol. 18 - Kanji Quiz - Kanji Kentei ni Challenge
+PS	Simple 1500 Series - Hello Kitty Vol. 01 - Bowling
+PS	Simple 1500 Series - Hello Kitty Vol. 02 - Illust Puzzle
+PS	Simple 1500 Series - Hello Kitty Vol. 03 - Block Kuzushi
+PS	Simple 1500 Series - Hello Kitty Vol. 04 - Trump
+PS	Simple 1500 Series Vol. 1 - The Mahjong
+PS	Simple 1500 Series Vol. 10 - The Billiard
+PS	Simple 1500 Series Vol. 100 - The Uchuu Hikoushi
+PS	Simple 1500 Series Vol. 101 - The Sentou
+PS	Simple 1500 Series Vol. 102 - The Densha Untenshu - Densha de Go! Nagoya Tetsudou-hen
+PS	Simple 1500 Series Vol. 103 - The Ganso Densha Untenshi - Densha de Go!
+PS	Simple 1500 Series Vol. 104 - The Pink Panther - Pinkadelic Pursuit
+PS	Simple 1500 Series Vol. 11 - The Pinball 3D
+PS	Simple 1500 Series Vol. 12 - The Quiz
+PS	Simple 1500 Series Vol. 13 - The Race
+PS	Simple 1500 Series Vol. 14 - The Block Kuzushi
+PS	Simple 1500 Series Vol. 15 - The Pachinko
+PS	Simple 1500 Series Vol. 16 - The Pachi-Slot
+PS	Simple 1500 Series Vol. 17 - The Bike Race
+PS	Simple 1500 Series Vol. 18 - The Bowling
+PS	Simple 1500 Series Vol. 19 - The Sugoroku
+PS	Simple 1500 Series Vol. 2 - The Shougi
+PS	Simple 1500 Series Vol. 20 - The Puzzle
+PS	Simple 1500 Series Vol. 21 - The Yakyuu
+PS	Simple 1500 Series Vol. 21 - The Yakyuu - Pro Yakyuu Jitsumeiban
+PS	Simple 1500 Series Vol. 22 - The Pro Wrestling
+PS	Simple 1500 Series Vol. 23 - The Gateball
+PS	Simple 1500 Series Vol. 24 - The Gun Shooting
+PS	Simple 1500 Series Vol. 25 - The Keiba
+PS	Simple 1500 Series Vol. 26 - The Tennis
+PS	Simple 1500 Series Vol. 27 - The Snowboard
+PS	Simple 1500 Series Vol. 28 - The Dungeon RPG
+PS	Simple 1500 Series Vol. 29 - The Tsuri
+PS	Simple 1500 Series Vol. 3 - The Gomoku Narabe
+PS	Simple 1500 Series Vol. 30 - The Basket - 1 on 1 Plus
+PS	Simple 1500 Series Vol. 31 - The Sound Novel
+PS	Simple 1500 Series Vol. 32 - The Boxing
+PS	Simple 1500 Series Vol. 33 - The Takkyuu
+PS	Simple 1500 Series Vol. 34 - The Quiz Bangumi
+PS	Simple 1500 Series Vol. 35 - The Shooting
+PS	Simple 1500 Series Vol. 36 - The Ren'ai Simulation - Natsuiro Celebration
+PS	Simple 1500 Series Vol. 37 - The Illust Puzzle & Slide Puzzle
+PS	Simple 1500 Series Vol. 38 - The Real Racing - Toyota
+PS	Simple 1500 Series Vol. 39 - The Mahjong 2
+PS	Simple 1500 Series Vol. 4 - The Reversi
+PS	Simple 1500 Series Vol. 40 - The Shougi 2
+PS	Simple 1500 Series Vol. 41 - The Reversi 2
+PS	Simple 1500 Series Vol. 42 - The Igo 2
+PS	Simple 1500 Series Vol. 43 - The Hanafuda 2
+PS	Simple 1500 Series Vol. 44 - The Card 2
+PS	Simple 1500 Series Vol. 45 - The Block Kuzushi 2
+PS	Simple 1500 Series Vol. 46 - The Mahjong Ochigee - Raku Jongg
+PS	Simple 1500 Series Vol. 47 - The Skateboard
+PS	Simple 1500 Series Vol. 48 - The Puzzle 2
+PS	Simple 1500 Series Vol. 49 - The Casino
+PS	Simple 1500 Series Vol. 5 - The Igo
+PS	Simple 1500 Series Vol. 50 - The Billiard 2
+PS	Simple 1500 Series Vol. 51 - The Jigsaw Puzzle
+PS	Simple 1500 Series Vol. 52 - The Pro Wrestling 2
+PS	Simple 1500 Series Vol. 53 - The Helicopter
+PS	Simple 1500 Series Vol. 54 - The Volleyball - Break Volley Plus
+PS	Simple 1500 Series Vol. 55 - The Darts
+PS	Simple 1500 Series Vol. 56 - The Sniper
+PS	Simple 1500 Series Vol. 57 - The Meiro
+PS	Simple 1500 Series Vol. 58 - The Sumou
+PS	Simple 1500 Series Vol. 59 - The Suiri - IT Tantei 18 no Jikenbo
+PS	Simple 1500 Series Vol. 6 - The Hanafuda
+PS	Simple 1500 Series Vol. 60 - The Table Hockey
+PS	Simple 1500 Series Vol. 61 - The Quiz 2
+PS	Simple 1500 Series Vol. 62 - The Ski
+PS	Simple 1500 Series Vol. 63 - The Gun Shooting 2
+PS	Simple 1500 Series Vol. 64 - The Kick Boxing
+PS	Simple 1500 Series Vol. 65 - The Golf
+PS	Simple 1500 Series Vol. 66 - The Kaiten - Mawasundaa!!
+PS	Simple 1500 Series Vol. 67 - The Soccer - Dynamite Soccer 1500
+PS	Simple 1500 Series Vol. 68 - The RC Car - RC de Go!
+PS	Simple 1500 Series Vol. 69 - The Putter Golf
+PS	Simple 1500 Series Vol. 7 - The Card
+PS	Simple 1500 Series Vol. 70 - The War Simulation - Hito no Tsukurishi Monotachi
+PS	Simple 1500 Series Vol. 71 - The Ren'ai Simulation 2 - Fureai
+PS	Simple 1500 Series Vol. 72 - The Beach Volley
+PS	Simple 1500 Series Vol. 73 - The Invaders - Space Invaders 1500
+PS	Simple 1500 Series Vol. 74 - The Horror Mystery - Sangeki-kan - Kevin Hakushaku no Fukkatsu
+PS	Simple 1500 Series Vol. 75 - The Double Shooting - RayStorm x RayCrisis
+PS	Simple 1500 Series Vol. 76 - The Dodgeball
+PS	Simple 1500 Series Vol. 77 - The Suiei
+PS	Simple 1500 Series Vol. 78 - The Zeroyon
+PS	Simple 1500 Series Vol. 79 - The Shisenshou
+PS	Simple 1500 Series Vol. 8 - The Solitaire
+PS	Simple 1500 Series Vol. 80 - The Jintori
+PS	Simple 1500 Series Vol. 81 - The Ren'ai Adventure - Okaeri!
+PS	Simple 1500 Series Vol. 82 - The Sensuikan
+PS	Simple 1500 Series Vol. 83 - The Wakeboard - BursTrick - Wake Boarding!!
+PS	Simple 1500 Series Vol. 84 - The Intro Quiz
+PS	Simple 1500 Series Vol. 85 - The Sengoku Bushou - Tenka Touitsu no Yabou
+PS	Simple 1500 Series Vol. 86 - The Onigokko
+PS	Simple 1500 Series Vol. 87 - The Kyoutei
+PS	Simple 1500 Series Vol. 88 - The Gal Mahjong - Love Songs - Idol wa High Rate
+PS	Simple 1500 Series Vol. 89 - The Power Shovel ni Norou!!
+PS	Simple 1500 Series Vol. 9 - The Chess
+PS	Simple 1500 Series Vol. 90 - The Sensha
+PS	Simple 1500 Series Vol. 91 - The Gambler - Honoo no Tobaku Densetsu
+PS	Simple 1500 Series Vol. 92 - The Tozan RPG - Ginrei no Hasha
+PS	Simple 1500 Series Vol. 93 - The Puzzle Bobble - Puzzle Bobble 4
+PS	Simple 1500 Series Vol. 94 - The Cameraman - Gekisha Boy Omake Tsuki
+PS	Simple 1500 Series Vol. 95 - The Hikouki
+PS	Simple 1500 Series Vol. 96 - The Yakyuu 2 - 2002 Pro Yakyuu
+PS	Simple 1500 Series Vol. 97 - The Squash
+PS	Simple 1500 Series Vol. 98 - The Futsal
+PS	Simple 1500 Series Vol. 99 - The Kendou - Ken no Hanamichi
+PS	Simple Character 2000 Series Vol. 01 - Kidou Senshi Gundam - The Gunjin Shougi
+PS	Simple Character 2000 Series Vol. 02 - Afro-ken - The Puzzle
+PS	Simple Character 2000 Series Vol. 03 - Kamen Rider - The Bike Race
+PS	Simple Character 2000 Series Vol. 04 - Jarinko Chie - The Hanafuda
+PS	Simple Character 2000 Series Vol. 05 - High School! Kimengumi - The Table Hockey
+PS	Simple Character 2000 Series Vol. 06 - Dokonjou Gaeru - The Mahjong
+PS	Simple Character 2000 Series Vol. 07 - Ikkyuu-san - The Quiz
+PS	Simple Character 2000 Series Vol. 08 - Kagaku Ninja-tai Gatchaman - The Shooting
+PS	Simple Character 2000 Series Vol. 09 - Tsurikichi Sanpei - The Tsuri
+PS	Simple Character 2000 Series Vol. 10 - Sakigake!! Otokojuku - The Dodgeball
+PS	Simple Character 2000 Series Vol. 11 - Meitantei Conan - The Board Game
+PS	Simple Character 2000 Series Vol. 12 - Kidou Butouden G Gundam - The Battle
+PS	Simple Character 2000 Series Vol. 13 - Shin Kidou Senki Gundam W - The Battle
+PS	Simple Character 2000 Series Vol. 14 - Nante Tantei Idol - The Jigsaw Puzzle
+PS	Simple Character 2000 Series Vol. 15 - Cyborg 009 - The Block Kuzushi
+PS	Simple Character 2000 Series Vol. 16 - Gamba no Bouken - The Puzzle Action
+PS	Simple Character 2000 Series Vol. 17 - Sentou Mecha Xabungle - The Race in Action
+PS2	Simple 2000 Honkaku Shikou Series Vol. 1 - The Shougi - Morita Kazurou no Shougi Shinan
+PS2	Simple 2000 Honkaku Shikou Series Vol. 2 - The Igo
+PS2	Simple 2000 Honkaku Shikou Series Vol. 3 - The Chess
+PS2	Simple 2000 Honkaku Shikou Series Vol. 4 - The Mahjong
+PS2	Simple 2000 Honkaku Shikou Series Vol. 5 - The Kiryoku Kentei - Tanoshiku Manaberu Igo Nyuumon
+PS2	Simple 2000 Honkaku Shikou Series Vol. 6 - The Card - Blackjack, Daifugou, Draw Poker, Speed, Page One, etc.
+PS2	Simple 2000 Series - Hello Kitty Vol. 1 - Starlight Puzzle - Isogashi Cube Dossun Fuwawa
+PS2	Simple 2000 Series - Hello Kitty Vol. 2 - Minna de Sugoroku - Fushigi na Sekai no Nakayoshi Sugoroku
+PS2	Simple 2000 Series Ultimate Vol. 1 - Love - Smash!
+PS2	Simple 2000 Series Ultimate Vol. 10 - Love - Songs - Idol ga Classmate
+PS2	Simple 2000 Series Ultimate Vol. 11 - Wandaba Style - Totsugeki! Mix Live Juice
+PS2	Simple 2000 Series Ultimate Vol. 12 - Street Golfer
+PS2	Simple 2000 Series Ultimate Vol. 13 - Kyousou! Tansha King - Kattobi! Bari Bari Densetsu
+PS2	Simple 2000 Series Ultimate Vol. 14 - Touhai! Dramatic Mahjong - Ten - Tenhoo Doori no Kaidanji
+PS2	Simple 2000 Series Ultimate Vol. 15 - Love - Ping Pong!
+PS2	Simple 2000 Series Ultimate Vol. 16 - Sengoku VS Gendai
+PS2	Simple 2000 Series Ultimate Vol. 17 - Taisen! Bakudan Poi Poi
+PS2	Simple 2000 Series Ultimate Vol. 18 - Love - Aerobi
+PS2	Simple 2000 Series Ultimate Vol. 19 - Akagi - Yami ni Oritatta Tensai
+PS2	Simple 2000 Series Ultimate Vol. 2 - Edit Racing
+PS2	Simple 2000 Series Ultimate Vol. 20 - Love - Mahjong! 2
+PS2	Simple 2000 Series Ultimate Vol. 21 - Kenka Joutou! Yankee Banchou - Shouwa 99-nen no Densetsu
+PS2	Simple 2000 Series Ultimate Vol. 22 - Stylish Mahjong - Usagi - Yasei no Touhai & Usagi - Yasei no Touhai - The Arcade Double Pack
+PS2	Simple 2000 Series Ultimate Vol. 23 - Project Minerva Professional
+PS2	Simple 2000 Series Ultimate Vol. 25 - Chou Saisoku! Zokusha King Bore Up no Bore Up - Butchigiri Densetsu 2 Kai
+PS2	Simple 2000 Series Ultimate Vol. 26 - Love - Smash! 5.1 - Tennis Robo no Hanran
+PS2	Simple 2000 Series Ultimate Vol. 27 - Houkago no Love Beat
+PS2	Simple 2000 Series Ultimate Vol. 28 - Tousou! Kenka Grand Prix - Drive to Survive
+PS2	Simple 2000 Series Ultimate Vol. 29 - K-1 Premium 2005 Dynamite!!
+PS2	Simple 2000 Series Ultimate Vol. 3 - Saisoku! Zokusha King - Butchigiri Densetsu
+PS2	Simple 2000 Series Ultimate Vol. 30 - Kourin! Zokusha God - Butchigiri I Love You
+PS2	Simple 2000 Series Ultimate Vol. 31 - K-1 World Max 2005 - Sekai Ouja e no Michi
+PS2	Simple 2000 Series Ultimate Vol. 33 - Ururun Quest - Koiyuuki
+PS2	Simple 2000 Series Ultimate Vol. 4 - Urawaza Ikasa Mahjonggai - Nii-san, Tsukanjimatta You da ne
+PS2	Simple 2000 Series Ultimate Vol. 5 - Love - Mahjong!
+PS2	Simple 2000 Series Ultimate Vol. 6 - Love - Upper!
+PS2	Simple 2000 Series Ultimate Vol. 7 - Saikyou! Shirobai King - Security Police
+PS2	Simple 2000 Series Ultimate Vol. 8 - Gekitou! Meiro King
+PS2	Simple 2000 Series Ultimate Vol. 9 - Bakusou! Manhattan - Runabout 3 - Neo Age
+PS2	Simple 2000 Series Vol. 1 - The Table Game
+PS2	Simple 2000 Series Vol. 10 - The Table Game Sekai-hen - Chess, Backgammon, Diamond, Gunjin Shougi, etc.
+PS2	Simple 2000 Series Vol. 100 - The Otokotachi no Kijuu Houza
+PS2	Simple 2000 Series Vol. 101 - The OneeChampon - The Neechan 2 Tokubetsu-hen
+PS2	Simple 2000 Series Vol. 102 - The Hohei - Senjou no Inutachi
+PS2	Simple 2000 Series Vol. 103 - The Chikyuu Boueigun Tactics
+PS2	Simple 2000 Series Vol. 104 - The Robot Tsukurou ze! Gekitou! Robot Fight
+PS2	Simple 2000 Series Vol. 105 - The Maid-fuku to Kikanjuu
+PS2	Simple 2000 Series Vol. 106 - The Block Kuzushi Quest - Dragon Kingdom
+PS2	Simple 2000 Series Vol. 107 - The Honoo no Kakutou Banchou
+PS2	Simple 2000 Series Vol. 108 - The Nihon Tokushu Butai - Kyouaku Hanzai Rettou 24-ji
+PS2	Simple 2000 Series Vol. 109 - The Taxi 2 - Untenshu wa Yappari Kimi da!
+PS2	Simple 2000 Series Vol. 11 - The Off-Road Buggy
+PS2	Simple 2000 Series Vol. 110 - The Toubou Prisoner - Los City Shinjitsu e no 10-jikan
+PS2	Simple 2000 Series Vol. 111 - The Itadaki Rider - Omae no Bike wa Ore no Mono & Jacked
+PS2	Simple 2000 Series Vol. 112 - The Tousou Highway 2 - Road Warrior 2050
+PS2	Simple 2000 Series Vol. 113 - The Tairyou Jigoku
+PS2	Simple 2000 Series Vol. 114 - The Onna Okappichi Torimonochou - Oharu-chan GoGoGo!
+PS2	Simple 2000 Series Vol. 115 - The Roomshare toyuu Seikatsu.
+PS2	Simple 2000 Series Vol. 116 - The Neko-mura no Hitobito - Pug Daikan no Akugyou Zanmai
+PS2	Simple 2000 Series Vol. 117 - The Reisen
+PS2	Simple 2000 Series Vol. 118 - The Ochimusha - Doemu Samurai Toujou
+PS2	Simple 2000 Series Vol. 119 - The Survival Game 2
+PS2	Simple 2000 Series Vol. 12 - The Quiz 20,000-mon
+PS2	Simple 2000 Series Vol. 120 - The Saigo no Nihonhei - Utsukushiki Kokudo Dakkan Sakusen
+PS2	Simple 2000 Series Vol. 121 - The Boku no Machi-zukuri 2 - Matching Maker 2.1
+PS2	Simple 2000 Series Vol. 122 - Onna no Ko Sen'you - The Ningyo-hime Monogatari - Mermaid Prism
+PS2	Simple 2000 Series Vol. 123 - The Office Love Jikenbo - Reijou Tantei
+PS2	Simple 2000 Series Vol. 13 - Onna no Ko no Tame no - The Ren'ai Adventure - Garasu no Mori
+PS2	Simple 2000 Series Vol. 14 - The Billiard
+PS2	Simple 2000 Series Vol. 15 - The Rugby
+PS2	Simple 2000 Series Vol. 16 - The Sniper 2 - Akumu no Juudan
+PS2	Simple 2000 Series Vol. 17 - The Suiri - Arata naru 20 no Jikenbo
+PS2	Simple 2000 Series Vol. 18 - The Party Sugoroku
+PS2	Simple 2000 Series Vol. 19 - The Ren'ai Simulation - Watashi ni Oma-Cafe
+PS2	Simple 2000 Series Vol. 2 - The Party Game
+PS2	Simple 2000 Series Vol. 20 - The Dungeon RPG - Shinobi - Mamono no Sumu Shiro
+PS2	Simple 2000 Series Vol. 21 - The Bishoujo Simulation RPG - Moonlight Tale
+PS2	Simple 2000 Series Vol. 22 - The Tsuukin Densha Untenshi - Densha de Go! 3 - Tsuukin-hen
+PS2	Simple 2000 Series Vol. 23 - The Puzzle Collection 2,000-mon
+PS2	Simple 2000 Series Vol. 24 - The Bowling Hyper
+PS2	Simple 2000 Series Vol. 25 - The Menkyo Shutoku Simulation
+PS2	Simple 2000 Series Vol. 26 - The Pinball x3
+PS2	Simple 2000 Series Vol. 27 - The Pro Yakyuu - 2003 Pennant Race
+PS2	Simple 2000 Series Vol. 28 - The Bushidou - Tsujigiri Ichidai
+PS2	Simple 2000 Series Vol. 29 - The Ren'ai Board Game - Seishun 18 Radio
+PS2	Simple 2000 Series Vol. 3 - The Bass Fishing
+PS2	Simple 2000 Series Vol. 30 - The Street Basketball - 3 on 3
+PS2	Simple 2000 Series Vol. 31 - The Chikyuu Boueigun
+PS2	Simple 2000 Series Vol. 32 - The Sensha
+PS2	Simple 2000 Series Vol. 33 - The Jet Coaster - Yuuenchi o Tsukurou!
+PS2	Simple 2000 Series Vol. 34 - The Ren'ai Horror Adventure - Hyouryuu Shoujo
+PS2	Simple 2000 Series Vol. 35 - The Helicopter
+PS2	Simple 2000 Series Vol. 36 - The Musume Ikusei Simulation - Otousan to Issho
+PS2	Simple 2000 Series Vol. 37 - The Shooting - Double Shienryuu
+PS2	Simple 2000 Series Vol. 38 - Otoko no Tame no Bible - The Yuujou Adventure - Hotaru Soul
+PS2	Simple 2000 Series Vol. 39 - The Boku no Machi-zukuri - Matching Maker++
+PS2	Simple 2000 Series Vol. 4 - The Double Mahjong Puzzle
+PS2	Simple 2000 Series Vol. 40 - The Touyou Sandai Senjutsu - Fuusui, Seimei Handan, Ekisen
+PS2	Simple 2000 Series Vol. 41 - The Volleyball
+PS2	Simple 2000 Series Vol. 42 - The Ishu Kakutougi
+PS2	Simple 2000 Series Vol. 43 - The Saiban - Shinmai Shihoukan Momota Tsukasa no 10 no Saiban File
+PS2	Simple 2000 Series Vol. 44 - The Hajimete no RPG - Densetsu no Keishousha
+PS2	Simple 2000 Series Vol. 45 - The Koi to Namida to, Tsuioku to... Thread Colors - Sayonara no Mukougawa
+PS2	Simple 2000 Series Vol. 46 - The Kanji Quiz - Challenge! Kanji Kentei
+PS2	Simple 2000 Series Vol. 47 - The Kassen Sekigahara
+PS2	Simple 2000 Series Vol. 48 - The Taxi - Untenshu wa Kimi da
+PS2	Simple 2000 Series Vol. 49 - The Dodgeball - World Champion Dodge Baller
+PS2	Simple 2000 Series Vol. 5 - The Block Kuzushi Hyper
+PS2	Simple 2000 Series Vol. 50 - The Daibijin
+PS2	Simple 2000 Series Vol. 51 - The Senkan
+PS2	Simple 2000 Series Vol. 52 - The Chikyuu Shinryakugun - Space Raiders
+PS2	Simple 2000 Series Vol. 53 - The Camera Kozou
+PS2	Simple 2000 Series Vol. 54 - The Daikaijuu
+PS2	Simple 2000 Series Vol. 55 - The Catfight - Meneko Densetsu
+PS2	Simple 2000 Series Vol. 56 - The Survival Game
+PS2	Simple 2000 Series Vol. 57 - The Pro Yakyuu 2004
+PS2	Simple 2000 Series Vol. 58 - The Gekai
+PS2	Simple 2000 Series Vol. 59 - The Uchuujin to Hanasou! Uchuujin tte Naani
+PS2	Simple 2000 Series Vol. 6 - The Snowboard
+PS2	Simple 2000 Series Vol. 60 - The Tokusatsu Henshin Hero
+PS2	Simple 2000 Series Vol. 61 - The OneeChambara
+PS2	Simple 2000 Series Vol. 62 - The Super Puzzle Bobble DX
+PS2	Simple 2000 Series Vol. 63 - Mogitate Mizugi! Onna Mamire no - The Suiei Taikai
+PS2	Simple 2000 Series Vol. 64 - The Splatter Action
+PS2	Simple 2000 Series Vol. 65 - The Kyonshii Panic
+PS2	Simple 2000 Series Vol. 66 - The Party Unou Quiz
+PS2	Simple 2000 Series Vol. 67 - The Suiri - Soshite Dare mo Inaku Natta
+PS2	Simple 2000 Series Vol. 68 - The Tousou Highway - Nagoya-Tokyo
+PS2	Simple 2000 Series Vol. 69 - The Board Game Collection
+PS2	Simple 2000 Series Vol. 7 - The Boxing - Real Fist Fighter
+PS2	Simple 2000 Series Vol. 70 - The Kanshikikan
+PS2	Simple 2000 Series Vol. 71 - The Fantasy Ren'ai Adventure - Kanojo no Densetsu, Boku no Sekiban
+PS2	Simple 2000 Series Vol. 72 - The Ninkyou
+PS2	Simple 2000 Series Vol. 73 - The Saiyuu Touenden
+PS2	Simple 2000 Series Vol. 74 - Onna no Ko Sen'you - The Oujisama to Romance - Ripuru no Tamago
+PS2	Simple 2000 Series Vol. 75 - The Tokudane - Nihon Zenkoku Scoop Rettou
+PS2	Simple 2000 Series Vol. 76 - The Hanasou Eigo no Tabi
+PS2	Simple 2000 Series Vol. 77 - The Hanasou Hangul no Tabi
+PS2	Simple 2000 Series Vol. 78 - The Uchuu Daisensou
+PS2	Simple 2000 Series Vol. 79 - Akko ni Omakase! The Party Quiz
+PS2	Simple 2000 Series Vol. 8 - The Tennis
+PS2	Simple 2000 Series Vol. 80 - The OneeChamploo - The Neechan Tokubetsu-hen
+PS2	Simple 2000 Series Vol. 81 - The Chikyuu Boueigun 2
+PS2	Simple 2000 Series Vol. 82 - The Kung Fu
+PS2	Simple 2000 Series Vol. 83 - The Konchuu Saishuu
+PS2	Simple 2000 Series Vol. 84 - The Boku ni Oma-Cafe - Kimagure Strawberry Cafe
+PS2	Simple 2000 Series Vol. 85 - The Sekai Meisaku Gekijou Quiz
+PS2	Simple 2000 Series Vol. 86 - The Menkyo Shutoku Simulation - Kaisei Douro Koutsuuhou Taiou-ban
+PS2	Simple 2000 Series Vol. 87 - The Nadeshiko
+PS2	Simple 2000 Series Vol. 88 - The Mini-suke Police
+PS2	Simple 2000 Series Vol. 89 - The Party Game 2
+PS2	Simple 2000 Series Vol. 9 - The Ren'ai Adventure - Bittersweet Fools
+PS2	Simple 2000 Series Vol. 90 - The OneeChambara 2
+PS2	Simple 2000 Series Vol. 91 - The All Star Kakutousai
+PS2	Simple 2000 Series Vol. 92 - The Noroi no Game
+PS2	Simple 2000 Series Vol. 93 - The Unou Drill - Kodama Mitsuo Sensei Kanshuu
+PS2	Simple 2000 Series Vol. 94 - The Aka-Champion - Come on Baby
+PS2	Simple 2000 Series Vol. 95 - The Zombie vs. Kyuukyuusha
+PS2	Simple 2000 Series Vol. 96 - The Kaizoku - Gaikotsu Ippai-rates!
+PS2	Simple 2000 Series Vol. 97 - The Koi no Engine - Darling Special Backlash - Koi no Exhaust Heat
+PS2	Simple 2000 Series Vol. 98 - The Roman Sabou - Meshimase Roman Sabou
+PS2	Simple 2000 Series Vol. 99 - The Genshijin
+PS2	Simple Outlaws DX Gaiden - Chou Saisoku! Zokusha King Bore Up - Butchigiri Densetsu 2
+PSP	Simple 2000 Series Portable!! Vol. 1 - The Mahjong
+PSP	Simple 2000 Series Portable!! Vol. 2 - The Shougi
+PSP	Simple 2500 Series Portable!! Vol. 1 - The Table Game
+PSP	Simple 2500 Series Portable!! Vol. 10 - The IQ Cube - Moyatto Atama o Puzzle de Sukkiri!
+PSP	Simple 2500 Series Portable!! Vol. 11 - The Puzzle Quest - Agaria no Kishi
+PSP	Simple 2500 Series Portable!! Vol. 12 - The Hohei 2 - Senyuu yo, Sakini Ike
+PSP	Simple 2500 Series Portable!! Vol. 13 - The Akuma Hunters - Exorsister
+PSP	Simple 2500 Series Portable!! Vol. 2 - The Tennis
+PSP	Simple 2500 Series Portable!! Vol. 4 - The Unou Drill
+PSP	Simple 2500 Series Portable!! Vol. 5 - The Block Kuzushi Quest - Dragon Kingdom
+PSP	Simple 2500 Series Portable!! Vol. 6 - The Sensha
+PSP	Simple 2500 Series Portable!! Vol. 9 - The My Taxi
+Wii	Simple 2000 Series Wii Vol. 1 - The Table Game - Mahjong, Igo, Shougi, Card, Hanafuda, Reversi, Gomoku Narabe
+Wii	Simple 2000 Series Wii Vol. 2 - The Party Game
+Wii	Simple Wii Series Vol. 1 - The Minna de Kart Race
+Wii	Simple Wii Series Vol. 2 - The Minna de Bass Tsuri Taikai
+Wii	Simple Wii Series Vol. 3 - Asonde Oboeru - The Party Casino
+Wii	Simple Wii Series Vol. 4 - The Shooting Action
+Wii	Simple Wii Series Vol. 5 - The Block Kuzushi
+Wii	Simple Wii Series Vol. 6 - The Wai Wai Combat
+WiiU	Simple DL Series For Wii U Volume One The Behind Closed Doors
+WiiU	Simple DL Series for Wii U Vol. 2
+WiiU	Simple Wii U Series Vol. 1: The Family Party
