@@ -146,6 +146,8 @@ export interface SwizzleGameAPI {
   end: {
     success(score?: number, stats?: GameEndStats): void;
     failure(stats?: GameEndStats): void;
+    /** 記録型の終わり: 失敗で終わるがスコアは残る(スコアアタック) */
+    record(score?: number, stats?: GameEndStats): void;
   };
 
   random(min: number, max: number): number;

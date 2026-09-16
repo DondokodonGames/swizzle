@@ -212,8 +212,11 @@ export class CodeQualityScorer {
     let goalEndings = 0;
     const hasWinText = /(CLEAR|SUCCESS|COMPLETE|WIN|やった|クリア)/i.test(code);
     const hasLoseText = /(GAME OVER|GAMEOVER|FAILED|TIME UP|TIMEUP|LOSE|しっぱい|ゲームオーバー)/i.test(code);
-    if (hasWinText && hasLoseText) goalEndings += 5;
-    else hints.push('CLEARとGAME OVERで異なる結果演出を出す');
+    // 記録型(end.record)は「終わり=失敗」なので、結末の差は GAME OVER × NEW RECORD/BEST で見る
+    const usesRecordEnd = code.includes('game.end.record');
+    const hasRecordText = /(NEW RECORD|BEST)/i.test(code);
+    if ((hasWinText && hasLoseText) || (usesRecordEnd && hasLoseText && hasRecordText)) goalEndings += 5;
+    else hints.push(usesRecordEnd ? 'GAME OVERとNEW RECORD/BESTで結末の差を出す' : 'CLEARとGAME OVERで異なる結果演出を出す');
     const hasProgress =
       /['"]\s*\/\s*['"]/.test(code) ||              // "3 / 10" カウンタ表示
       /timeLeft\s*\//.test(code) ||                  // 残時間バー

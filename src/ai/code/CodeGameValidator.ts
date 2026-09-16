@@ -30,7 +30,7 @@ const KNOWN_API_METHODS = new Set([
   'game.fx.burst', 'game.fx.popup', 'game.fx.flash', 'game.fx.shake',
   'game.feedback.good', 'game.feedback.bad',
   'game.hit.circle', 'game.hit.rect',
-  'game.end.success', 'game.end.failure',
+  'game.end.success', 'game.end.failure', 'game.end.record',
   'game.random', 'game.canvas', 'game.time', 'game.best',
   'game.input', 'game.touches',
 ]);
@@ -89,20 +89,20 @@ export class CodeGameValidator {
       return { valid: false, errors, warnings };
     }
 
-    // 3. game.end.success の存在チェック
-    if (!code.includes('game.end.success')) {
+    // 3-4. 終わり方の存在チェック。
+    // 記録型(game.end.record)は「失敗で終わるがスコアが残る」ので、成功/失敗の両方を兼ねる
+    const usesRecord = code.includes('game.end.record');
+    if (!code.includes('game.end.success') && !usesRecord) {
       errors.push({
         code: 'NO_SUCCESS',
-        message: 'game.end.success() が見つかりません。成功条件を実装してください',
+        message: 'game.end.success() か game.end.record() が見つかりません。成功条件(または記録型の終わり)を実装してください',
         severity: 'error',
       });
     }
-
-    // 4. game.end.failure の存在チェック
-    if (!code.includes('game.end.failure')) {
+    if (!code.includes('game.end.failure') && !usesRecord) {
       errors.push({
         code: 'NO_FAILURE',
-        message: 'game.end.failure() が見つかりません。失敗条件を実装してください',
+        message: 'game.end.failure() か game.end.record() が見つかりません。失敗条件(または記録型の終わり)を実装してください',
         severity: 'error',
       });
     }

@@ -4,7 +4,8 @@ import { CodeGameProject, CodeGameAsset, CodeGameAudioAsset, GameEndStats } from
 import { captureError } from '../monitoring/Sentry';
 
 export type GameResult = {
-  result: 'success' | 'failure';
+  /** record = 記録型の終わり(失敗で終わるがスコアは残る) */
+  result: 'success' | 'failure' | 'record';
   score: number;
   /** 保存後のベストスコア(今回の記録を含む) */
   best: number;

@@ -73,6 +73,7 @@ describe('buildIframeHtml', () => {
 
     it('sends stats with GAME_END', () => {
       expect(html).toContain("{ type: 'GAME_END', result: 'success', score: score || 0, stats: stats }");
+      expect(html).toContain("{ type: 'GAME_END', result: 'record', score: score || 0, stats: stats }");
     });
   });
 

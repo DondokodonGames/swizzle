@@ -42,7 +42,8 @@ game.audio.bgm(id, volume?)         // BGM再生（ループ）
 game.audio.stopBgm()                // BGM停止
 
 game.end.success(score?)            // 成功終了
-game.end.failure()                  // 失敗終了
+game.end.failure()                  // 失敗終了（スコアは残らない）
+game.end.record(score?)             // 記録型の終了: 失敗で終わるがスコアは残る（スコアアタック）
 
 game.random(min, max)               // ランダム実数
 game.time.elapsed                   // ゲーム開始からの経過秒
@@ -78,7 +79,7 @@ ${example2}
 
 ## 生成ルール
 1. コードは (function(game) { ... })(game); の形式で書くこと
-2. game.end.success() と game.end.failure() の両方を必ず呼ぶこと
+2. game.end.success() と game.end.failure() の両方を必ず呼ぶこと（記録型なら game.end.record() 1つでよい）
 3. 5〜30秒以内に終わるゲームにすること
 4. onUpdate(dt) でdtを使い、フレームレート非依存の更新にすること
 5. 毎フレームclearで画面をクリアし、その後draw命令で再描画すること

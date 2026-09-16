@@ -55,6 +55,19 @@ describe('CodeGameValidator – 必須メソッドチェック', () => {
     expect(r.valid).toBe(false);
   });
 
+  it('game.end.record だけでも NO_SUCCESS / NO_FAILURE にならない(記録型)', () => {
+    const code = [
+      '(function(game) {',
+      'var t = 0;',
+      'game.onUpdate(function(dt) { t += dt; if (t > 10) game.end.record(Math.floor(t * 100)); });',
+      'game.onTap(function(x, y) { t += 1; });',
+      '})(game);',
+    ].join('\n');
+    const result = new CodeGameValidator().validate(code);
+    expect(result.errors.map((e) => e.code)).not.toContain('NO_SUCCESS');
+    expect(result.errors.map((e) => e.code)).not.toContain('NO_FAILURE');
+  });
+
   it('game.end.failure がなければ NO_FAILURE エラー', () => {
     const code = [
       'game.onUpdate(function(dt){});',

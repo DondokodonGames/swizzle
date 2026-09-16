@@ -900,6 +900,14 @@ export function buildIframeHtml(gameCode: string, maxDurationMs: number): string
         isRunning = false;
         if (rafId) cancelAnimationFrame(rafId);
         parent.postMessage({ type: 'GAME_END', result: 'failure', score: 0, stats: stats }, '*');
+      },
+      // 記録型の終わり: 走り切った(=いずれ失敗で終わる)がスコアは残す。
+      // failure が score を 0 にするのと違い、「負けたけど 12,400 点」を表現する。
+      record: function(score, stats) {
+        if (!isRunning) return;
+        isRunning = false;
+        if (rafId) cancelAnimationFrame(rafId);
+        parent.postMessage({ type: 'GAME_END', result: 'record', score: score || 0, stats: stats }, '*');
       }
     },
 

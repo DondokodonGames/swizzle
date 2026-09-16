@@ -24,7 +24,8 @@ game.draw.text(str, x, y, {size, color, align, bold, font})
 game.draw.line(x1, y1, x2, y2, color, width?)
 game.draw.image(id, x, y, w, h, rotation?)  // アセット登録時のみ
 game.end.success(score, stats?)          // stats は {goods: 5, ...} 任意
-game.end.failure(stats?)
+game.end.failure(stats?)                 // スコアは 0 になる
+game.end.record(score, stats?)           // 記録型: 失敗で終わるがスコアは残る(スコアアタック / どこまで伸びたか)
 ```
 
 ## 音 — WebAudioチップチューン合成(v2)

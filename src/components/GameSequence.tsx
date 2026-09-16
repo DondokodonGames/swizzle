@@ -385,7 +385,8 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
           runner.launch(
             currentGame.projectData as unknown as CodeGameProject,
             canvasRef.current!,
-            (r) => onGameEnd({ success: r.result === 'success', score: r.score, best: r.best, isNewRecord: r.isNewRecord }),
+            // record(記録型)は失敗で終わるがスコアは残る → 得点のある完走として扱う
+            (r) => onGameEnd({ success: r.result !== 'failure', score: r.score, best: r.best, isNewRecord: r.isNewRecord }),
             (errMsg) => {
               console.error(`❌ コードゲームエラー: "${currentGame.title}"`, errMsg);
               codeRunnerRef.current = null;
