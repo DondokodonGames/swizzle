@@ -32,16 +32,20 @@ const args = process.argv.slice(2);
 const showAll = args.includes('--all');
 const asJson = args.includes('--json');
 const targetArg = args.find((a) => !a.startsWith('--'));
-const target = targetArg ? path.resolve(targetArg) : DEFAULT_DIR;
+// 新規ゲーム(制作リスト由来)は src/ai/code/games/<系統>/ に置く。指定が無ければ examples + games を両方走査
+const GAMES_DIR = path.resolve(__dirname, '../src/ai/code/games');
+const targets = targetArg ? [path.resolve(targetArg)] : [DEFAULT_DIR, GAMES_DIR].filter((d) => fs.existsSync(d));
 
 function collectFiles(p: string): string[] {
   const stat = fs.statSync(p);
   if (stat.isFile()) return [p];
-  return fs
-    .readdirSync(p)
-    .filter((f) => f.endsWith('.js'))
-    .sort()
-    .map((f) => path.join(p, f));
+  const out: string[] = [];
+  for (const f of fs.readdirSync(p).sort()) {
+    const full = path.join(p, f);
+    if (fs.statSync(full).isDirectory()) out.push(...collectFiles(full));
+    else if (f.endsWith('.js')) out.push(full);
+  }
+  return out;
 }
 
 interface FileReport {
@@ -50,7 +54,7 @@ interface FileReport {
   licensed: Array<{ term: string; owner: string }>;
 }
 
-const files = collectFiles(target);
+const files = targets.flatMap(collectFiles);
 const reports: FileReport[] = [];
 
 for (const file of files) {

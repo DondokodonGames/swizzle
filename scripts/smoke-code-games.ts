@@ -42,10 +42,12 @@ interface CliOpts {
   workers: number;
   out: string;
   files: string[];
+  /** このディレクトリ以下の .js を再帰で全部(フィクスチャは足さない) */
+  dir: string;
 }
 
 function parseArgs(argv: string[]): CliOpts {
-  const o: CliOpts = { all: false, quick: false, sample: 20, workers: 4, out: 'smoke-output', files: [] };
+  const o: CliOpts = { all: false, quick: false, sample: 20, workers: 4, out: 'smoke-output', files: [], dir: '' };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--all') o.all = true;
@@ -53,6 +55,7 @@ function parseArgs(argv: string[]): CliOpts {
     else if (a === '--sample') o.sample = parseInt(argv[++i], 10) || 20;
     else if (a === '--workers') o.workers = parseInt(argv[++i], 10) || 4;
     else if (a === '--out') o.out = argv[++i];
+    else if (a === '--dir') o.dir = argv[++i];
     else if (a === '--files') {
       while (argv[i + 1] && !argv[i + 1].startsWith('--')) o.files.push(argv[++i]);
     }
@@ -444,7 +447,16 @@ async function main() {
 
   // 対象ファイルの決定: フィクスチャ + examples
   let targets: string[] = [];
-  if (opts.files.length > 0) {
+  const walk = (d: string): string[] => {
+    if (!fs.existsSync(d)) return [];
+    return fs.readdirSync(d).sort().flatMap((f) => {
+      const full = path.join(d, f);
+      return fs.statSync(full).isDirectory() ? walk(full) : f.endsWith('.js') ? [full] : [];
+    });
+  };
+  if (opts.dir) {
+    targets = walk(path.resolve(process.cwd(), opts.dir));
+  } else if (opts.files.length > 0) {
     targets = opts.files.map((f) =>
       path.isAbsolute(f) ? f : fs.existsSync(path.resolve(EXAMPLES_DIR, f)) ? path.resolve(EXAMPLES_DIR, f) : path.resolve(process.cwd(), f)
     );
@@ -461,6 +473,7 @@ async function main() {
   }
 
   console.log(`🎮 スモーク対象: ${targets.length} 本 (workers=${opts.workers}, quick=${opts.quick})`);
+  if (targets.length === 0) { console.log('対象なし'); return; }
 
   const browser = await launchBrowser();
   const results: GameSmokeResult[] = [];

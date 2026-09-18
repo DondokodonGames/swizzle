@@ -82,7 +82,8 @@
     "games:list": "tsx scripts/build-production-list.ts",
     "games:smoke": "tsx scripts/smoke-code-games.ts",
     "games:smoke:all": "tsx scripts/smoke-code-games.ts --all",
-    "games:smoke:quick": "tsx scripts/smoke-code-games.ts --quick"
+    "games:smoke:quick": "tsx scripts/smoke-code-games.ts --quick",
+    "games:smoke:w1": "tsx scripts/smoke-code-games.ts --dir src/ai/code/games --out smoke-output-w1"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.91.1",

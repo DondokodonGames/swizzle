@@ -36,7 +36,19 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const EXAMPLES_DIR = path.resolve(__dirname, '../code/examples');
+// GAMES_DIR=src/ai/code/games で制作リスト由来の新規ゲーム(系統ごとのサブディレクトリ)を対象にする。
+// その場合 template_id は 'game:<ファイル名>'。既定は examples/(797本・破棄予定)
+const GAMES_DIR = process.env.GAMES_DIR ? path.resolve(process.cwd(), process.env.GAMES_DIR) : null;
+const EXAMPLES_DIR = GAMES_DIR ?? path.resolve(__dirname, '../code/examples');
+const TEMPLATE_PREFIX = GAMES_DIR ? 'game' : 'example';
+function listGameFiles(dir: string, rel = ''): string[] {
+  if (!fs.existsSync(dir)) return [];
+  return fs.readdirSync(dir).sort().flatMap((f) => {
+    const full = path.join(dir, f);
+    const r = rel ? `${rel}/${f}` : f;
+    return fs.statSync(full).isDirectory() ? listGameFiles(full, r) : f.endsWith('.js') ? [r] : [];
+  });
+}
 const PROGRESS_FILE = path.resolve(__dirname, 'upload-examples-progress.json');
 
 interface ProgressData {
@@ -97,8 +109,8 @@ function parseGameFile(filePath: string, filename: string): GameMeta | null {
   // Line 2: // タイトル — 体験説明
   // Line 3: // 操作: ...
   // 任意:   // @tier: S  // @mechanic: timing_one_shot  // @theme: space  // @trend: xxx
-  const baseName = filename.replace(/\.js$/, '');
-  const templateId = `example:${baseName}`;
+  const baseName = path.basename(filename).replace(/\.js$/, '');
+  const templateId = `${TEMPLATE_PREFIX}:${baseName}`;
 
   let title = baseName;
   let description = '';
@@ -145,11 +157,9 @@ async function main() {
   const priceSync = process.env.PRICE_SYNC === 'true';
 
   // examples/ ディレクトリの .js ファイルを列挙（アルファベット順）
-  const allFiles = fs.readdirSync(EXAMPLES_DIR)
-    .filter(f => f.endsWith('.js'))
-    .sort();
+  const allFiles = listGameFiles(EXAMPLES_DIR);
 
-  console.log(`📁 examples/ に ${allFiles.length} 件の .js ファイルを発見\n`);
+  console.log(`📁 ${path.relative(process.cwd(), EXAMPLES_DIR)}/ に ${allFiles.length} 件の .js ファイルを発見\n`);
 
   if (skipUpload) {
     console.log('⏭️  DRY RUN モード — Supabase には接続しません\n');

@@ -779,15 +779,31 @@ function main() {
     ? JSON.parse(fs.readFileSync(OVERRIDES_FILE, 'utf-8'))
     : {};
 
-  const files = fs.readdirSync(EXAMPLES_DIR).filter((f) => f.endsWith('.js')).sort();
-  console.log(`🎮 解析対象: ${files.length}本 (overrides: ${Object.keys(overrides).length}件)`);
+  // examples/(797本・破棄予定)に加えて games/<系統>/**(制作リスト由来の新規)を拾う。
+  // games 側の filename は 'games/<系統>/<id>-<slug>.js' の相対パスにして区別する
+  const GAMES_DIR = path.resolve(__dirname, '../src/ai/code/games');
+  const entries: Array<{ abs: string; name: string }> = fs
+    .readdirSync(EXAMPLES_DIR)
+    .filter((f) => f.endsWith('.js'))
+    .sort()
+    .map((f) => ({ abs: path.join(EXAMPLES_DIR, f), name: f }));
+  const walk = (dir: string, rel: string): void => {
+    if (!fs.existsSync(dir)) return;
+    for (const f of fs.readdirSync(dir).sort()) {
+      const full = path.join(dir, f);
+      if (fs.statSync(full).isDirectory()) walk(full, `${rel}/${f}`);
+      else if (f.endsWith('.js')) entries.push({ abs: full, name: `${rel}/${f}` });
+    }
+  };
+  walk(GAMES_DIR, 'games');
+  console.log(`🎮 解析対象: ${entries.length}本 (overrides: ${Object.keys(overrides).length}件)`);
 
   const validator = new CodeGameValidator();
   const scorer = new CodeQualityScorer();
   const rows: GameRow[] = [];
-  for (const f of files) {
-    const code = fs.readFileSync(path.join(EXAMPLES_DIR, f), 'utf-8');
-    rows.push(analyzeFile(f, code, validator, scorer));
+  for (const e of entries) {
+    const code = fs.readFileSync(e.abs, 'utf-8');
+    rows.push(analyzeFile(e.name, code, validator, scorer));
   }
   consolidateMechanics(rows, overrides);
 
