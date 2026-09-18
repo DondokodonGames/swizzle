@@ -60922,7 +60922,7 @@ GH-DS-0004,GH,DS,Simple DS Series Vol. 13 - Ijoukishou o Tsuppashire - The Arash
 GH-DS-0005,GH,DS,Simple DS Series Vol. 14 - The Jidousha Kyoushuujo DS,redump,,,,半,正誤は出るが、点や記録として残るものが play に無い,,2,コースに沿って一時停止・左右確認を正しい順で押す。手順を飛ばすと不合格,play-written
 GH-DS-0006,GH,DS,Simple DS Series Vol. 15 - The Kanshikikan 2 - Aratanaru Yattsu no Jiken o Touch Seyo,redump,Adventure,inferred,探す・選ぶ,半,正誤は出るが、点や記録として残るものが play に無い,,2,現場の中で「触ってはいけない」証拠と「持ち帰る」証拠を見分けて触る,play-written
 GH-DS-0007,GH,DS,Simple DS Series Vol. 16 - The Sagasou Fushigi na Konchuu no Mori,redump,Hunting and Fishing,inferred,狩る・釣る,明,点/勝敗/当たり外れが残る,shokudo+kanko,2,草むらを1回だけめくって虫を捕まえる。逃げられたら次の草むらへ,play-written
-GH-DS-0008,GH,DS,Simple DS Series Vol. 17 - The Nezumi no Action Game - Mouse Town Roddy to Rita no Daibouken,redump,Platform,inferred,走る・跳ぶ,明,第1波: 終了時に点/勝敗/当たり外れを必ず出す設計にする,kanko,1,台所の上をネズミが走る。皿が落ちる前に跳び越える,play-written
+GH-DS-0008,GH,DS,Simple DS Series Vol. 17 - The Nezumi no Action Game - Mouse Town Roddy to Rita no Daibouken,redump,Platform,inferred,走る・跳ぶ,明,第1波: 終了時に点/勝敗/当たり外れを必ず出す設計にする,kanko,1,台所の上をネズミが走る。皿が落ちる前に跳び越える,built
 GH-DS-0009,GH,DS,Simple DS Series Vol. 18 - The Soukou Kihei Gun Ground,redump,Shoot'em Up,inferred,撃つ,明,点/勝敗/当たり外れが残る,bar+kanko,2,装甲車が迫る。装甲の隙間が開く一瞬だけ撃つ,play-written
 GH-DS-0010,GH,DS,Simple DS Series Vol. 19 - Yareba Dekiru! - The Micro Step Gijutsu de Oboeru Eitango,redump,Quiz,inferred,答える,半,正誤は出るが、点や記録として残るものが play に無い,shokudo,2,単語のつづりが1文字ずつ増えていく。抜けた1文字を埋める,play-written
 GH-DS-0011,GH,DS,Simple DS Series Vol. 2 - The Billiard,redump,Sports,inferred,球技・スポーツ,半,正誤は出るが、点や記録として残るものが play に無い,bar+shokudo,2,手玉を弾いて、狙った的玉だけをポケットに落とす。手玉が落ちたら終わり,play-written
@@ -60959,7 +60959,7 @@ GH-DS-0041,GH,DS,Simple DS Series Vol. 6 - The Party Game,redump,Quiz,inferred,�
 GH-DS-0042,GH,DS,Simple DS Series Vol. 7 - The Illust Puzzle & Suuji Puzzle,redump,Puzzle,inferred,解く,半,正誤は出るが、点や記録として残るものが play に無い,shokudo+kanko,2,数字の並びが崩れたパズルを、動かせる1マスだけ使って揃える,play-written
 GH-DS-0043,GH,DS,Simple DS Series Vol. 8 - The Kanshikikan - Kinkyuu Shutsudou! Jiken Genba o Touch Seyo!,redump,,,,明,点/勝敗/当たり外れが残る,,2,現場の写真を触って、不自然な1点を見つける,play-written
 GH-DS-0044,GH,DS,Simple DS Series Vol. 9 - Atama ga Yokunaru - The Me no Training,redump,Quiz,inferred,答える,明,点/勝敗/当たり外れが残る,shokudo,2,一瞬光った場所を順に押す。目の速さだけで勝負,play-written
-GH-DS-0045,GH,DS,Simple Wii Series Vol. 3 - The Casino Party,redump,Gambling,inferred,賭け・運,明,第1波: 終了時に点/勝敗/当たり外れを必ず出す設計にする,bar+shokudo+kanko,1,ルーレットが止まる前に賭ける。止まるまで賭け直しは1回だけ,play-written
+GH-DS-0045,GH,DS,Simple Wii Series Vol. 3 - The Casino Party,redump,Gambling,inferred,賭け・運,明,第1波: 終了時に点/勝敗/当たり外れを必ず出す設計にする,bar+shokudo+kanko,1,ルーレットが止まる前に賭ける。止まるまで賭け直しは1回だけ,built
 GH-FC-0001,GH,FC,"Simple Platformer Game, A",redump,Platform,inferred,走る・跳ぶ,半,正誤は出るが、点や記録として残るものが play に無い,kanko,2,穴を跳び越えて右へ走る。跳ぶ長さは押した長さ,play-written
 GH-GBA-0001,GH,GBA,"Simple 2960 Tomodachi Series Vol. 1 - The Table Game Collection - Mahjong, Shougi, Hanafuda, Reversi",redump,Board,libretro,盤・札,半,正誤は出るが、点や記録として残るものが play に無い,bar+shokudo,2,配牌から役が1つ見える。その役に要る牌だけを残して他を捨てる,play-written
 GH-GBA-0002,GH,GBA,Simple 2960 Tomodachi Series Vol. 2 - The Block Kuzushi,redump,Puzzle,inferred,解く,半,正誤は出るが、点や記録として残るものが play に無い,shokudo+kanko,2,ブロックを崩す。玉が2つに増えたら両方を落とさない,play-written
@@ -61068,13 +61068,13 @@ GH-PS-0101,GH,PS,Simple 1500 Series Vol. 75 - The Double Shooting - RayStorm x R
 GH-PS-0102,GH,PS,Simple 1500 Series Vol. 76 - The Dodgeball,redump,Sports,inferred,球技・スポーツ,半,正誤は出るが、点や記録として残るものが play に無い,bar+shokudo,2,ドッジボール。投げる・受ける・避けるを瞬時に選ぶ,play-written
 GH-PS-0103,GH,PS,Simple 1500 Series Vol. 77 - The Suiei,redump,Sports,inferred,球技・スポーツ,半,正誤は出るが、点や記録として残るものが play に無い,bar+shokudo,2,水泳。息継ぎのタイミングを合わせる。合わないと失速,play-written
 GH-PS-0104,GH,PS,Simple 1500 Series Vol. 78 - The Zeroyon,redump,Racing,inferred,競う速さ,明,第1波: 終了時に点/勝敗/当たり外れを必ず出す設計にする,bar+kanko,1,ゼロヨン。ギアを上げる回転数を合わせる。早いと失速、遅いとオーバーレブ,built
-GH-PS-0105,GH,PS,Simple 1500 Series Vol. 79 - The Shisenshou,redump,Board,inferred,盤・札,明,残り枚数が数字,bar+shokudo,1,四川省。同じ牌を、曲がり角2回以内の線で繋いで消す,play-written
+GH-PS-0105,GH,PS,Simple 1500 Series Vol. 79 - The Shisenshou,redump,Board,inferred,盤・札,明,残り枚数が数字,bar+shokudo,1,四川省。同じ牌を、曲がり角2回以内の線で繋いで消す,built
 GH-PS-0106,GH,PS,Simple 1500 Series Vol. 8 - The Solitaire,redump,Board,inferred,盤・札,半,正誤は出るが、点や記録として残るものが play に無い,bar+shokudo,2,ソリティア。出せる札を出す。出せなくなったら終わり,play-written
 GH-PS-0107,GH,PS,Simple 1500 Series Vol. 80 - The Jintori,redump,Puzzle,inferred,解く,半,正誤は出るが、点や記録として残るものが play に無い,shokudo+kanko,2,陣取り。線で囲んだ面積を増やす。自分の線を踏まれると終わり,play-written
 GH-PS-0108,GH,PS,Simple 1500 Series Vol. 81 - The Ren'ai Adventure - Okaeri!,redump,Adventure,inferred,探す・選ぶ,不明,選んだだけで正誤も満足も出ない,,3,帰宅した相手に、その日の出来事から正しい一言をかける,play-written
 GH-PS-0109,GH,PS,Simple 1500 Series Vol. 82 - The Sensuikan,redump,Music / Dancing,inferred,音に乗る,半,正誤は出るが、点や記録として残るものが play に無い,bar+kanko,2,潜水艦。深度を変えて魚雷を避ける。音を立てると見つかる,play-written
 GH-PS-0110,GH,PS,Simple 1500 Series Vol. 83 - The Wakeboard - BursTrick - Wake Boarding!!,redump,Fighting,inferred,殴る・斬る,明,点/勝敗/当たり外れが残る,bar,2,ウェイクボード。波の頂点で跳んで技を出す,play-written
-GH-PS-0111,GH,PS,Simple 1500 Series Vol. 84 - The Intro Quiz,redump,Quiz,inferred,答える,明,第1波: 終了時に点/勝敗/当たり外れを必ず出す設計にする,shokudo,1,イントロクイズ。曲が流れた瞬間に押す。早いほど高得点,play-written
+GH-PS-0111,GH,PS,Simple 1500 Series Vol. 84 - The Intro Quiz,redump,Quiz,inferred,答える,明,第1波: 終了時に点/勝敗/当たり外れを必ず出す設計にする,shokudo,1,イントロクイズ。曲が流れた瞬間に押す。早いほど高得点,built
 GH-PS-0112,GH,PS,Simple 1500 Series Vol. 85 - The Sengoku Bushou - Tenka Touitsu no Yabou,redump,,,,半,正誤は出るが、点や記録として残るものが play に無い,,2,戦国武将。兵を3方向に分ける。相手の配置は最後に分かる,play-written
 GH-PS-0113,GH,PS,Simple 1500 Series Vol. 86 - The Onigokko,redump,Platform,inferred,走る・跳ぶ,明,捕まえた/逃げ切ったの勝敗,kanko,1,鬼ごっこ。触られる前に逃げる。決まった場所なら安全,play-written
 GH-PS-0114,GH,PS,Simple 1500 Series Vol. 87 - The Kyoutei,redump,Gambling,inferred,賭け・運,明,点/勝敗/当たり外れが残る,bar+shokudo+kanko,2,競艇。スタートのタイミングを合わせる。フライングは失格,play-written
