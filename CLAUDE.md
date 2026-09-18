@@ -37,7 +37,7 @@ npm run ai:upload:examples            # Upload examples (OVERWRITE=true to updat
 
 ### Code-game quality standard v2.1 / play grammar v3
 
-The 800 code games (`src/ai/code/examples/*.js`) target **quality standard v2.1 + play grammar v3** (textless rule communication). The canon:
+**The 797 legacy code games (`src/ai/code/examples/*.js`) are discarded** (2026-09): measured, they collapse to one structure ("N successes within the time limit, N misses to end"), so polishing them cannot yield play diversity. Do not batch-rewrite them (WP56 is retired). What to build instead is the **production list**: `docs/work-plans/ledger/production-list.csv` (`npm run games:list`; 62k real titles with industry `genre`, induced `family`, one-coin `verdict` legibility, `venue_fit`, `tier`; policy in `docs/work-plans/68-game-list-policy.md`; column dictionary in `docs/work-plans/ledger/sources/README.md`). New games still target **quality standard v2.1 + play grammar v3** (textless rule communication). The canon:
 - `docs/specifications/PRODUCTION_ORDER.md` — **production order**: play form → world → style. The world is derived from the play form, never the reverse; style is a post-hoc era classification, not a differentiator
 - `docs/specifications/IP_SAFETY_RULES.md` — **rights rules**: genres/mechanics are free, proper nouns must be original. Enforced by `src/ai/code/IpSafetyChecker.ts` (runs inside `CodeGameValidator`, filters neta ideas before generation, scannable via `npm run games:ip`). CAPCOM / SNK are licensed exceptions
 - `docs/specifications/PLAY_GRAMMAR_V3.md` — **v3 canon**: textless techniques (ghost-hand demo, telegraph, hit-stop), duration bands per mechanic family, SE mapping, text whitelist

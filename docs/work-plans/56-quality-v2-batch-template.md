@@ -1,5 +1,10 @@
 # WP56: 遊びの文法v3 バッチ書き換え指示書(穴埋めテンプレート)
 
+> **【廃止 2026-09-18】** この指示書が前提にしていた「797本を磨く」計画は廃止。797本は
+> 「時間内にN回・Nミスで終了」の1構造に収束していて、磨いても遊びの多様性は出ない。
+> 作るべきゲームは `docs/work-plans/ledger/production-list.csv`（`npm run games:list`）と
+> `docs/work-plans/68-game-list-policy.md` に移った。B06 以降のバッチは着手しない。
+
 **担当**: Sonnet / Opus(1セッション = 1バッチ = **10本**) / **依存**: WP61(台帳)・WP62(エンジンv2.1)・WP63(スコアラー/smoke v3)
 **進捗管理**: `docs/work-plans/ledger/game-assignments.csv`(このバッチの行が担当指示書のすべて)
 

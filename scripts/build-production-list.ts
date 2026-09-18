@@ -22,6 +22,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
+import { familyByGenre, familyByTitle, type Verdict } from '../src/ai/code/playFamilies.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const LEDGER_DIR = path.resolve(__dirname, '../docs/work-plans/ledger');
@@ -39,9 +40,20 @@ interface Row {
   source: string;
   play: string;
   status: string;
+  /** 業界ジャンル(libretro genre 実データ) / 無ければ題名から推定 */
+  genre: string;
+  genre_source: 'libretro' | 'inferred' | '';
+  /** 遊びの系統(playFamilies.ts) */
+  family: string;
+  /** 1コイン1プレイの判定の明確さ */
+  verdict: Verdict | '';
+  verdict_why: string;
+  venue_fit: string;
+  /** 1 作る / 2 候補 / 3 在庫 / discard */
+  tier: string;
 }
 
-const HEADER = ['id', 'shelf', 'platform', 'title', 'source', 'play', 'status'];
+const HEADER = ['id', 'shelf', 'platform', 'title', 'source', 'genre', 'genre_source', 'family', 'verdict', 'verdict_why', 'venue_fit', 'tier', 'play', 'status'];
 
 // ── 入力の読み方 ─────────────────────────────────────────────────────────
 function readLines(p: string): string[] {
@@ -132,7 +144,7 @@ function csvCell(v: string): string {
 // ── 棚ごとに行を作る ──────────────────────────────────────────────────────
 const rows: Row[] = [];
 const push = (shelf: string, platform: string, title: string, source: string, play = '', status = 'todo') =>
-  rows.push({ id: nextId(shelf, platform), shelf, platform, title, source, play, status });
+  rows.push({ id: nextId(shelf, platform), shelf, platform, title, source, play, status, genre: '', genre_source: '', family: '', verdict: '', verdict_why: '', venue_fit: '', tier: '' });
 
 // D スマホ(貼り込み)
 for (const { platform, title, source } of readPaste('mobile.txt')) push('D', platform || 'MOBILE', title, source);
@@ -175,7 +187,7 @@ for (const { platform, title, source } of readPaste('rhythm.txt')) push('K', pla
 for (const l of readLines(path.join(RAW_DIR, 'L-existing-797.txt'))) {
   const m = l.match(/^L-(\d{3})\s+(.*?)\s+\/\s+(\S+)\s+—\s*(.*)$/);
   if (!m) continue;
-  rows.push({ id: `L-${m[1]}`, shelf: 'L', platform: 'swizzle', title: `${m[2]} / ${m[3]}`, source: 'repo', play: m[4], status: 'existing' });
+  rows.push({ id: `L-${m[1]}`, shelf: 'L', platform: 'swizzle', title: `${m[2]} / ${m[3]}`, source: 'repo', play: m[4], status: 'existing', genre: '', genre_source: '', family: '', verdict: '', verdict_why: '', venue_fit: '', tier: 'discard' });
 }
 
 // ── 既存の play / status を引き継いで書く ─────────────────────────────────
@@ -201,6 +213,42 @@ for (const f of fs.existsSync(PLAYS_DIR) ? fs.readdirSync(PLAYS_DIR).sort() : []
   }
 }
 
+// ── 系統 / 判定 / 拠点 / tier ───────────────────────────────────────────
+// genre は libretro の実データ(raw/genre/genre-map.tsv: 機種<TAB>題名(小文字)<TAB>genre)。
+// 無い行は題名から推定して genre_source=inferred。L(既存797)は比較対象にしない(tier=discard)。
+const genreMap = new Map<string, string>();
+for (const l of readLines(path.join(RAW_DIR, 'genre', 'genre-map.tsv'))) {
+  const [plat, base, g] = l.split('\t');
+  if (plat && base && g) genreMap.set(`${plat}\t${base}`, g);
+}
+const verdictOverride = new Map<string, { verdict: Verdict; why: string }>();
+for (const l of readLines(path.join(SRC_DIR, 'verdicts.tsv'))) {
+  if (l.startsWith('#')) continue;
+  const [id, v, why] = l.split('\t');
+  if (id && (v === '明' || v === '半' || v === '不明')) verdictOverride.set(id.trim(), { verdict: v, why: (why ?? '').trim() });
+}
+const tier1 = new Set(readLines(path.join(SRC_DIR, 'tier1.txt')).filter((l) => !l.startsWith('#')).map((l) => l.split(/\s/)[0]));
+
+for (const r of rows) {
+  if (r.shelf === 'L') continue;
+  const g = genreMap.get(`${r.platform}\t${r.title.toLowerCase()}`);
+  let fam = familyByGenre(g);
+  if (g) { r.genre = g; r.genre_source = 'libretro'; }
+  if (!fam) {
+    fam = familyByTitle(r.title) ?? familyByTitle(r.play);
+    if (fam && !g) { r.genre = fam.genres[0]; r.genre_source = 'inferred'; }
+  }
+  if (fam) {
+    r.family = fam.id;
+    r.verdict = fam.verdict;
+    r.verdict_why = fam.verdictWhy;
+    r.venue_fit = fam.venues.join('+');
+  }
+  const ov = verdictOverride.get(r.id);
+  if (ov) { r.verdict = ov.verdict; if (ov.why) r.verdict_why = ov.why; }
+  r.tier = tier1.has(r.id) ? '1' : r.verdict === '明' || r.verdict === '半' ? '2' : '3';
+}
+
 const byShelf = new Map<string, number>();
 for (const r of rows) byShelf.set(r.shelf, (byShelf.get(r.shelf) ?? 0) + 1);
 console.log('制作リスト');
@@ -208,6 +256,10 @@ for (const s of ['A', 'B', 'C', 'D', 'E', 'F', 'GH', 'I', 'J', 'K', 'L']) {
   console.log(`  ${s.padEnd(3)} ${String(byShelf.get(s) ?? 0).padStart(6)}`);
 }
 console.log(`  計  ${String(rows.length).padStart(6)}`);
+const famCount = new Map<string, number>();
+for (const r of rows) if (r.shelf !== 'L') famCount.set(r.family || '(未分類)', (famCount.get(r.family || '(未分類)') ?? 0) + 1);
+console.log('  系統:', [...famCount.entries()].sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(' / '));
+console.log(`  genre 実データ ${rows.filter((r) => r.genre_source === 'libretro').length} / 推定 ${rows.filter((r) => r.genre_source === 'inferred').length} / tier1 ${rows.filter((r) => r.tier === '1').length} / tier2 ${rows.filter((r) => r.tier === '2').length}`);
 console.log(`  play 記入済み ${String(rows.filter((r) => r.play && r.shelf !== 'L').length).padStart(6)}  (plays/*.tsv から ${playsApplied})`);
 const empty = ['D', 'I', 'J', 'K'].filter((s) => !byShelf.get(s));
 if (empty.length) console.log(`  貼り込み待ち: ${empty.join(' / ')}  (sources/README.md)`);

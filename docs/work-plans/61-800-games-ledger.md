@@ -1,5 +1,9 @@
 # WP61: 800ゲーム個票台帳(ledger) — 列辞書と運用
 
+> **【役割変更 2026-09-18】** `game-ledger.csv` / `game-assignments.csv` は797本の計測記録として残すが、
+> 作業割当には使わない（WP56 廃止）。制作リストは `production-list.csv`（列辞書は
+> `ledger/sources/README.md`）。797本は `tier=discard`。
+
 **目的**: 遊びの文法v3リファクタ(WP56)の作業割当・進捗追跡・検収の基盤。
 **生成**: `npm run games:ledger`(実装: `scripts/build-game-ledger.ts`)
 **場所**: `docs/work-plans/ledger/`
