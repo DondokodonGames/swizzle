@@ -60,6 +60,8 @@ tier1 の行を読む → play を確認（無ければ書く）→ 終了時に
 
 **ゲート（波の終わり）**: 全本ゲート通過、`games:ledger` 再生成、`games:ip` error 0、tsc/test/lint、コミット・push。
 
+> 【Phase 2 完了 2026-09-18】第1波20本すべて完成（W1-1〜W1-4、4バッチ）。20系統すべて別様式、`end.record` 15本、`game.touches` 3本(2〜4人対戦3本)、`stats.label` 8本。全本 validator valid / scorer≥88 / smoke PASS / スクショ目視修正済み。ゲート済み・push済み（`claude/swizzle-arcade-development-rtjs6d`）。次は Phase 3(拠点投入・計測) — これは実運用作業のため、ユーザー側の意思決定・実施が必要。
+
 ## Phase 3 — 拠点で測る（実運用・2〜4週）
 
 | 作業 | どこ |
