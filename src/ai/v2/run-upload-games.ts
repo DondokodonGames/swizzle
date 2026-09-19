@@ -1,15 +1,21 @@
 /**
- * 手書きサンプルゲーム バッチアップローダー
+ * コードゲーム バッチアップローダー
  *
- * src/ai/code/examples/ の .js ファイルを Supabase に一括登録する。
- * template_id = 'example:NNN-name' で重複チェックするため、
+ * src/ai/code/games/(系統別サブディレクトリ、production-list.csv 由来の現行制作ライン)の
+ * .js ファイルを Supabase に一括登録する。template_id = 'game:NNN-name' で重複チェックするため、
  * 中断後の再実行でも安全にリジュームできる。
  *
+ * src/ai/code/examples/ の797本は CLAUDE.md / docs/work-plans/68-game-list-policy.md により
+ * 破棄済み(discard)。誤って再アップロードしないよう、対象にするには明示的に
+ * LEGACY_EXAMPLES=true が必要(既定では一切触らない)。
+ *
  * 使い方:
- *   npm run ai:upload:examples              # 未登録のみアップロード（リジューム）
- *   OVERWRITE=true npm run ai:upload:examples   # 既存も含めて全件を上書き更新
- *   npm run ai:upload:examples:dry          # Supabase 接続せずファイル一覧のみ表示
- *   SKIP_UPLOAD=true npm run ai:upload:examples  # 同上
+ *   npm run ai:upload:games                 # games/ を未登録分のみアップロード（リジューム）
+ *   OVERWRITE=true npm run ai:upload:games   # 既存も含めて全件を上書き更新
+ *   npm run ai:upload:games:dry              # Supabase 接続せずファイル一覧のみ表示
+ *   SKIP_UPLOAD=true npm run ai:upload:games # 同上
+ *   GAMES_DIR=<path> npm run ai:upload:games # 任意ディレクトリを明示指定
+ *   LEGACY_EXAMPLES=true npm run ai:upload:games  # 破棄済み examples/ を明示的に対象化(通常は使わない)
  *
  * OVERWRITE=true のとき:
  *   - ローカル進捗ファイルの「登録済みスキップ」を無視して全件を処理する
@@ -36,11 +42,13 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-// GAMES_DIR=src/ai/code/games で制作リスト由来の新規ゲーム(系統ごとのサブディレクトリ)を対象にする。
-// その場合 template_id は 'game:<ファイル名>'。既定は examples/(797本・破棄予定)
-const GAMES_DIR = process.env.GAMES_DIR ? path.resolve(process.cwd(), process.env.GAMES_DIR) : null;
-const EXAMPLES_DIR = GAMES_DIR ?? path.resolve(__dirname, '../code/examples');
-const TEMPLATE_PREFIX = GAMES_DIR ? 'game' : 'example';
+// 既定は src/ai/code/games/(現行制作ライン)。破棄済み examples/ を対象にするには
+// LEGACY_EXAMPLES=true を明示するか、GAMES_DIR で直接パスを指定する。
+const LEGACY_EXAMPLES = process.env.LEGACY_EXAMPLES === 'true';
+const TARGET_DIR = process.env.GAMES_DIR
+  ? path.resolve(process.cwd(), process.env.GAMES_DIR)
+  : path.resolve(__dirname, LEGACY_EXAMPLES ? '../code/examples' : '../code/games');
+const TEMPLATE_PREFIX = /[/\\]examples$/.test(TARGET_DIR) ? 'example' : 'game';
 function listGameFiles(dir: string, rel = ''): string[] {
   if (!fs.existsSync(dir)) return [];
   return fs.readdirSync(dir).sort().flatMap((f) => {
@@ -49,7 +57,7 @@ function listGameFiles(dir: string, rel = ''): string[] {
     return fs.statSync(full).isDirectory() ? listGameFiles(full, r) : f.endsWith('.js') ? [r] : [];
   });
 }
-const PROGRESS_FILE = path.resolve(__dirname, 'upload-examples-progress.json');
+const PROGRESS_FILE = path.resolve(__dirname, LEGACY_EXAMPLES ? 'upload-examples-progress.json' : 'upload-games-progress.json');
 
 interface ProgressData {
   uploadedTemplateIds: string[];
@@ -149,22 +157,22 @@ function parseGameFile(filePath: string, filename: string): GameMeta | null {
 }
 
 async function main() {
-  console.log('🎮 Swizzle 手書きサンプルゲーム バッチアップローダー');
+  console.log('🎮 Swizzle コードゲーム バッチアップローダー' + (LEGACY_EXAMPLES ? '(LEGACY: examples/)' : '(games/)'));
   console.log('====================================================\n');
 
   const skipUpload = process.env.SKIP_UPLOAD === 'true' || process.env.DRY_RUN === 'true';
   const overwrite = process.env.OVERWRITE === 'true' || process.env.FORCE === 'true';
   const priceSync = process.env.PRICE_SYNC === 'true';
 
-  // examples/ ディレクトリの .js ファイルを列挙（アルファベット順）
-  const allFiles = listGameFiles(EXAMPLES_DIR);
+  // 対象ディレクトリの .js ファイルを列挙（アルファベット順、系統サブディレクトリも再帰）
+  const allFiles = listGameFiles(TARGET_DIR);
 
-  console.log(`📁 ${path.relative(process.cwd(), EXAMPLES_DIR)}/ に ${allFiles.length} 件の .js ファイルを発見\n`);
+  console.log(`📁 ${path.relative(process.cwd(), TARGET_DIR)}/ に ${allFiles.length} 件の .js ファイルを発見\n`);
 
   if (skipUpload) {
     console.log('⏭️  DRY RUN モード — Supabase には接続しません\n');
     allFiles.forEach((f, i) => {
-      const meta = parseGameFile(path.join(EXAMPLES_DIR, f), f);
+      const meta = parseGameFile(path.join(TARGET_DIR, f), f);
       if (meta) {
         console.log(`  ${String(i + 1).padStart(3)}: [${meta.templateId}] ${meta.title}`);
       }
@@ -203,7 +211,7 @@ async function main() {
 
   for (let i = 0; i < allFiles.length; i++) {
     const filename = allFiles[i];
-    const meta = parseGameFile(path.join(EXAMPLES_DIR, filename), filename);
+    const meta = parseGameFile(path.join(TARGET_DIR, filename), filename);
     if (!meta) {
       console.warn(`⚠️  ${filename}: パース失敗、スキップ`);
       failed++;

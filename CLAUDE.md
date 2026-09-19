@@ -32,7 +32,10 @@ npm run games:ip      # IP safety scan (examples + neta idea files; --all for wa
 npm run ai:neta:space # Neta-space inventory: which mechanics are saturated vs empty (--full/--json)
 npm run games:dup     # Detect duplicate plays among the 800 and propose conversions (--csv/--json)
 npm run games:list    # Build docs/work-plans/ledger/production-list.csv from sources/ (real title data + paste-ins; idempotent)
-npm run ai:upload:examples            # Upload examples (OVERWRITE=true to update, PRICE_SYNC=true for tier pricing)
+npm run ai:upload:games               # Upload src/ai/code/games/ to Supabase (OVERWRITE=true to update, PRICE_SYNC=true for tier pricing)
+                                       # This is the step that makes games playable on a deployed instance — writing the .js
+                                       # files and pushing to git alone does not; the deployed app reads from Supabase, not git.
+                                       # LEGACY_EXAMPLES=true targets the discarded src/ai/code/examples/ set instead (rarely needed).
 ```
 
 ### Code-game quality standard v2.1 / play grammar v3

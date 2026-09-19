@@ -19,7 +19,7 @@
 
 **注意**: 現状 v3 未対応の800本が存在するため、新規チェックは**フラグ付き**で導入する:
 `validate(code, { v3?: boolean })` — `v3: true` のときのみ以下をエラーにする(既存呼び出しは非v3のまま動く。
-WP56 のゲートスニペットと `run-upload-examples.ts` は書き換え済みゲームに v3 を指定する)。
+WP56 のゲートスニペットと `run-upload-games.ts`(旧 `run-upload-examples.ts`)は書き換え済みゲームに v3 を指定する)。
 
 - `@mechanic` ヘッダー欠落、または `MECHANICS_CATALOG_V2.md` の40 IDに無い値 → error
 - `@theme` ヘッダー欠落 → error

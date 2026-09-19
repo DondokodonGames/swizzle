@@ -15,7 +15,7 @@
 | 4 | **ファクトリー線** | `ai:build-templates` → `ai:produce-games` | `neta-all.json` 792件 | `templates/*.json` → `user_games` | **ほぼ未使用**（templates は1件のみ） | **直接（本体）** |
 | 5 | コードゲーム線 | `ai:code:*` | ランダム発想 | `user_games`(code) | **dry が落ちる**（OPENAI_API_KEY必須） | 間接 |
 | 6 | コードゲームネタ帳線 | `ai:code:neta:*` | `neta.json` | 同上 | 進捗ファイルなし＝未使用 | 間接 |
-| 7 | examples 出荷線 | `ai:upload:examples` | `src/ai/code/examples/*.js` 800本 | `user_games` | 生きている（800本の出荷経路） | — |
+| 7 | コードゲーム出荷線 | `ai:upload:games`(旧 `ai:upload:examples`。examples/ は破棄済みにつき既定の対象外、`LEGACY_EXAMPLES=true`で明示指定時のみ) | `src/ai/code/games/*.js`(WP68以降の現行制作ライン) | `user_games` | 生きている（現行の出荷経路） | — |
 | 8 | ネタ生成線 | `ai:neta:gen` / `ai:build-neta-all` / `ai:neta:trend` | ChatGPT / トレンド | `neta*.json` | trend のみ最近更新 | — |
 | 9 | プロンプト進化線 | `ai:evolve` | 失敗ログ | プロンプト改善案 | 未使用 | — |
 | 10 | 計測系 | `ai:status` / `ai:code:status` / `games:ledger` / `games:ip` / `ai:neta:space` / `games:dup` / `games:smoke` | — | レポート | 生きている | — |

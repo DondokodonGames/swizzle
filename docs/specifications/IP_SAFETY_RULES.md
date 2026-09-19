@@ -64,7 +64,7 @@
 |---|---|
 | 生成直後 | `CodeGameValidator.validate()` が IP_RISK を error として返す → 再生成 |
 | バッチ書き換え時 | コミット前に `npm run games:ip` |
-| アップロード前 | `run-upload-examples` の validation で弾かれる |
+| アップロード前 | `run-upload-games`(旧 `run-upload-examples`)の validation で弾かれる |
 | 定期 | 語彙リストの見直し（新しく流行したタイトルを追加する） |
 
 ### 共起ルール（`IP_COMPOSITE_RULES`）を足すときの基準
