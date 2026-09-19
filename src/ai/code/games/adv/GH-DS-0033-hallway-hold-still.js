@@ -146,7 +146,7 @@
       drawSentry();
       var gy = GOAL_Y + 40 + (H * 0.60) * (1 - progress / 100);
       drawRunner(gy, walkFrame ? RUN_B : RUN_A, caught);
-      game.draw.hand(demo.gx, demo.gy, { press: demo.press, scale: 16 });
+      game.draw.hand(demo.gx + Math.sin(game.time.elapsed * 2.3) * 12, demo.gy + Math.cos(game.time.elapsed * 1.7) * 12, { press: demo.press, scale: 16 });
       txt(GAME_TITLE, W / 2, H * 0.09, 52, C.white);
       txt('BEST ' + (game.best > 0 ? 'CLEAR' : '-'), W / 2, H * 0.135, 24, C.gold);
       if (Math.floor(game.time.elapsed * 1.8) % 2 === 0) {

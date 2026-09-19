@@ -159,7 +159,7 @@
       game.draw.rect(pointX - 90 + 180 * targetLo / MAX_HOLD, pointY - 200, 180 * (targetHi - targetLo) / MAX_HOLD, 20, C.zoneOk);
       game.draw.rect(pointX - 90, pointY - 200, 180 * gaugeFrac, 6, C.point);
       game.draw.circle(pointX, pointY, 34, demo.press ? C.point : C.pointGold);
-      game.draw.hand(demo.gx, demo.gy, { press: demo.press, scale: 15 });
+      game.draw.hand(demo.gx + Math.sin(game.time.elapsed * 2.3) * 12, demo.gy + Math.cos(game.time.elapsed * 1.7) * 12, { press: demo.press, scale: 15 });
       txt(GAME_TITLE, CX, H * 0.06, 42, C.ink);
       txt('BEST ' + (game.best > 0 ? game.best + ' PERFECT' : '-'), CX, H * 0.62, 24, C.point);
       if (Math.floor(game.time.elapsed * 1.8) % 2 === 0) {

@@ -149,8 +149,8 @@
       game.draw.rect(RX + 20, LEVER_Y, 80, 60, pulseOn ? C.leverLit : C.lever);
       game.draw.rect(LX + 20, LEVER_Y, 80, 10, '#ffffff', 0.3);
       game.draw.rect(RX + 20, LEVER_Y, 80, 10, '#ffffff', 0.3);
-      game.draw.hand(demo.gxL, demo.gyL + 40, { press: demo.press, scale: 13 });
-      game.draw.hand(demo.gxR, demo.gyR + 40, { press: demo.press, scale: 13 });
+      game.draw.hand(demo.gxL + Math.sin(game.time.elapsed * 2.3) * 12, demo.gyL + 40 + Math.cos(game.time.elapsed * 1.7) * 12, { press: demo.press, scale: 13 });
+      game.draw.hand(demo.gxR + Math.sin(game.time.elapsed * 2.3) * 12, demo.gyR + 40 + Math.cos(game.time.elapsed * 1.7) * 12, { press: demo.press, scale: 13 });
       txt(GAME_TITLE, W / 2, H * 0.08, 44, C.white);
       txt('BEST ' + (game.best > 0 ? game.best + ' / ' + NEEDED : '-'), W / 2, H * 0.12, 24, C.gold);
       if (Math.floor(game.time.elapsed * 1.8) % 2 === 0) {

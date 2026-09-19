@@ -173,7 +173,7 @@
       for (var i = 0; i < enemies.length; i++) drawEnemy(enemies[i]);
       drawTurret(heat / HEAT_MAX);
       if (muzzleT > 0) muzzleT -= dt;
-      game.draw.hand(demo.gx, demo.gy, { press: demo.press, scale: 15 });
+      game.draw.hand(demo.gx + Math.sin(game.time.elapsed * 2.3) * 12, demo.gy + Math.cos(game.time.elapsed * 1.7) * 12, { press: demo.press, scale: 15 });
       txt(GAME_TITLE, W / 2, H * 0.09, 50, C.white);
       txt('BEST ' + String(game.best).padStart(4, '0'), W / 2, H * 0.135, 24, C.gold);
       if (Math.floor(game.time.elapsed * 1.8) % 2 === 0) {

@@ -245,7 +245,7 @@
       drawHpBar(W * 0.5 - 240, NEAR_Y + 90, 480, playerHP, C.good, false);
       drawGuardian(CX, HORIZON_Y - 90, { '#': C.bad, O: C.white }, 10);
       drawGuardian(CX, NEAR_Y + 170, { '#': C.good, O: C.ink }, 14);
-      game.draw.hand(demo.gx, demo.gy, { press: demo.press, scale: 15 });
+      game.draw.hand(demo.gx + Math.sin(game.time.elapsed * 2.3) * 12, demo.gy + Math.cos(game.time.elapsed * 1.7) * 12, { press: demo.press, scale: 15 });
       txt(GAME_TITLE, W / 2, H * 0.08, 40, C.white);
       txt('BEST ' + (game.best > 0 ? 'CLEAR' : '-'), W / 2, H * 0.115, 24, C.gold);
       if (Math.floor(game.time.elapsed * 1.8) % 2 === 0) {

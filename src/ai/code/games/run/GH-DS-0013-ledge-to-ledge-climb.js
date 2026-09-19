@@ -218,7 +218,7 @@
       stepDemo(dt);
       drawTowerColumn();
       drawHero(demo.gx, demo.gy, !!anim);
-      game.draw.hand(demo.gx, demo.gy - 130, { press: demo.press, scale: 15 });
+      game.draw.hand(demo.gx + Math.sin(game.time.elapsed * 2.3) * 12, demo.gy - 130 + Math.cos(game.time.elapsed * 1.7) * 12, { press: demo.press, scale: 15 });
       txt(GAME_TITLE, W / 2, H * 0.08, 40, C.white);
       txt('BEST ' + game.best + 'm', W / 2, H * 0.115, 24, C.gold);
       if (Math.floor(game.time.elapsed * 1.8) % 2 === 0) {

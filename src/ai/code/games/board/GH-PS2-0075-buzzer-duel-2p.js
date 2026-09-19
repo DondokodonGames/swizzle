@@ -159,7 +159,7 @@
       drawSide(CY - 220, true, C.p2, p2Score, false);
       drawSide(CY + 220, false, C.p1, p1Score, false);
       game.draw.circle(CX, CY, lit ? 44 : 30, lit ? C.lampOn : C.lampOff);
-      game.draw.hand(demo.gx, demo.gy, { press: demo.press, scale: 15 });
+      game.draw.hand(demo.gx + Math.sin(game.time.elapsed * 2.3) * 12, demo.gy + Math.cos(game.time.elapsed * 1.7) * 12, { press: demo.press, scale: 15 });
       txt(GAME_TITLE, W / 2, H * 0.06, 44, C.white);
       txt('BEST ' + (game.best > 0 ? game.best + ' WIN' : '-'), W / 2, H * 0.95, 24, C.gold);
       if (Math.floor(game.time.elapsed * 1.8) % 2 === 0) {

@@ -147,7 +147,7 @@
       stepDemo(dt);
       stepFlight(dt);
       drawBox(boxX, boxY, DIR_COL[target]);
-      game.draw.hand(demo.gx, demo.gy, { press: demo.press, scale: 15 });
+      game.draw.hand(demo.gx + Math.sin(game.time.elapsed * 2.3) * 12, demo.gy + Math.cos(game.time.elapsed * 1.7) * 12, { press: demo.press, scale: 15 });
       txt(GAME_TITLE, W / 2, H * 0.06, 46, C.ink);
       txt('BEST ' + (game.best > 0 ? 'CLEAR' : '-'), W / 2, H * 0.94, 22, C.gold);
       if (Math.floor(game.time.elapsed * 1.8) % 2 === 0) {
