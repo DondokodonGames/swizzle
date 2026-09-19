@@ -155,7 +155,7 @@
       game.draw.circle(targetPos().x, targetPos().y, 130, phase === 'cornered' ? C.win : C.wall, phase === 'telegraph' ? (Math.floor(demo.t * 6) % 2 === 0 ? 0.5 : 0.15) : 0.25);
       game.draw.sprite(phase === 'flee' ? THIEF_RUN : THIEF_STOP, { '#': C.thief }, thiefX, thiefY, 16, { anchor: 'center' });
       game.draw.circle(thiefX + 30, thiefY + 10, 14, C.thiefBag);
-      game.draw.hand(demo.gx + Math.cos(game.time.elapsed * 2.5) * 14, demo.gy + Math.sin(game.time.elapsed * 2.5) * 14, { press: demo.press, scale: 15 });
+      game.draw.hand(demo.gx + Math.cos(game.time.elapsed * 2.5) * 34, demo.gy + Math.sin(game.time.elapsed * 2.5) * 34, { press: demo.press, scale: 15 });
       txt(GAME_TITLE, W / 2, H * 0.08, 48, C.white);
       txt('BEST ' + (game.best > 0 ? game.best + ' / ' + NEEDED : '-'), W / 2, H * 0.12, 24, C.gold);
       if (Math.floor(game.time.elapsed * 1.8) % 2 === 0) {

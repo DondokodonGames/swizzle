@@ -173,7 +173,7 @@
       isoFloor();
       stepDemo(dt);
       drawArms();
-      game.draw.hand(demo.gx + Math.cos(game.time.elapsed * 2.5) * 14, demo.gy + Math.sin(game.time.elapsed * 2.5) * 14, { press: demo.press, scale: 15 });
+      game.draw.hand(demo.gx + Math.cos(game.time.elapsed * 2.5) * 34, demo.gy + Math.sin(game.time.elapsed * 2.5) * 34, { press: demo.press, scale: 15 });
       txt(GAME_TITLE, W / 2, H * 0.06, 44, C.white);
       txt('BEST ' + (game.best > 0 ? game.best : '-'), W / 2, H * 0.105, 24, C.gold);
       if (Math.floor(game.time.elapsed * 1.8) % 2 === 0) {

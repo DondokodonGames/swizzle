@@ -155,7 +155,7 @@
       shrineBg();
       stepDemo(dt);
       drawPads(demo.phase === 'show' ? demo.seq[demo.idx] : -1);
-      game.draw.hand(demo.gx + Math.cos(game.time.elapsed * 2.5) * 14, demo.gy + Math.sin(game.time.elapsed * 2.5) * 14, { press: demo.press, scale: 16 });
+      game.draw.hand(demo.gx + Math.cos(game.time.elapsed * 2.5) * 34, demo.gy + Math.sin(game.time.elapsed * 2.5) * 34, { press: demo.press, scale: 16 });
       txt(GAME_TITLE, W / 2, H * 0.10, 42, C.white);
       txt('BEST ' + (game.best > 0 ? String(game.best) : '-'), W / 2, H * 0.14, 24, C.gold);
       if (Math.floor(game.time.elapsed * 1.8) % 2 === 0) {

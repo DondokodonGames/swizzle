@@ -241,8 +241,8 @@
       for (var i = 0; i < hazards.length; i++) drawHazard(hazards[i]);
       drawOrb(orbX, demo.lpress, hopFlashT);
       drawGripPips();
-      game.draw.hand(demo.lgx + Math.cos(game.time.elapsed * 2.5) * 14, demo.lgy + Math.sin(game.time.elapsed * 2.5) * 14, { press: demo.lpress, scale: 14 });
-      game.draw.hand(demo.rgx + Math.cos(game.time.elapsed * 2.5) * 14, demo.rgy + Math.sin(game.time.elapsed * 2.5) * 14, { press: demo.rpress, scale: 14 });
+      game.draw.hand(demo.lgx + Math.cos(game.time.elapsed * 2.5) * 34, demo.lgy + Math.sin(game.time.elapsed * 2.5) * 34, { press: demo.lpress, scale: 14 });
+      game.draw.hand(demo.rgx + Math.cos(game.time.elapsed * 2.5) * 34, demo.rgy + Math.sin(game.time.elapsed * 2.5) * 34, { press: demo.rpress, scale: 14 });
       txt(GAME_TITLE, W / 2, H * 0.10, 56, C.white);
       txt('BEST ' + (game.best > 0 ? 'CLEAR' : '-'), W / 2, H * 0.145, 26, C.gold);
       if (Math.floor(game.time.elapsed * 1.8) % 2 === 0) {

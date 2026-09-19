@@ -151,7 +151,7 @@
       bgScene();
       stepDemo(dt);
       for (var i = 0; i < figs.length; i++) drawFig(figs[i]);
-      game.draw.hand(demo.gx + Math.cos(game.time.elapsed * 2.5) * 14, demo.gy + Math.sin(game.time.elapsed * 2.5) * 14, { press: demo.press, scale: 15 });
+      game.draw.hand(demo.gx + Math.cos(game.time.elapsed * 2.5) * 34, demo.gy + Math.sin(game.time.elapsed * 2.5) * 34, { press: demo.press, scale: 15 });
       txt(GAME_TITLE, W / 2, H * 0.10, 60, C.white);
       txt('BEST ' + String(game.best).padStart(5, '0'), W / 2, H * 0.15, 28, C.gold);
       if (Math.floor(game.time.elapsed * 1.8) % 2 === 0) {

@@ -224,7 +224,7 @@
       drawChute();
       drawWarn();
       drawCrate();
-      game.draw.hand(demo.gx + Math.cos(game.time.elapsed * 2.5) * 14, demo.gy - 40 + Math.sin(game.time.elapsed * 2.5) * 14, { press: demo.press, scale: 15 });
+      game.draw.hand(demo.gx + Math.cos(game.time.elapsed * 2.5) * 34, demo.gy - 40 + Math.sin(game.time.elapsed * 2.5) * 34, { press: demo.press, scale: 15 });
       if (resultTextT > 0) txt(resultText, CX, H * 0.42, 42, resultText.indexOf('SPILL') >= 0 ? C.bad : C.gold);
       txt(GAME_TITLE, W / 2, H * 0.08, 40, C.ink);
       txt('BEST ' + game.best, W / 2, H * 0.115, 24, C.ink);
