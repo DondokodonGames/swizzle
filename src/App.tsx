@@ -45,6 +45,7 @@ const NfcSpotManagerPage = React.lazy(() =>
 const GameReportsPage = React.lazy(() => import('./pages/admin/GameReportsPage'));
 const AdminDashboardPage = React.lazy(() => import('./pages/admin/AdminDashboardPage'));
 const AdminUsersPage = React.lazy(() => import('./pages/admin/AdminUsersPage'));
+const LocalGamesPage = React.lazy(() => import('./pages/admin/LocalGamesPage'));
 
 // マネタイズページの遅延読み込み
 const Pricing = React.lazy(() =>
@@ -849,6 +850,13 @@ function App() {
           <Route path="/admin/users" element={
             <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>読み込み中...</div>}>
               <AdminUsersPage />
+            </Suspense>
+          } />
+
+          {/* ローカルゲーム再生(Supabase未公開・審査用。src/ai/code/games/ を直接バンドルから再生) */}
+          <Route path="/admin/local-games" element={
+            <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>読み込み中...</div>}>
+              <LocalGamesPage />
             </Suspense>
           } />
 

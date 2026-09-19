@@ -37,6 +37,7 @@ import { randomUUID } from 'crypto';
 import { SupabaseUploader } from '../publishers/SupabaseUploader.js';
 import { CodeGameValidator } from '../code/CodeGameValidator.js';
 import { CodeQualityScorer } from '../code/CodeQualityScorer.js';
+import { parseGameHeader, TIER_PRICE_YEN } from '../code/parseGameHeader.js';
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
@@ -79,9 +80,6 @@ function saveProgress(data: ProgressData): void {
   fs.writeFileSync(PROGRESS_FILE, JSON.stringify(data, null, 2), 'utf-8');
 }
 
-/** tier → 1プレイ価格(円)。PRICE_SYNC=true のときのみ適用 */
-const TIER_PRICE_YEN: Record<string, number> = { S: 100, A: 50, B: 30, C: 10 };
-
 interface GameMeta {
   filename: string;
   templateId: string;
@@ -98,62 +96,15 @@ interface GameMeta {
   trendSource?: string;
 }
 
-/** 先頭コメント群から // @key: value ヘッダーを解釈 */
-function parseHeaderTags(lines: string[]): Record<string, string> {
-  const tags: Record<string, string> = {};
-  for (const line of lines.slice(0, 20)) {
-    if (!line.startsWith('//')) break;
-    const m = /^\/\/\s*@(tier|mechanic|theme|trend)\s*:\s*(\S.*)$/.exec(line.trim());
-    if (m) tags[m[1]] = m[2].trim();
-  }
-  return tags;
-}
-
+// ヘッダー解釈のロジック本体は src/ai/code/parseGameHeader.ts に集約
+// (LocalGamesPage.tsx のブラウザ側ローカル再生と共有する単一の真実の源)。
 function parseGameFile(filePath: string, filename: string): GameMeta | null {
   const code = fs.readFileSync(filePath, 'utf-8');
-  const lines = code.split('\n');
-
-  // Line 1: // NNN-kebab-name.js
-  // Line 2: // タイトル — 体験説明
-  // Line 3: // 操作: ...
-  // 任意:   // @tier: S  // @mechanic: timing_one_shot  // @theme: space  // @trend: xxx
   const baseName = path.basename(filename).replace(/\.js$/, '');
   const templateId = `${TEMPLATE_PREFIX}:${baseName}`;
+  const header = parseGameHeader(code, baseName);
 
-  let title = baseName;
-  let description = '';
-
-  // 2行目からタイトルを取得
-  if (lines[1] && lines[1].startsWith('// ')) {
-    const raw = lines[1].slice(3).trim();
-    const dashIdx = raw.indexOf(' — ');
-    if (dashIdx !== -1) {
-      title = raw.slice(0, dashIdx).trim();
-      description = raw.slice(dashIdx + 3).trim();
-    } else {
-      title = raw;
-    }
-  }
-
-  // 3行目から操作説明を取得（descriptionが空の場合）
-  if (!description && lines[2] && lines[2].startsWith('// ')) {
-    description = lines[2].slice(3).trim();
-  }
-
-  if (!description) {
-    description = `Swizzle mini game: ${title}`;
-  }
-
-  const tags = parseHeaderTags(lines);
-  const tier = tags.tier ? tags.tier.toUpperCase() : undefined;
-
-  return {
-    filename, templateId, title, description, code,
-    tier: tier && TIER_PRICE_YEN[tier] !== undefined ? tier : undefined,
-    mechanic: tags.mechanic,
-    theme: tags.theme,
-    trendSource: tags.trend,
-  };
+  return { filename, templateId, code, ...header };
 }
 
 async function main() {
