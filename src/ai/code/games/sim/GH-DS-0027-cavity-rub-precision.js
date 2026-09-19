@@ -157,7 +157,7 @@
   function stepDemo(dt) {
     demo.t += dt;
     var cyc = demo.t % 5.0;
-    if (cyc < dt) { for (var i = 0; i < TEETH.length; i++) TEETH[i].fill = 0; }
+    if (cyc < dt || demo.t <= dt) { for (var i = 0; i < TEETH.length; i++) TEETH[i].fill = 0; }
     var t = TEETH[0];
     demo.gx = t.x + Math.sin(demo.t * 16) * 40;
     demo.gy = t.y;

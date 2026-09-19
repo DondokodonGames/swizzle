@@ -124,7 +124,7 @@
   function stepDemo(dt) {
     demo.t += dt;
     var cyc = demo.t % 4.2;
-    if (cyc < dt) { oddIdx = 2; }
+    if (cyc < dt || demo.t <= dt) { oddIdx = 2; }
     revealed = cyc > 0.35;
     flashT = Math.max(0, 0.35 - cyc);
 

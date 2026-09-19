@@ -137,7 +137,7 @@
   function stepDemo(dt) {
     demo.t += dt;
     var cyc = demo.t % 4.6;
-    if (cyc < dt) { figs = [{ slot: 0, x: SLOT_X[0], isHostage: false, t: 0.28, stay: 9, wob: 0 }]; bullets = BULLETS; kills = 0; finished = false; }
+    if (cyc < dt || demo.t <= dt) { figs = [{ slot: 0, x: SLOT_X[0], isHostage: false, t: 0.28, stay: 9, wob: 0 }]; bullets = BULLETS; kills = 0; finished = false; }
     if (Math.abs(cyc - 1.6) < dt) { figs.push({ slot: 2, x: SLOT_X[2], isHostage: true, t: 0.28, stay: 9, wob: 0 }); }
     demo.press = false;
     if (Math.abs(cyc - 0.5) < dt) { var top0 = figTopY(figs[0]); demo.gx = figs[0].x; demo.gy = top0 + 60; shoot(figs[0].x, top0 + 60); demo.press = true; }

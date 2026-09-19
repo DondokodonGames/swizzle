@@ -173,7 +173,7 @@
   function stepDemo(dt) {
     demo.t += dt;
     var cyc = demo.t % 4.2;
-    if (cyc < dt) { initGame(); }
+    if (cyc < dt || demo.t <= dt) { initGame(); }
     var si = strokeIdx;
     if (si >= STROKES.length) return;
     var pts = STROKES[si], meta = STROKE_META[si];

@@ -176,7 +176,7 @@
   function stepDemo(dt) {
     demo.t += dt;
     var cyc = demo.t % 3.4;
-    if (cyc < dt) { successes = 0; misses = 0; }
+    if (cyc < dt || demo.t <= dt) { successes = 0; misses = 0; }
     if (cyc < 0.55) { phase = 'telegraph'; phaseT = 0.55 - cyc; legRaise = cyc / 0.55; ringLit = false; }
     else if (cyc < 0.85) { phase = 'window'; legRaise = 1; ringLit = true; }
     else if (cyc < 1.15) { phase = 'recover'; legRaise = Math.max(0, 1 - (cyc - 0.85) / 0.30); ringLit = false; }

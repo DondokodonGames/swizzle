@@ -141,7 +141,7 @@
   function stepDemo(dt) {
     demo.t += dt;
     var cyc = demo.t % 3.4;
-    if (cyc < dt) {
+    if (cyc < dt || demo.t <= dt) {
       var symIdx = [0, 0, 1, 1, 2, 2]; shuffle(symIdx);
       cards = [];
       for (var i = 0; i < 6; i++) cards.push({ sym: symIdx[i], pos: POS[i], revealed: cyc < 0.7, matched: false });

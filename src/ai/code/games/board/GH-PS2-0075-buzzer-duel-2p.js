@@ -133,7 +133,7 @@
   function stepDemo(dt) {
     demo.t += dt;
     var cyc = demo.t % 3.6;
-    if (cyc < dt) { p1Score = 0; p2Score = 0; round = 1; }
+    if (cyc < dt || demo.t <= dt) { p1Score = 0; p2Score = 0; round = 1; }
     if (cyc < 1.2) { lit = false; }
     else if (cyc < 2.0) { lit = true; }
     else if (cyc < 2.8) { lit = false; }

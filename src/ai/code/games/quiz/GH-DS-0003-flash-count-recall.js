@@ -149,7 +149,7 @@
   function stepDemo(dt) {
     demo.t += dt;
     var cyc = demo.t % 4.6;
-    if (cyc < dt) { goldCount = 3; genStars(); goldCount = 3; for (var i = 0; i < stars.length; i++) stars[i].gold = i < 3; currentChoices = [3, 2, 5]; }
+    if (cyc < dt || demo.t <= dt) { goldCount = 3; genStars(); goldCount = 3; for (var i = 0; i < stars.length; i++) stars[i].gold = i < 3; currentChoices = [3, 2, 5]; }
     phase = cyc < 0.9 ? 'flash' : 'answer';
 
     if (cyc >= 0.9 && cyc < 2.3) {

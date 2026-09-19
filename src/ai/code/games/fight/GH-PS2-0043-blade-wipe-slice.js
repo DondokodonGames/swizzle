@@ -176,7 +176,7 @@
   function stepDemo(dt) {
     demo.t += dt;
     var cyc = demo.t % 4.2;
-    if (cyc < dt) { spawnFoe(); grime = Math.min(grime, 0.3); }
+    if (cyc < dt || demo.t <= dt) { spawnFoe(); grime = Math.min(grime, 0.3); }
     stepFoe(dt);
     if (foePhase === 'strike' && foePhaseT < 0.35 && foePhaseT > 0.15) {
       killFoe();

@@ -140,7 +140,7 @@
   function stepDemo(dt) {
     demo.t += dt;
     var cyc = demo.t % 5.4;
-    if (cyc < dt) { obstacles = []; gap = 100; }
+    if (cyc < dt || demo.t <= dt) { obstacles = []; gap = 100; }
     scrollX += 240 * dt;
     dist += 240 * dt / 40;
     for (var i = obstacles.length - 1; i >= 0; i--) { obstacles[i].x -= 340 * dt; if (obstacles[i].x < -80) obstacles.splice(i, 1); }

@@ -127,7 +127,7 @@
   function stepDemo(dt) {
     demo.t += dt;
     var cyc = demo.t % 6.4;
-    if (cyc < dt) { progress = 0; setPhase('safe', 2.0); caught = false; }
+    if (cyc < dt || demo.t <= dt) { progress = 0; setPhase('safe', 2.0); caught = false; }
     phaseT -= dt;
     if (phaseT <= 0) advancePhase();
     var holding = phase !== 'watch' && cyc < 4.4;

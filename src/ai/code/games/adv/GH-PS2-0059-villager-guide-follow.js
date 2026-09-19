@@ -182,7 +182,7 @@
   function stepDemo(dt) {
     demo.t += dt;
     var cyc = demo.t % 5.2;
-    if (cyc < dt) { dvx = START.x; dvy = START.y; dnoise = 0; dsweep = 'idle'; }
+    if (cyc < dt || demo.t <= dt) { dvx = START.x; dvy = START.y; dnoise = 0; dsweep = 'idle'; }
     var path = [
       { x: START.x, y: START.y, t: 0 },
       { x: SHADOWS[2].x, y: SHADOWS[2].y, t: 1.4 },

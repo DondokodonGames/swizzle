@@ -122,7 +122,7 @@
   function stepDemo(dt) {
     demo.t += dt;
     var cyc = demo.t % 4.4;
-    if (cyc < dt) { initGame(); target = 'right'; }
+    if (cyc < dt || demo.t <= dt) { initGame(); target = 'right'; }
     if (cyc < 1.0) {
       var t1 = cyc / 1.0;
       demo.gx = CX - 60 + 60 * t1; demo.gy = CY; demo.press = true;

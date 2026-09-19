@@ -142,7 +142,7 @@
   function stepDemo(dt) {
     demo.t += dt;
     var cyc = demo.t % 5.5;
-    if (cyc < dt) { initGame(); pickIdx = 1; computeFinishTimes(); winnerIdx = 1; finishTime[1] = 4.0; phase = 'race'; }
+    if (cyc < dt || demo.t <= dt) { initGame(); pickIdx = 1; computeFinishTimes(); winnerIdx = 1; finishTime[1] = 4.0; phase = 'race'; }
     if (cyc < 1.0) { phase = 'scout'; elapsed = 0; }
     else if (cyc < 1.6) {
       phase = 'pick';

@@ -131,7 +131,7 @@
   function stepDemo(dt) {
     demo.t += dt;
     var cyc = demo.t % 4.6;
-    if (cyc < dt) { progress = 30; tilt = 0.5; }
+    if (cyc < dt || demo.t <= dt) { progress = 30; tilt = 0.5; }
     if (cyc < 2.0) {
       demo.gx += ((tilt > 0 ? W * 0.25 : W * 0.75) - demo.gx) * Math.min(1, dt * 6);
       demo.press = (cyc % 0.5) < 0.2;

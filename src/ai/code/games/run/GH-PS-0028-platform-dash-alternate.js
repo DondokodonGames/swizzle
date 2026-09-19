@@ -123,7 +123,7 @@
   function stepDemo(dt) {
     demo.t += dt;
     var cyc = demo.t % 4.6;
-    if (cyc < dt) { progress = 0; lastSide = null; combo = 0; stumbleT = 0; }
+    if (cyc < dt || demo.t <= dt) { progress = 0; lastSide = null; combo = 0; stumbleT = 0; }
     if (cyc < 3.0) {
       var beat = Math.floor(cyc / 0.5);
       var wantLeft = beat % 2 === 0;

@@ -147,7 +147,7 @@
   function stepDemo(dt) {
     demo.t += dt;
     var cyc = demo.t % 5.0;
-    if (cyc < dt) { enemies = []; heat = 0; overheated = false; kills = 0; lives = LIVES; spawnTimer = 0; liveScore = 0; }
+    if (cyc < dt || demo.t <= dt) { enemies = []; heat = 0; overheated = false; kills = 0; lives = LIVES; spawnTimer = 0; liveScore = 0; }
     spawnTimer -= dt;
     if (spawnTimer <= 0) { spawnEnemy(); spawnTimer = 1.0; }
     for (var i = 0; i < enemies.length; i++) {

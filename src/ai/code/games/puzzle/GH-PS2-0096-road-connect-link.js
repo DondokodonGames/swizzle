@@ -208,7 +208,7 @@
   function stepDemo(dt) {
     demo.t += dt;
     var cyc = demo.t % 5.2;
-    if (cyc < dt) { houses = [{ x: HOUSE_SPOTS[0].x, y: HOUSE_SPOTS[0].y, timeLeft: HOUSE_TIMEOUT, linked: false }, { x: HOUSE_SPOTS[1].x, y: HOUSE_SPOTS[1].y, timeLeft: HOUSE_TIMEOUT, linked: false }]; drawingIdx = -1; roadPts = null; }
+    if (cyc < dt || demo.t <= dt) { houses = [{ x: HOUSE_SPOTS[0].x, y: HOUSE_SPOTS[0].y, timeLeft: HOUSE_TIMEOUT, linked: false }, { x: HOUSE_SPOTS[1].x, y: HOUSE_SPOTS[1].y, timeLeft: HOUSE_TIMEOUT, linked: false }]; drawingIdx = -1; roadPts = null; }
     for (var i = 0; i < houses.length; i++) houses[i].timeLeft -= dt;
     if (cyc < 0.3) { demo.gx = houses[0].x; demo.gy = houses[0].y; demo.press = false; }
     else if (cyc < 0.5) { if (drawingIdx < 0) tryStart(houses[0].x, houses[0].y); demo.press = true; }

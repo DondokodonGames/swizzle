@@ -209,7 +209,7 @@
   function stepDemo(dt) {
     demo.t += dt;
     var cyc = demo.t % 4.4;
-    if (cyc < dt) { hazards = []; orbX = LANES[1]; orbTargetX = LANES[1]; grip = GRIP_MAX; }
+    if (cyc < dt || demo.t <= dt) { hazards = []; orbX = LANES[1]; orbTargetX = LANES[1]; grip = GRIP_MAX; }
     if (Math.abs(cyc - 0.3) < dt / 2) hazards.push({ type: 'wall', lane: 2, t: 0, resolved: false, travel: 1.1 });
     if (Math.abs(cyc - 1.7) < dt / 2) hazards.push({ type: 'gap', lane: -1, t: 0, resolved: false, hopUsed: false, travel: 1.0 });
     if (Math.abs(cyc - 3.0) < dt / 2) hazards.push({ type: 'wall', lane: 1, t: 0, resolved: false, travel: 1.0 });
