@@ -182,7 +182,7 @@
       ringBg();
       stepDemo(dt);
       drawArena();
-      game.draw.hand(demo.gx + Math.sin(game.time.elapsed * 2.3) * 12, demo.gy + Math.cos(game.time.elapsed * 1.7) * 12, { press: demo.press, scale: 16 });
+      game.draw.hand(demo.gx + Math.cos(game.time.elapsed * 2.5) * 14, demo.gy + Math.sin(game.time.elapsed * 2.5) * 14, { press: demo.press, scale: 16 });
       txt(GAME_TITLE, W / 2, H * 0.06, 44, C.ink);
       txt('BEST ' + (game.best > 0 ? game.best : '-'), W / 2, H * 0.105, 24, C.gold);
       if (Math.floor(game.time.elapsed * 1.8) % 2 === 0) {

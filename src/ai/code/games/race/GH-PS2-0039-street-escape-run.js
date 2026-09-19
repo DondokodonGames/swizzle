@@ -168,7 +168,7 @@
       for (var i = 0; i < obstacles.length; i++) drawObstacle(obstacles[i]);
       var frame = action === 'jump' && actionT > 0 ? JUMP_S : (action === 'duck' && actionT > 0 ? SLIDE_S : (Math.floor(game.time.elapsed * 10) % 2 ? RUN_A : RUN_B));
       drawRunner(GROUND_Y - 40, frame, false);
-      game.draw.hand(demo.gx, demo.gy, { press: demo.press, scale: 15 });
+      game.draw.hand(demo.gx + Math.cos(game.time.elapsed * 2.5) * 14, demo.gy + Math.sin(game.time.elapsed * 2.5) * 14, { press: demo.press, scale: 15 });
       txt(GAME_TITLE, W / 2, H * 0.09, 48, C.white);
       txt('BEST ' + game.best + 'm', W / 2, H * 0.135, 24, C.gold);
       if (Math.floor(game.time.elapsed * 1.8) % 2 === 0) {

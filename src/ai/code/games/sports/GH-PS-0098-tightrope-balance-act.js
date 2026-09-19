@@ -158,7 +158,7 @@
       stepDemo(dt);
       drawRope();
       drawPerformer(tilt, fell);
-      game.draw.hand(demo.gx, demo.gy, { press: demo.press, scale: 15 });
+      game.draw.hand(demo.gx + Math.cos(game.time.elapsed * 2.5) * 14, demo.gy + Math.sin(game.time.elapsed * 2.5) * 14, { press: demo.press, scale: 15 });
       txt(GAME_TITLE, W / 2, H * 0.09, 50, C.ink);
       txt('BEST ' + (game.best > 0 ? Math.round(game.best) + '%' : '-'), W / 2, H * 0.135, 24, C.ink);
       if (Math.floor(game.time.elapsed * 1.8) % 2 === 0) {

@@ -169,7 +169,7 @@
         if (phase === 'scout' || phase === 'pick') game.draw.circle(LANE_X[i], TRACK_Y0, 60 + form[i] * 40, RUNNER_COL[i], 0.25 + form[i] * 0.35);
         game.draw.sprite(RUNNER_SPRITE, { '#': RUNNER_COL[i] }, LANE_X[i] + jitter, y, 14, { anchor: 'center' });
       }
-      game.draw.hand(demo.gx, demo.gy, { press: demo.press, scale: 15 });
+      game.draw.hand(demo.gx + Math.cos(game.time.elapsed * 2.5) * 14, demo.gy + Math.sin(game.time.elapsed * 2.5) * 14, { press: demo.press, scale: 15 });
       txt(GAME_TITLE, W / 2, H * 0.08, 44, C.white);
       txt('BEST ' + (game.best > 0 ? 'WIN' : '-'), W / 2, H * 0.12, 24, C.gold);
       if (Math.floor(game.time.elapsed * 1.8) % 2 === 0) {

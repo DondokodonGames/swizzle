@@ -150,7 +150,7 @@
       stepDemo(dt);
       drawZones(MX, MODEL_Y, curPose, null);
       drawZones(MX, MIRROR_Y, null, prevPose);
-      game.draw.hand(demo.gx + Math.sin(game.time.elapsed * 2.3) * 12, demo.gy + Math.cos(game.time.elapsed * 1.7) * 12, { press: demo.press, scale: 15 });
+      game.draw.hand(demo.gx + Math.cos(game.time.elapsed * 2.5) * 14, demo.gy + Math.sin(game.time.elapsed * 2.5) * 14, { press: demo.press, scale: 15 });
       txt(GAME_TITLE, W / 2, H * 0.10, 44, C.ink);
       txt('BEST ' + String(game.best) + '%', W / 2, H * 0.14, 26, C.ink);
       if (Math.floor(game.time.elapsed * 1.8) % 2 === 0) {

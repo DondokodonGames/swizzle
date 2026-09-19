@@ -174,7 +174,7 @@
       var gf = charging ? Math.min(1.4, chargeT / CHARGE_MAX) : 0;
       game.draw.rect(CX - 200, H * 0.86, 400, 26, C.white, 0.5);
       game.draw.rect(CX - 200, H * 0.86, 400 * Math.min(1, gf), 26, gf > 1 ? C.bad : C.gold);
-      game.draw.hand(demo.gx + Math.sin(game.time.elapsed * 2.3) * 12, demo.gy + Math.cos(game.time.elapsed * 1.7) * 12, { press: demo.press, scale: 15 });
+      game.draw.hand(demo.gx + Math.cos(game.time.elapsed * 2.5) * 14, demo.gy + Math.sin(game.time.elapsed * 2.5) * 14, { press: demo.press, scale: 15 });
       txt(GAME_TITLE, CX, H * 0.06, 42, C.ink);
       txt('BEST ' + (game.best > 0 ? game.best + ' PT' : '-'), CX, H * 0.10, 24, C.gold);
       if (Math.floor(game.time.elapsed * 1.8) % 2 === 0) {

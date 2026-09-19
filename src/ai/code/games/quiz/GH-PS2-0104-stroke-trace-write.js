@@ -204,7 +204,7 @@
       stepDemo(dt);
       for (var i = 0; i < STROKES.length; i++) drawStroke(i);
       game.draw.circle(cursorX, cursorY, 12, C.d3);
-      game.draw.hand(demo.gx + Math.sin(game.time.elapsed * 2.3) * 5, demo.gy + Math.cos(game.time.elapsed * 1.7) * 5, { press: demo.press, scale: 14 });
+      game.draw.hand(demo.gx + Math.cos(game.time.elapsed * 2.5) * 14, demo.gy + Math.sin(game.time.elapsed * 2.5) * 14, { press: demo.press, scale: 14 });
       txt(GAME_TITLE, W / 2, H * 0.08, 44, C.d3, 'center');
       txt('BEST ' + (game.best > 0 ? 'CLEAR' : '-'), W / 2, H * 0.12, 22, C.d2, 'center');
       if (Math.floor(game.time.elapsed * 1.8) % 2 === 0) {

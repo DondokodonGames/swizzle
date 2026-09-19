@@ -231,7 +231,7 @@
       drawTurret();
       drawShell(shell ? shell.x : LP.x, shell ? shell.y : LP.y - 60);
       drawGauges(a, p);
-      game.draw.hand(demo.gx + Math.sin(game.time.elapsed * 3.1) * 14, demo.gy + Math.cos(game.time.elapsed * 2.3) * 14, { press: demo.press, scale: 15 });
+      game.draw.hand(demo.gx + Math.cos(game.time.elapsed * 2.5) * 14, demo.gy + Math.sin(game.time.elapsed * 2.5) * 14, { press: demo.press, scale: 15 });
       if (resultTextT > 0) txt(resultText, W / 2, H * 0.40, 42, resultText.indexOf('MISS') >= 0 || resultText.indexOf('WALL') >= 0 || resultText.indexOf('SHORT') >= 0 ? C.bad : C.gold);
       txt(GAME_TITLE, W / 2, H * 0.08, 38, C.white);
       txt('BEST ' + game.best, W / 2, H * 0.115, 24, C.gold);

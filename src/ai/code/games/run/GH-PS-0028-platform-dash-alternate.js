@@ -150,7 +150,7 @@
       var rx0 = TRACK_X0 + (progress / 100) * (TRACK_X1 - TRACK_X0);
       drawRunner(rx0, lastSide === false ? RUN_B : RUN_A, stumbleT > 0);
       if (stumbleT > 0) stumbleT -= dt;
-      game.draw.hand(demo.gx, demo.gy, { press: demo.press, scale: 15 });
+      game.draw.hand(demo.gx + Math.cos(game.time.elapsed * 2.5) * 14, demo.gy + Math.sin(game.time.elapsed * 2.5) * 14, { press: demo.press, scale: 15 });
       txt(GAME_TITLE, W / 2, H * 0.09, 54, C.white);
       txt('BEST ' + (game.best > 0 ? Math.round(game.best) + '%' : '-'), W / 2, H * 0.135, 26, C.gold);
       if (Math.floor(game.time.elapsed * 1.8) % 2 === 0) {

@@ -160,7 +160,7 @@
       for (var i = 0; i < shells.length; i++) game.draw.circle(shells[i].x, shells[i].y, 12, C.shell);
       game.draw.rect(PIVOT.x - 60, PIVOT.y - 20, 120, 60, C.metal2);
       game.draw.sprite(TURRET_SPRITE, { '#': C.turret }, PIVOT.x, PIVOT.y + 30, 24, { anchor: 'center' });
-      game.draw.hand(demo.gx, demo.gy, { press: demo.press, scale: 15 });
+      game.draw.hand(demo.gx + Math.cos(game.time.elapsed * 2.5) * 14, demo.gy + Math.sin(game.time.elapsed * 2.5) * 14, { press: demo.press, scale: 15 });
       txt(GAME_TITLE, W / 2, H * 0.08, 46, C.white);
       txt('BEST ' + (game.best > 0 ? game.best + ' / ' + WIN_HITS : '-'), W / 2, H * 0.12, 24, C.gold);
       if (Math.floor(game.time.elapsed * 1.8) % 2 === 0) {

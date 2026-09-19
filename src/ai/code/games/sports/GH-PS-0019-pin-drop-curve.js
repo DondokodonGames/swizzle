@@ -317,7 +317,7 @@
       if (phase === 'flight' && ball) drawBall(ball.x, ball.y, 0.5 + 0.5 * (ball.y - ROWS[0].y) / (LAUNCH_Y - ROWS[0].y));
       else drawBall(CX, LAUNCH_Y, 1);
       if (demo.sub === 'drag') drawCharge();
-      game.draw.hand(demo.gx, demo.gy, { press: demo.press, scale: 15 });
+      game.draw.hand(demo.gx + Math.cos(game.time.elapsed * 2.5) * 14, demo.gy + Math.sin(game.time.elapsed * 2.5) * 14, { press: demo.press, scale: 15 });
       if (resultTextT > 0) { txt(resultText, CX, H * 0.44, 46, resultText.indexOf('GUTTER') >= 0 || resultText === 'FOUL' ? C.bad : C.gold); }
       txt(GAME_TITLE, W / 2, H * 0.08, 46, C.white);
       txt('BEST ' + game.best, W / 2, H * 0.115, 24, C.gold);
