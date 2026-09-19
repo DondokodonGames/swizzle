@@ -305,7 +305,7 @@
       drawPockets();
       drawOrb();
       if (demo.sub === 'drag') drawPull();
-      game.draw.hand(demo.gx, demo.gy, { press: demo.press, scale: 15 });
+      game.draw.hand(demo.gx + Math.sin(game.time.elapsed * 2.3) * 5, demo.gy + Math.cos(game.time.elapsed * 1.7) * 5, { press: demo.press, scale: 15 });
       if (resultTextT > 0) txt(resultText, CX, H * 0.42, 44, resultText.indexOf('GUTTER') >= 0 ? C.bad : C.gold);
       txt(GAME_TITLE, W / 2, H * 0.08, 42, C.white);
       txt('BEST ' + game.best, W / 2, H * 0.115, 24, C.gold);
