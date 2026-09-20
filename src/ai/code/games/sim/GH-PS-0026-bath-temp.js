@@ -73,7 +73,7 @@
 
   game.onTap(function() {
     if (state === S.ATTRACT) { game.audio.play('se_coin'); state = S.PLAYING; initGame(); return; }
-    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (state === S.RESULT) { state = S.ATTRACT; initGame(); return; }
   });
   game.onPress(function() {
     if (state === S.PLAYING && !done) { pressing = true; game.audio.play('se_tap', 0.1); }
@@ -87,7 +87,7 @@
   function stepDemo(dt) {
     demo.t += dt;
     var cyc = demo.t % 5.0;
-    if (cyc < dt) temp = 50;
+    if (cyc < dt || demo.t <= dt) temp = 50;
     var lowPhase = cyc > 1.0 && cyc < 3.0;
     demo.press = lowPhase;
     if (demo.press) temp += 34 * dt; else temp -= 10 * dt;

@@ -112,7 +112,7 @@
 
   game.onTap(function(x, y) {
     if (state === S.ATTRACT) { game.audio.play('se_coin'); state = S.PLAYING; initGame(); return; }
-    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (state === S.RESULT) { state = S.ATTRACT; initGame(); return; }
     var idx = -1, best = 999;
     for (var i = 0; i < 3; i++) { var d = Math.hypot(x - SEAT_X[i], y - SEAT_Y); if (d < best) { best = d; idx = i; } }
     if (best < 100) deliver(idx);
@@ -123,7 +123,7 @@
   function stepDemo(dt) {
     demo.t += dt;
     var cyc = demo.t % 1.8;
-    if (cyc < dt) newItem();
+    if (cyc < dt || demo.t <= dt) newItem();
     var seat = orders.indexOf(curItem);
     if (seat < 0) seat = 0;
     var tx = SEAT_X[seat];

@@ -104,7 +104,7 @@
 
   game.onTap(function() {
     if (state === S.ATTRACT) { game.audio.play('se_coin'); state = S.PLAYING; initGame(); return; }
-    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (state === S.RESULT) { state = S.ATTRACT; initGame(); return; }
     countTap();
   });
 
@@ -113,7 +113,7 @@
   function stepDemo(dt) {
     demo.t += dt;
     var cyc = demo.t % 3.5;
-    if (cyc < dt) { strokeN = 5; strokes = genStrokes(5); shown = 0; showT = 0; }
+    if (cyc < dt || demo.t <= dt) { strokeN = 5; strokes = genStrokes(5); shown = 0; showT = 0; }
     showT += dt;
     if (showT > 0.45 && shown < strokes.length) { shown++; showT = 0; }
     demo.press = (showT > 0.05 && showT < 0.20);

@@ -136,7 +136,7 @@
 
   game.onTap(function() {
     if (state === S.ATTRACT) { game.audio.play('se_coin'); state = S.PLAYING; initGame(); return; }
-    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (state === S.RESULT) { state = S.ATTRACT; initGame(); return; }
   });
 
   game.onSwipe(function(dir) {
@@ -153,7 +153,7 @@
     demo.t += dt;
     if (correct === undefined) initGame();
     var cyc = demo.t % 3.2;
-    if (cyc < dt) newRound();
+    if (cyc < dt || demo.t <= dt) newRound();
     lampBlink = (Math.sin(demo.t * 9) + 1) / 2;
     var d = WIRE_DIR[correct];
     var x0 = WIRE_X[correct], y0 = (WIRE_TOP + WIRE_BOT) / 2 + 140;

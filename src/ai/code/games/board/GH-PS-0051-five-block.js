@@ -108,7 +108,7 @@
 
   game.onTap(function(x, y) {
     if (state === S.ATTRACT) { game.audio.play('se_coin'); state = S.PLAYING; initGame(); return; }
-    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (state === S.RESULT) { state = S.ATTRACT; initGame(); return; }
     for (var r = 0; r < GS; r++) {
       for (var c = 0; c < GS; c++) {
         var p = cellXY(r, c);
@@ -123,7 +123,7 @@
     demo.t += dt;
     if (grid === undefined) initGame();
     var cyc = demo.t % 3.0;
-    if (cyc < dt) { var p2 = makePuzzle(); grid = p2.grid; keyR = p2.kr; keyC = p2.kc; }
+    if (cyc < dt || demo.t <= dt) { var p2 = makePuzzle(); grid = p2.grid; keyR = p2.kr; keyC = p2.kc; }
     var kp = cellXY(keyR, keyC);
     demo.gx += (kp.x - demo.gx) * Math.min(1, dt * 3);
     demo.gy += (kp.y - demo.gy) * Math.min(1, dt * 3);

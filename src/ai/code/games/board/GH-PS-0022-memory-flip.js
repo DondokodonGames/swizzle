@@ -117,7 +117,7 @@
 
   game.onTap(function(x, y) {
     if (state === S.ATTRACT) { game.audio.play('se_coin'); state = S.PLAYING; initGame(); return; }
-    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (state === S.RESULT) { state = S.ATTRACT; initGame(); return; }
     if (waitT > 0) return;
     var idx = -1, best = 999;
     for (var i = 0; i < cards.length; i++) { var d = Math.hypot(x - cards[i].x, y - (cards[i].y + 10)); if (d < best) { best = d; idx = i; } }
@@ -129,7 +129,7 @@
   function stepDemo(dt) {
     demo.t += dt;
     var cyc = demo.t % 3.0;
-    if (cyc < dt) { for (var i = 0; i < cards.length; i++) { cards[i].open = false; cards[i].done = false; } }
+    if (cyc < dt || demo.t <= dt) { for (var i = 0; i < cards.length; i++) { cards[i].open = false; cards[i].done = false; } }
     var c1 = cards[demo.i1], c2 = cards[demo.i2];
     if (cyc > 0.3 && cyc < 2.2) c1.open = true;
     if (cyc > 1.2 && cyc < 2.2) c2.open = true;

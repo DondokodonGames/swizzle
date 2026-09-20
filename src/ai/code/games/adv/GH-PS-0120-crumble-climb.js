@@ -98,7 +98,7 @@
 
   game.onTap(function(x, y) {
     if (state === S.ATTRACT) { game.audio.play('se_coin'); state = S.PLAYING; initGame(); return; }
-    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (state === S.RESULT) { state = S.ATTRACT; initGame(); return; }
     var idx = -1, best = 999;
     for (var i = 0; i < 3; i++) { var d = Math.hypot(x - RX[i], y - RY); if (d < best) { best = d; idx = i; } }
     if (best < 90) pick(idx);
@@ -109,7 +109,7 @@
   function stepDemo(dt) {
     demo.t += dt;
     var cyc = demo.t % 2.4;
-    if (cyc < dt) newLevel();
+    if (cyc < dt || demo.t <= dt) newLevel();
     var good2 = -1;
     for (var i = 0; i < 3; i++) if (i !== badIdx) { good2 = i; break; }
     var tx = RX[good2];

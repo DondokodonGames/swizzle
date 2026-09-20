@@ -112,7 +112,7 @@
 
   game.onTap(function(x, y) {
     if (state === S.ATTRACT) { game.audio.play('se_coin'); state = S.PLAYING; initGame(); return; }
-    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (state === S.RESULT) { state = S.ATTRACT; initGame(); return; }
     tapChoice(x, y);
   });
 
@@ -121,7 +121,7 @@
   function stepDemo(dt) {
     demo.t += dt;
     var cyc = demo.t % 2.0;
-    if (cyc < dt) newQuestion();
+    if (cyc < dt || demo.t <= dt) newQuestion();
     var correctIdx = choices.indexOf(answer);
     var p = choicePos(correctIdx < 0 ? 0 : correctIdx);
     demo.gx += (p.x - demo.gx) * Math.min(1, dt * 5);

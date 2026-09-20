@@ -107,7 +107,7 @@
 
   game.onTap(function() {
     if (state === S.ATTRACT) { game.audio.play('se_coin'); state = S.PLAYING; initGame(); return; }
-    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (state === S.RESULT) { state = S.ATTRACT; initGame(); return; }
   });
   game.onPress(function(x, y, id) { game.audio.play('se_tap', 0.08); onDown(x, y, id); });
   game.onMove(onMove2);

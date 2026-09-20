@@ -135,7 +135,7 @@
 
   game.onTap(function(x, y) {
     if (state === S.ATTRACT) { game.audio.play('se_coin'); state = S.PLAYING; initGame(); return; }
-    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (state === S.RESULT) { state = S.ATTRACT; initGame(); return; }
     if (y < H * 0.72) return;
     var idx = -1, best = 999;
     for (var i = 0; i < 3; i++) { var d = Math.abs(x - ZONE_X[i]); if (d < best) { best = d; idx = i; } }
@@ -170,7 +170,7 @@
   function stepDemo(dt) {
     demo.t += dt;
     var cyc = demo.t % 2.6;
-    if (cyc < dt) oppMove = MOVES[Math.floor(Math.random() * 3)];
+    if (cyc < dt || demo.t <= dt) oppMove = MOVES[Math.floor(Math.random() * 3)];
     var idx = MOVES.indexOf(COUNTER[oppMove] || 'push');
     var tx = ZONE_X[idx];
     demo.gx += (tx - demo.gx) * Math.min(1, dt * 5);
