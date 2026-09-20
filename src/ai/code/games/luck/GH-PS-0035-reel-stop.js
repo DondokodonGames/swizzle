@@ -139,7 +139,7 @@
     demoT += dt;
     for (var i = 0; i < 3; i++) if (demoStopped[i] === null) demoReel[i] += (5.5 + i * 0.7) * dt;
     var cyc = demoT % 4.5;
-    if (cyc < dt || demo.t <= dt) { demoReel = [0, 0, 0]; demoStopped = [null, null, null]; demoCur = 0; }
+    if (cyc < dt || demoT <= dt) { demoReel = [0, 0, 0]; demoStopped = [null, null, null]; demoCur = 0; }
     var stepAt = [1.3, 2.6, 3.9];
     if (demoCur < 3 && cyc > stepAt[demoCur]) {
       var idx = Math.round(demoReel[demoCur]) % SYM_SET.length;
