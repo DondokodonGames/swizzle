@@ -20,7 +20,9 @@ src/ai/batch/batch-progress.json
 
 # コードゲーム スモークテスト出力
 smoke-output/
+smoke-output-*/
 smoke-before/
 smoke-after/
 smoke-sample/
+smoke-solo*/
 src/ai/v2/neta-trend.json
