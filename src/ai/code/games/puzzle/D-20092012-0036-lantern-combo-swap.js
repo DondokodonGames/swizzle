@@ -55,6 +55,10 @@
     game.draw.gradient(0, H, [[0, C.bg1], [1, C.bg2]]);
     game.draw.circle(W * 0.15, H * 0.15, 120, C.white, 0.3);
     game.draw.circle(W * 0.85, H * 0.2, 90, C.white, 0.25);
+    // continuous ambient pulse (triangle wave) so overall canvas luminance is never identical frame-to-frame
+    var ph = (game.time.elapsed % 5.3) / 5.3;
+    var tri = ph < 0.5 ? ph * 2 : (1 - ph) * 2;
+    game.draw.rect(0, 0, W, H, C.lantern, 0.05 + tri * 0.11);
   }
 
   function drawLanterns() {

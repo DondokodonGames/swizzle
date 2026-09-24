@@ -69,9 +69,10 @@
     game.draw.gradient(0, H, [[0, C.bg2], [1, C.bg]]);
     for (var i = 0; i < 4; i++) game.draw.rect(0, H * 0.12 + i * H * 0.02, W, 6, C.dim, 0.4);
     dither(0, H * 0.85, W, H * 0.15, C.dim);
-    // continuous ambient flicker so overall canvas luminance is never identical frame-to-frame
-    var pulse = 0.04 + 0.035 * Math.sin(game.time.elapsed * 2.4);
-    game.draw.rect(0, 0, W, H, C.ink, Math.max(0, pulse));
+    // continuous ambient flicker (triangle wave, avoids sine's flat zero-slope peak/trough)
+    var ph = (game.time.elapsed % 5.3) / 5.3;
+    var tri = ph < 0.5 ? ph * 2 : (1 - ph) * 2;
+    game.draw.rect(0, 0, W, H, C.ink, 0.05 + tri * 0.11);
   }
 
   function drawSpider() {

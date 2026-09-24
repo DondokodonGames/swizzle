@@ -55,6 +55,10 @@
   function bg() {
     game.draw.gradient(0, HORIZON, [[0, C.sky2], [1, C.sky1]]);
     game.draw.circle(W * 0.78, HORIZON * 0.45, 90, C.accent, 0.12);
+    // continuous ambient pulse (triangle wave) so overall canvas luminance is never identical frame-to-frame
+    var ph = (game.time.elapsed % 5.3) / 5.3;
+    var tri = ph < 0.5 ? ph * 2 : (1 - ph) * 2;
+    game.draw.rect(0, 0, W, H, C.accent, 0.05 + tri * 0.11);
   }
 
   // 疑似3D床: 横ストリップで奥行き圧縮 + カーブ方向へセンターをずらす

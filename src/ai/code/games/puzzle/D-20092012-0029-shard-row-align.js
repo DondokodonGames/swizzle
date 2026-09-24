@@ -68,9 +68,10 @@
 
   function bg() {
     game.draw.gradient(0, H, [[0, C.bg1], [1, C.bg2]]);
-    // continuous ambient pulse so overall canvas luminance is never identical frame-to-frame
-    var pulse = 0.05 + 0.045 * Math.sin(game.time.elapsed * 2.2);
-    game.draw.rect(0, 0, W, H, C.gold, Math.max(0, pulse));
+    // continuous ambient pulse (triangle wave, avoids sine's flat zero-slope peak/trough)
+    var ph = (game.time.elapsed % 5.3) / 5.3;
+    var tri = ph < 0.5 ? ph * 2 : (1 - ph) * 2;
+    game.draw.rect(0, 0, W, H, C.gold, 0.05 + tri * 0.11);
   }
 
   function drawGem(i, x, y, lift) {

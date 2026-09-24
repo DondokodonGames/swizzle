@@ -55,6 +55,10 @@
       var bx = ((i * 260 - scroll * 0.3) % (W + 300)) - 150;
       game.draw.rect(bx, GROUND_Y - 200 - (i % 2) * 60, 140, 240, C.roofDark, 0.4);
     }
+    // continuous ambient pulse (triangle wave) so overall canvas luminance is never identical frame-to-frame
+    var ph = (game.time.elapsed % 5.3) / 5.3;
+    var tri = ph < 0.5 ? ph * 2 : (1 - ph) * 2;
+    game.draw.rect(0, 0, W, H, C.sky1, 0.05 + tri * 0.11);
   }
 
   function drawGround() {

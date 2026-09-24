@@ -51,6 +51,10 @@
 
   function bg() {
     game.draw.gradient(0, H, [[0, C.bg], [1, C.bg2]]);
+    // continuous ambient pulse (triangle wave) so overall canvas luminance is never identical frame-to-frame
+    var ph = (game.time.elapsed % 5.3) / 5.3;
+    var tri = ph < 0.5 ? ph * 2 : (1 - ph) * 2;
+    game.draw.rect(0, 0, W, H, C.wall, 0.05 + tri * 0.11);
     game.draw.rect(0, 0, W, 14, C.frame);
     game.draw.rect(0, H - 14, W, 14, C.frame);
     game.draw.rect(0, 0, 14, H, C.frame);

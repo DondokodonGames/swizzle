@@ -77,6 +77,10 @@
 
   function bg() {
     game.draw.gradient(0, H, [[0, '#243c34'], [1, C.bg]]);
+    // continuous ambient pulse (triangle wave) so overall canvas luminance is never identical frame-to-frame
+    var ph = (game.time.elapsed % 5.3) / 5.3;
+    var tri = ph < 0.5 ? ph * 2 : (1 - ph) * 2;
+    game.draw.rect(0, 0, W, H, C.tileFound, 0.05 + tri * 0.11);
   }
 
   function inChain(c, r) {

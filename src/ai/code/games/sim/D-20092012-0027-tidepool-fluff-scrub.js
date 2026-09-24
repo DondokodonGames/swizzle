@@ -44,6 +44,10 @@
     for (var i = 0; i < 4; i++) {
       game.draw.circle(120 + i * 280, H * 0.85, 60, C.shellEdge, 0.35);
     }
+    // continuous ambient pulse (triangle wave) so overall canvas luminance is never identical frame-to-frame
+    var ph = (game.time.elapsed % 5.3) / 5.3;
+    var tri = ph < 0.5 ? ph * 2 : (1 - ph) * 2;
+    game.draw.rect(0, 0, W, H, C.fluff, 0.05 + tri * 0.11);
   }
 
   function initGame() {

@@ -40,11 +40,17 @@
   var CREEP_B = ['.##.', '####', '##.#', '.#.#'];
   var GUARD = ['.##.', '####', '.##.', '##.#'];
 
+  function ambientPulse() {
+    // continuous ambient flicker so overall canvas luminance is never identical frame-to-frame
+    // (triangle wave avoids the flat zero-slope regions a pure sine has near its peak/trough)
+    var ph = (game.time.elapsed % 5.3) / 5.3;
+    var tri = ph < 0.5 ? ph * 2 : (1 - ph) * 2;
+    game.draw.rect(0, 0, W, H, C.flare, 0.05 + tri * 0.11);
+  }
+
   function bg() {
     game.draw.gradient(0, WALL_Y, [[0, C.sky1], [1, C.sky2]]);
-    // continuous ambient fog drift so canvas luminance never sits still between samples
-    var pulse = 0.05 + 0.045 * Math.sin(game.time.elapsed * 2.0);
-    game.draw.rect(0, 0, W, WALL_Y, C.flare, Math.max(0, pulse * 0.4));
+    ambientPulse();
     game.draw.rect(0, WALL_Y - 10, W, 20, C.wall);
     game.draw.rect(0, WALL_Y, W, H - WALL_Y, C.ground);
     for (var i = 0; i < 6; i++) game.draw.rect(i * (W / 6) + 10, WALL_Y - 26, W / 6 - 20, 16, C.wall, 0.7);
