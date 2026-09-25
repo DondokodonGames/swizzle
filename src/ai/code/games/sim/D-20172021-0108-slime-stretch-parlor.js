@@ -99,9 +99,6 @@
     holding = true; holdT = 0;
     game.audio.play('se_tap', 0.1);
   });
-  game.onUpdate(function(dt) {
-    if (state === S.PLAYING && holding && !finished && ready <= 0) holdT += dt;
-  });
   game.onRelease(function() {
     if (!holding || state !== S.PLAYING || finished || ready > 0) { holding = false; return; }
     holding = false;
@@ -156,6 +153,7 @@
   }
 
   game.onUpdate(function(dt) {
+    if (state === S.PLAYING && holding && !finished && ready <= 0) holdT += dt;
     if (state === S.ATTRACT) {
       if (roundIdx === undefined) initGame();
       stepDemo(dt);

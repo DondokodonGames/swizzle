@@ -118,13 +118,6 @@
     }
   }
 
-  game.onUpdate(function(dt) {
-    if (state === S.PLAYING && game.input.pressing) {
-      var tx = Math.max(LANE_MIN, Math.min(LANE_MAX, game.input.x));
-      x += (tx - x) * Math.min(1, dt * 9);
-    }
-  });
-
   game.onTap(function(x2, y2) {
     if (state === S.ATTRACT) { game.audio.play('se_coin'); state = S.PLAYING; initGame(); return; }
     if (state === S.RESULT) { state = S.ATTRACT; initGame(); demo.t = 0; return; }
@@ -164,6 +157,10 @@
   }
 
   game.onUpdate(function(dt) {
+    if (state === S.PLAYING && game.input.pressing) {
+      var tx0 = Math.max(LANE_MIN, Math.min(LANE_MAX, game.input.x));
+      x += (tx0 - x) * Math.min(1, dt * 9);
+    }
     if (state === S.ATTRACT) {
       if (x === undefined) initGame();
       stepDemo(dt);

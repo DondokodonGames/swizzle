@@ -152,9 +152,11 @@
       game.draw.circle(colX(fallAnim.c), fallAnim.y, 30 + fallAnim.tier * 8, col2);
     }
     var nr = 30 + nextTier * 8;
-    game.draw.circle(W * 0.5, H * 0.16, nr, FRUIT_COL[Math.min(nextTier - 1, FRUIT_COL.length - 1)]);
+    var bob = Math.sin(game.time.elapsed * 2.4) * 26;
+    game.draw.circle(W * 0.5, H * 0.16 + bob, nr, FRUIT_COL[Math.min(nextTier - 1, FRUIT_COL.length - 1)]);
     var pf = Math.floor(game.time.elapsed * 4) % 2;
-    game.draw.sprite(PACKER_F[pf], { '#': C.ink }, W * 0.86, H * 0.86, 12, { anchor: 'center' });
+    var packerBob = Math.sin(game.time.elapsed * 3.1) * 22;
+    game.draw.sprite(PACKER_F[pf], { '#': C.ink }, W * 0.86 + packerBob, H * 0.86, 12, { anchor: 'center' });
   }
 
   var demo = { t: 0, gx: colX(2), gy: H * 0.95, press: false, target: 2 };
