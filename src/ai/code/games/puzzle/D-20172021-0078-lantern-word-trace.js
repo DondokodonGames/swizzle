@@ -222,8 +222,6 @@
       var lowTime = timeLeft < 3 && Math.floor(game.time.elapsed * 6) % 2 === 0;
       game.draw.rect(60, 150, tbW, 16, C.lanternOff, 1);
       game.draw.rect(60, 150, tbW * Math.max(0, timeLeft / TIME_LIMIT), 16, lowTime ? C.bad : C.gold);
-    } else if (phase === 'show') {
-      txt('よく見て!', W / 2, H * 0.08, 26, C.gold);
     }
     if (ready > 0) txt(ready > 0.35 ? 'READY?' : 'GO!', W / 2, H * 0.75, 54, C.gold);
   });
