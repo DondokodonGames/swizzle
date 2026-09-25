@@ -27,8 +27,8 @@
   var GAME_TITLE = 'HEDGE BLOOM';
   var COLS = 5, ROWS = 4, CELL = 168;
   var GX = W * 0.5, TOP_Y = H * 0.24;
-  var NEEDED = 5;
-  var TIME_LIMIT = 14;
+  var NEEDED = 4;
+  var TIME_LIMIT = 10;
 
   var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
   var state = S.ATTRACT;

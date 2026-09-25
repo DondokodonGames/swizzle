@@ -21,7 +21,7 @@
   };
 
   var GAME_TITLE = 'SHAFT RUN';
-  var TIME_LIMIT = 20;
+  var TIME_LIMIT = 11;
   var MAX_HIT = 3;
   var LANES = 3;
   var LANE_X = [W * 0.28, W * 0.5, W * 0.72];

@@ -27,8 +27,8 @@
   var GAME_TITLE = 'PARLOR REFIT';
   var COLS = 5, ROWS = 5, CELL = 156;
   var GX = W * 0.5, TOP_Y = H * 0.22;
-  var NEEDED = 6;
-  var TIME_LIMIT = 22;
+  var NEEDED = 5;
+  var TIME_LIMIT = 15;
   var DROP_DUR = 0.28;
 
   var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
