@@ -47,6 +47,14 @@
 同じ題材が何本あっても**遊びは1本ずつ別**にする（800本すべての型を相異なるものにするため）。
 書いた行は `status=play-written` になる（status 列を書けばそれが優先）。
 
+### plays/<棚>-var.tsv — 在庫を使い切った棚のバリエーション
+
+棚の実在庫を全てビルドした後、同じ元ネタから別の遊びを積み増す行は `plays/<棚>-var.tsv` に
+`id<TAB>遊びの一文<TAB>status<TAB>mechanic<TAB>world` で書く。id は元行の id に `v2`/`v3`… を付けたもの
+（例 `I-GBA-0001v2`）で、ゲームファイルも `<id>-<slug>.js` になる。元行と同じ mechanic は使わない。
+これらの id は production-list.csv に行を持たない（`games:list` は未知の id を読み飛ばす）ので、
+進捗はこの TSV の status 列で追う。
+
 ## production-list.csv の列
 
 | 列 | 意味 |
