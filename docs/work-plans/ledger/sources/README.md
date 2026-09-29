@@ -54,6 +54,8 @@
 （例 `I-GBA-0001v2`）で、ゲームファイルも `<id>-<slug>.js` になる。元行と同じ mechanic は使わない。
 これらの id は production-list.csv に行を持たない（`games:list` は未知の id を読み飛ばす）ので、
 進捗はこの TSV の status 列で追う。
+K棚（リズム）の `K-var.tsv` は6列目に `beat`（straight / offbeat / call_response / waltz / swing /
+syncopation / tempo_ramp / break / medley）を持ち、同じ元行の v2・v3 は mechanic も beat も変える。
 
 ## production-list.csv の列
 
