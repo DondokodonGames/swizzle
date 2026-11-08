@@ -23,10 +23,10 @@
   var PX0 = 90, PX1 = W - 90, PY0 = Math.round(H * 0.25), PY1 = Math.round(H * 0.73);
   var K_PUSH = 2.4, V_MAX = 1100, DRAG = 2.2, CALM = 300, LIFT_T = 0.65;
   var FISH = [
-    { wander: 80, flee: 220 },
-    { wander: 110, flee: 240 },
-    { wander: 140, flee: 260 },
-    { wander: 170, flee: 280 },
+    { wander: 70, flee: 220 },
+    { wander: 95, flee: 240 },
+    { wander: 120, flee: 255 },
+    { wander: 145, flee: 270 },
   ];
 
   var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
