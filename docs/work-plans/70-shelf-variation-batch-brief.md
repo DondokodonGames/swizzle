@@ -60,6 +60,8 @@
 - **RESULT→ATTRACT のタップで必ず初期化関数を呼ぶ**: `if (state === S.RESULT) { state = S.ATTRACT; initGame(); demo.t = 0; return; }`
 - **デモ周期の頭の判定**: `if (cyc < dt || demo.t <= dt) { /* 配列の再構築 */ }`(`cyc < dt` 単体だと初回で抜ける)
 - **ラウンド全体の TIME_LIMIT**: 正解しないと永遠に終わらない形を作らない。ジェスチャー待ちには2〜3秒のtimeout。
+  **放置(入力なし)で終わるまでの合計**(READY のカウントイン + TIME_LIMIT + 結果表示)を **28秒以内**にする。
+  本番のウォッチドッグは最初の入力から33秒で強制終了するため(`CodeGameRunner.ts` / `run-upload-games.ts`)。
 - **ATTRACT は常に動いている**(bob+sway+ambient pulse)。ゴーストハンドは `game.draw.hand(x, y, {press})`(揺らぎはエンジン側で自動)。
 - 過度な速度減衰をしない。smoke を通すためだけに設計上の尺を削らない。
 
