@@ -122,7 +122,7 @@ describe('buildIframeHtml', () => {
 
     it('exposes game.draw.hand backed by the sprite path', () => {
       const html = buildIframeHtml('// noop', 1000);
-      expect(html).toContain('hand: function(x, y, opts)');
+      expect(html).toMatch(/hand: function\(\w+, \w+, opts\)/);
       expect(html).toContain('HAND_POINT');
       expect(html).toContain('HAND_PRESS');
       expect(html).toContain('game.draw.sprite(o.press ? HAND_PRESS : HAND_POINT');

@@ -29,6 +29,9 @@ export default defineConfig({
       // (ランタイムキャッシュ設定なし = 非プリキャッシュのリクエストはネットワークにそのまま抜ける)。
       workbox: {
         globPatterns: ['**/*.{js,css,html,png,svg,ico}'],
+        // /admin/local-games は全ゲームのソースを埋め込むため巨大(数十MB規模に育つ)。
+        // 管理者専用の遅延読み込みページなので、プリキャッシュせずネットワークから都度取得する。
+        globIgnores: ['**/LocalGamesPage-*.js'],
         navigateFallbackDenylist: [/^\/api\//],
       },
       manifest: {
