@@ -400,16 +400,16 @@
     }
     // 層2: 丘と羊と小屋
     var o2 = sway * 14;
-    game.draw.rect(0, 600, W, WALL_BASE - 600, GRASS_L);
-    for (var hx = -2; hx < 12; hx++) game.draw.circle(hx * 110 + o2, 640 + (hx % 3) * 16, 90, GRASS_L);
-    game.draw.rect(0, 620, W, 8, '#a8dc84', 0.6);
-    game.draw.rect(760 + o2, 590, 80, 50, '#a87850');
-    game.draw.rect(750 + o2, 576, 100, 16, '#7a4a30');
-    game.draw.rect(790 + o2, 610, 20, 30, '#4a3020');
+    game.draw.rect(0, 486, W, WALL_BASE - 486, GRASS_L);
+    for (var hx = -2; hx < 12; hx++) game.draw.circle(hx * 110 + o2, 520 + (hx % 3) * 12, 60, GRASS_L);
+    game.draw.rect(0, 500, W, 6, '#a8dc84', 0.6);
+    game.draw.rect(760 + o2, 470, 80, 46, '#a87850');
+    game.draw.rect(750 + o2, 456, 100, 16, '#7a4a30');
+    game.draw.rect(790 + o2, 490, 20, 26, '#4a3020');
     var sf = Math.floor(el * 1.5) % 2;
-    game.draw.sprite(SHEEP[sf], SHEEP_PAL, 260 + o2, 690, 6, { anchor: 'center' });
-    game.draw.sprite(SHEEP[1 - sf], SHEEP_PAL, 420 + o2, 720, 6, { anchor: 'center', flipX: true });
-    game.draw.sprite(SHEEP[sf], SHEEP_PAL, 930 + o2, 700, 5, { anchor: 'center' });
+    game.draw.sprite(SHEEP[sf], SHEEP_PAL, 260 + o2, 528, 5, { anchor: 'center' });
+    game.draw.sprite(SHEEP[1 - sf], SHEEP_PAL, 420 + o2, 540, 5, { anchor: 'center', flipX: true });
+    game.draw.sprite(SHEEP[sf], SHEEP_PAL, 930 + o2, 532, 4, { anchor: 'center' });
   }
 
   function drawWall(r, el) {
@@ -524,8 +524,7 @@
     var b = ballAt(r, r.songT);
     if (!b) return;
     // 接地影(右下へ落ちる)
-    var z = (GROUND0 - Math.min(GROUND0, b.y + 1)) >= 0 ? 0 : 0;
-    game.draw.rect(b.x - 26 * b.s + 10 * b.s, b.y + 6 + z, 52 * b.s, 10 * b.s, INK, 0.15);
+    game.draw.rect(b.x - 16 * b.s, b.y + 6, 52 * b.s, 10 * b.s, INK, 0.15);
     var R = 28 * b.s;
     game.draw.circle(b.x, b.y, R + 4, WOOD_D);
     game.draw.circle(b.x, b.y, R, WOOD);
