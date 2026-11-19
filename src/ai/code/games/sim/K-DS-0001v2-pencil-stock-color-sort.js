@@ -366,7 +366,6 @@
 
   // ── 描画 ───────────────────────────────────────────────
   function drawBg() {
-    var e = game.time.elapsed;
     game.draw.gradient(0, HY, [[0, C.ceil], [1, C.wall]]);
     game.draw.gradient(HY, H, [[0, C.fog], [0.35, C.floor], [1, '#8a7050']]);
     // 天井の灯(拍で点く4灯が手前、奥は霧に沈む)
@@ -400,7 +399,6 @@
         game.draw.rect(cx - w / 2, gy - h, w, h, C.fog, Math.min(0.7, (1 - sc) * 0.9));
       }
     }
-    void e;
   }
 
   function drawBelts() {
