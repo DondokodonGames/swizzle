@@ -492,18 +492,20 @@
     var bx = MX, by = MY - 220;
     var nb = Math.ceil(clock / SPB);
     var lead = nb * SPB - clock;
-    if (!over && nb >= introBeats && nb < totalBeats && lead < 0.2 && demo.k !== nb) {
+    if (!over && nb >= introBeats && nb < totalBeats && lead < 0.2 && demo.k < nb && (demo.fired || demo.k < 0 || demo.k < nb - 1)) {
       demo.k = nb; demo.fired = false;
       var want = course[pos];
       if (pos === DEMO_WRONG_AT && !demo.wrongDone) { want = heading(); demo.wrongDone = true; }
       demo.dir = want;
     }
     var tx = bx, ty = by;
-    if (demo.k >= 0 && !demo.fired && demo.k === nb) {
-      var p = Math.max(0, Math.min(1, 1 - lead / 0.2));
+    if (demo.k >= 0 && !demo.fired && !over) {
+      var lk = demo.k * SPB - clock;
+      var p = Math.max(0, Math.min(1, 1 - lk / 0.2));
       tx = bx + DX[demo.dir] * (-110 + 220 * p); ty = by + DY[demo.dir] * (-110 + 220 * p);
       demo.x = tx; demo.y = ty; demo.press = true;
-      if (lead <= 0.015) { judgeSwipe(demo.dir); demo.fired = true; }
+      // フレームが拍の頭をまたいでも取りこぼさない
+      if (lk <= 0.015) { judgeSwipe(demo.dir); demo.fired = true; }
     } else {
       demo.press = false;
       demo.x += (tx - demo.x) * Math.min(1, dt * 6);
