@@ -319,9 +319,11 @@
 
   function drawPeople(dt) {
     var mr = masterRaise();
-    masR = mr > 0 ? mr : Math.max(0, masR - dt * 8);
+    // 構えの位置(少し上げて木釘が見えるように)。打った直後だけ木釘の上まで下ろす
+    var restM = masHit > 0 ? 0 : 0.14, restA = appHit > 0 ? 0 : 0.14;
+    masR = mr > 0 ? Math.max(restM, mr) : Math.max(restM, masR - dt * 8);
     var ar = pressing ? Math.min(1.15, heldBeats() / 3) : 0;
-    appR = pressing ? ar : Math.max(0, appR - dt * 8);
+    appR = pressing ? Math.max(restA, ar) : Math.max(restA, appR - dt * 8);
     var bob = Math.floor(Math.max(0, clock) / SPB) % 2;
     game.draw.sprite(bob ? MAS_A : MAS_B, PAL_M, MAS_P.x - 60, MAS_P.y + 70, 11, { anchor: 'center' });
     drawMallet(MAS_P, -1, masR, false);
@@ -367,14 +369,14 @@
   }
 
   // 上の帯: 親方の小節(上段)と自分の小節(下段)の型
-  function drawTimeline() {
+  function drawTimeline(y0) {
     var ph = curPhase(), bt = clock / SPB;
-    var x0 = 200, cw = 190, rows = [{ y: 108, start: ph.cs, who: 0 }, { y: 168, start: ph.rs, who: 1 }];
-    game.draw.sprite(HEAD_M, PAL_M, 130, 108, 8, { anchor: 'center' });
-    game.draw.sprite(HEAD_A, PAL_A, 130, 168, 8, { anchor: 'center' });
+    var x0 = 200, cw = 190, rows = [{ y: y0, start: ph.cs, who: 0 }, { y: y0 + 60, start: ph.rs, who: 1 }];
+    game.draw.sprite(HEAD_M, PAL_M, 130, y0, 8, { anchor: 'center' });
+    game.draw.sprite(HEAD_A, PAL_A, 130, y0 + 60, 8, { anchor: 'center' });
     for (var r = 0; r < 2; r++) {
       var row = rows[r];
-      for (var c = 0; c < 4; c++) game.draw.rect(x0 + c * cw, row.y - 22, cw - 8, 44, C.black);
+      for (var c = 0; c < 4; c++) { game.draw.rect(x0 + c * cw, row.y - 22, cw - 8, 44, C.blue); game.draw.rect(x0 + c * cw, row.y - 22, 4, 44, c === 0 ? C.white : C.gray); }
       for (var i = 0; i < ph.sw.length; i++) {
         var sw = ph.sw[i];
         var shown = r === 0 ? bt >= ph.cs + sw.a : bt >= ph.cs + sw.b;   // 自分の段は親方が打ったあとに型が出る
@@ -395,7 +397,7 @@
     label('SCORE ' + score, 60, 50, 32, C.white, 'left');
     label(driven + ' / ' + PH_N, W / 2 + 60, 50, 32, C.yellow);
     for (var i = 0; i < LIVES; i++) game.draw.sprite(LIFE, { w: i < lives ? C.lgray : C.gray, b: i < lives ? C.brown : C.gray }, W - 80 - i * 56, 50, 7, { anchor: 'center' });
-    drawTimeline();
+    drawTimeline(108);
   }
 
   function drawScene(dt) {
@@ -451,6 +453,8 @@
       stepDemo(dt);
       drawScene(dt);
       game.draw.hand(560, PAD_Y + (demo.down ? 150 : 110), { press: demo.down || demo.press > 0, scale: 14 });
+      frame(60, 320, W - 120, 150, C.dcyan, C.black);
+      drawTimeline(362);
       frame(20, 16, W - 40, 210, C.white, C.black);
       label(GAME_TITLE, W / 2, 88, 80 + Math.sin(t * 3) * 3, C.yellow);
       label('HI-SCORE ' + game.best, W / 2, 176, 34, C.cyan);
