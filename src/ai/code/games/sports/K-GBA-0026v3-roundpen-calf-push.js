@@ -40,7 +40,8 @@
   function sy(z) { return HOR + FY / z; }
   function sx(X, z) { return W / 2 + X * FX / z; }
   function contactZ(p) { return 1.35 + p * 0.5; }
-  var CALF_X = -0.15, HAND_X = 0.3;
+  var CALF_X = -0.2, HAND_X = 0.36;
+  var FIG = 44;                        // 人物の板の大きさ(距離で割って px にする)
 
   // 伴奏(オリジナル): ブン・チャッの2ビートに乗るハーモニカ風の主旋律。4小節で一巡
   var LEAD = [
@@ -102,6 +103,8 @@
   var HAND_PAL = fogPal({ h: '#c89a50', n: '#5a3a22', s: '#f0c8a0', v: '#b8403a', j: '#3a5a9a', b: '#4a2e1a' });
   var POST_PAL = fogPal({ w: '#9a6a3a', d: '#6a4424' });
   var FLASH = { e: '#fff', b: '#fff', w: '#fff', k: '#fff', p: '#fff', d: '#fff' };
+  var DIRT_LV = [];
+  for (var dl = 0; dl < 8; dl++) DIRT_LV.push(mix(C.dirt, C.dirtFar, dl / 7));
   function fogLv(z) { return z < 2.6 ? 0 : (z < 4.2 ? 1 : 2); }
 
   var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
@@ -109,7 +112,7 @@
 
   var clock, lastBeat, lastCue, beatPulse, attacks, calfIdx, p, pShow, phase, phaseEnd, outCount;
   var score, combo, maxCombo, nPerfect, nGood, nMiss, hitStop, over, won, timeUp, outroT, prevBest, demoMode;
-  var calfZ, calfXs, calfPose, lungeT, recoilT, pushLane, pushT, flashT, lastType, sameRun;
+  var calfZ, calfXs, calfPose, lungeT, recoilT, pushLane, pushT, flashT, lastType, sameRun, stopBudget;
 
   function initRun(demo) {
     demoMode = !!demo;
@@ -120,7 +123,7 @@
     score = 0; combo = 0; maxCombo = 0; nPerfect = 0; nGood = 0; nMiss = 0;
     hitStop = 0; over = false; won = false; timeUp = false; outroT = 0; prevBest = game.best;
     calfZ = demo ? contactZ(p) + 0.25 : 6.6; calfXs = demo ? CALF_X : 0; calfPose = 'S';
-    lungeT = 0; recoilT = 0; pushLane = null; pushT = 0; flashT = 0; lastType = ''; sameRun = 0;
+    lungeT = 0; recoilT = 0; pushLane = null; pushT = 0; flashT = 0; lastType = ''; sameRun = 0; stopBudget = 1.6;
   }
 
   // ---- 拍クロック(1本)。伴奏は0.06秒先読みで1拍ずつ ----
@@ -181,7 +184,7 @@
     if (grade === 1) nPerfect++; else nGood++;
     score += (grade === 1 ? 100 : 60) + Math.min(10, combo) * 10;
     p++; recoilT = 0.25; calfPose = 'S';
-    var fx = sx(CALF_X, calfZ), fy = sy(calfZ) - 200 / calfZ * 1.6;
+    var fx = sx(CALF_X, calfZ), fy = sy(calfZ) - 15 * FIG / calfZ;
     game.feedback.good(fx, fy, { text: grade === 1 ? 'PERFECT' : 'GOOD', color: grade === 1 ? LANE_COL[lane] : C.white, size: grade === 1 ? 52 : 44, count: grade === 1 ? 14 : 8, volume: demoMode ? 0.03 : 0.12 });
     if (!demoMode) game.audio.tone(392 * Math.pow(2, Math.min(12, combo) / 12), 0.07, { wave: 'triangle', volume: 0.07 });
     var need = START_P + (demoMode ? 9 : CALVES[calfIdx].need);
@@ -191,7 +194,10 @@
   function shoved(a, x, y) {
     if (a) a.res = 3;
     combo = 0; nMiss++;
-    p--; lungeT = 0.3; flashT = 0.38; hitStop = 0.38;
+    // hit-stop は1プレイ合計1.6秒まで(放置でも28秒以内に終わるように)
+    var hs = Math.min(0.38, stopBudget);
+    stopBudget -= hs;
+    p--; lungeT = 0.3; flashT = 0.38; hitStop = hs;
     game.feedback.bad(x, y, { text: 'MISS', shake: demoMode ? 3 : 12, volume: demoMode ? 0.03 : 0.6 });
     if (!demoMode && p <= 0) { game.audio.play('se_break', 0.4); finishRun(false); }
   }
@@ -201,6 +207,7 @@
     score += 300;
     phase = 'exit'; phaseEnd = Math.max(0, Math.floor(clock / SPB + 0.5)) + 2;
     for (var i = 0; i < attacks.length; i++) if (!attacks[i].res) attacks[i].res = 9;
+    if (!demoMode && outCount >= CALVES.length) finishRun(true);
     if (!demoMode) {
       game.fx.popup('NICE', W / 2, sy(PEN_Z + PEN_R) - 120, { color: C.yel, size: 84 });
       game.fx.popup(outCount + ' / ' + CALVES.length, W / 2, H * 0.3, { color: C.white, size: 64 });
@@ -244,18 +251,22 @@
     return 'wrong';
   }
 
+  // 見た目の位置を拍に合わせて寄せる(終わりの演出中も動かす)
+  function ease(dt) {
+    pShow += (p - pShow) * Math.min(1, dt * 10);
+    var tz = contactZ(pShow) + 0.25 + (recoilT > 0 ? 0.25 * recoilT / 0.25 : 0) - (lungeT > 0 ? 0.2 : 0);
+    if (phase === 'exit') { tz = 7.0; calfXs += (0 - calfXs) * Math.min(1, dt * 4); }
+    else calfXs += (CALF_X - calfXs) * Math.min(1, dt * 4);
+    calfZ += (tz - calfZ) * Math.min(1, dt * (phase === 'fight' ? 12 : 3.2));
+  }
+
   function stepRun(dt) {
     clock += dt;
     if (lungeT > 0) lungeT -= dt;
     if (recoilT > 0) recoilT -= dt;
     if (pushT > 0) pushT -= dt;
     beatClock();
-    // 見た目の位置を拍に合わせて寄せる
-    pShow += (p - pShow) * Math.min(1, dt * 10);
-    var tz = contactZ(pShow) + 0.25 + (recoilT > 0 ? 0.25 * recoilT / 0.25 : 0) - (lungeT > 0 ? 0.2 : 0);
-    if (phase === 'exit') { tz = 7.0; calfXs += (0 - calfXs) * Math.min(1, dt * 4); }
-    else calfXs += (CALF_X - calfXs) * Math.min(1, dt * 4);
-    calfZ += (tz - calfZ) * Math.min(1, dt * (phase === 'fight' ? 12 : 3.2));
+    ease(dt);
     if (over) return;
     for (var i = 0; i < attacks.length; i++) {
       var a = attacks[i];
@@ -325,7 +336,7 @@
       var z = FY / (y + 2 - HOR), dz = z - PEN_Z;
       if (Math.abs(dz) >= PEN_R) continue;
       var hw = Math.sqrt(PEN_R * PEN_R - dz * dz) * FX / z;
-      game.draw.rect(W / 2 - hw, y, hw * 2, 4.5, mix(C.dirt, C.dirtFar, Math.min(1, (z - 1.2) / 4.5)));
+      game.draw.rect(W / 2 - hw, y, hw * 2, 4.5, DIRT_LV[Math.max(0, Math.min(7, Math.floor((z - 1.2) / 4.5 * 8)))]);
     }
     // 蹄のあと(拍で揺れる小さな影)
     for (var h = 0; h < 10; h++) {
@@ -341,12 +352,12 @@
     for (i = 0; i < N; i++) {
       a = i / N * Math.PI * 2;
       X = PEN_R * Math.sin(a); z = PEN_Z - PEN_R * Math.cos(a);
-      if (z < 1.5) continue;
-      var gate = Math.abs(a - Math.PI) < 0.2;
+      if (z < 1.5 || Math.abs(a - Math.PI) < 0.15) continue;
+      var gate = Math.abs(a - Math.PI) < 0.3;
       items.push({ kind: 'post', X: X, z: z, gate: gate, a: a });
     }
     items.push({ kind: 'calf', z: calfZ });
-    items.push({ kind: 'hand', z: phase === 'fight' || phase === 'exit' ? contactZ(pShow) - 0.25 : contactZ(pShow) - 0.25 });
+    items.push({ kind: 'hand', z: contactZ(pShow) - 0.25 });
     items.push({ kind: 'mark', z: calfZ - 0.05 });
     items.sort(function(u, v) { return v.z - u.z; });
     // 横木(柱の上端どうしを結ぶ)
@@ -354,8 +365,8 @@
     for (i = 0; i < N + 1; i++) {
       a = (i % N) / N * Math.PI * 2;
       X = PEN_R * Math.sin(a); z = PEN_Z - PEN_R * Math.cos(a);
-      var cur = z >= 1.5 ? { x: sx(X, z), y: sy(z), s: 1 / z, gate: Math.abs(a - Math.PI) < 0.2 } : null;
-      if (prev && cur && !(prev.gate && cur.gate) && z > PEN_Z) {
+      var cur = z >= 1.5 && Math.abs(a - Math.PI) >= 0.15 ? { x: sx(X, z), y: sy(z), s: 1 / z } : null;
+      if (prev && cur && z > PEN_Z) {
         var col = POST_PAL[fogLv(z)].w;
         game.draw.line(prev.x, prev.y - 150 * prev.s * 1.9, cur.x, cur.y - 150 * cur.s * 1.9, col, Math.max(3, 18 * cur.s));
         game.draw.line(prev.x, prev.y - 80 * prev.s * 1.9, cur.x, cur.y - 80 * cur.s * 1.9, col, Math.max(3, 18 * cur.s));
@@ -387,7 +398,7 @@
     var x = sx(it.X, it.z), y = sy(it.z), px = 34 / it.z;
     oval(x, y, 50 / it.z * 1.6, 12 / it.z * 1.6, C.shadow, 0.25);
     game.draw.sprite(POST, POST_PAL[fogLv(it.z)], x, y - 9 * px / 2, px, { anchor: 'center' });
-    if (it.gate && Math.abs(it.a - Math.PI) < 0.2 && it.X > 0) {
+    if (it.gate && it.X > 0) {
       // 開いた門扉
       var gx = x + 120 / it.z * 1.6;
       game.draw.line(x, y - 120 / it.z * 1.9, gx, y - 60 / it.z * 1.9, POST_PAL[2].w, Math.max(3, 14 / it.z));
@@ -403,7 +414,7 @@
 
   function drawCalf() {
     if (calfZ > 6.9 && phase === 'exit') return;
-    var z = calfZ, x = sx(calfXs, z), y = sy(z), px = 34 / z;
+    var z = calfZ, x = sx(calfXs, z), y = sy(z), px = FIG / z;
     var big = flashT > 0 && hitStop > 0;
     oval(x, y, 70 * px / 10, 16 * px / 10, C.shadow, 0.3);
     var bounce = (phase !== 'fight' ? Math.abs(Math.sin(game.time.elapsed * 10)) * 10 : beatPulse * 6) * px / 10;
@@ -413,16 +424,16 @@
   }
 
   function drawHand(z) {
-    var x = sx(HAND_X, z), y = sy(z), px = 34 / z;
+    var x = sx(HAND_X, z), y = sy(z), px = FIG / z;
     oval(x, y, 70 * px / 10, 16 * px / 10, C.shadow, 0.3);
     var fr = lungeT > 0 ? 1 : Math.floor((clock >= 0 ? clock / SPB : game.time.elapsed * 2)) % 2;
     var lean = lungeT > 0 ? 12 * px / 10 : 0;
     var top = y - 13 * px;
     game.draw.sprite(HAND[fr], HAND_PAL[fogLv(z)], x + lean, y - 6.5 * px, px, { anchor: 'center' });
     // 腕: 受けた側へ伸びる(待ちは子牛の肩へ)
-    var cz = calfZ, cx = sx(calfXs, cz), cy = sy(cz) - 7 * (34 / cz);
+    var cz = calfZ, cx = sx(calfXs, cz), cy = sy(cz) - 7 * (FIG / cz);
     var off = pushT > 0 && pushLane ? (pushLane === 'L' ? -60 : (pushLane === 'R' ? 60 : 0)) : 0;
-    var hx = cx + off + 30 * (34 / cz) / 10, hy = cy + (pushT > 0 ? -10 : 10);
+    var hx = cx + off + 30 * (FIG / cz) / 10, hy = cy + (pushT > 0 ? -10 : 10);
     var sxL = x + lean - 3.5 * px, sxR = x + lean + 3.5 * px, shY = top + 5 * px;
     game.draw.line(sxL, shY, hx - 20, hy, HAND_PAL[0].s, Math.max(4, px * 1.4));
     game.draw.line(sxR, shY, hx + 20, hy + 6, HAND_PAL[0].s, Math.max(4, px * 1.4));
@@ -436,7 +447,7 @@
     var a = null;
     for (var i = 0; i < attacks.length; i++) if (!attacks[i].res) { a = attacks[i]; break; }
     if (!a) return;
-    var z = calfZ, px = 34 / z;
+    var z = calfZ, px = FIG / z;
     var dtv = a.t - clock;
     var blink = dtv > 0.08 ? Math.floor(game.time.elapsed * 12) % 2 === 0 : true;
     var lx = { L: -0.5, C: 0, R: 0.5 }[a.type];
@@ -568,6 +579,7 @@
       if (flashT > 0) flashT -= dt;
     } else if (over) {
       outroT -= dt;
+      ease(dt);
       if (outroT <= 0) { state = S.RESULT; endGame(); }
     } else {
       var wasReady = clock < -0.35;
