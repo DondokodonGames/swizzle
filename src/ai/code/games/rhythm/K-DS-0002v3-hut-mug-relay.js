@@ -18,7 +18,7 @@ var STYLE = { bg: ['#1d1820', '#3a2a24', '#5a4232'], main: ['#b8743a', '#e7d3b0'
     wood: STYLE.main[0], cream: STYLE.main[1], blue: STYLE.main[2],
     fire: STYLE.accent[0], glow: STYLE.accent[1],
     woodD: '#6e4222', woodL: '#d08a4a', stone: '#8a8580', stoneD: '#5e5a58', stoneL: '#a9a39b',
-    fog: '#b9c3cd', fog2: '#dde3e9', skin: '#e8b48a', skinD: '#c48a62', hair: '#5a3a2a', hairD: '#43291c',
+    fog: '#b9c3cd', fog2: '#dde3e9', skin: '#e8b48a', skinD: '#c48a62', hair: '#8a5a3a', hairD: '#68422a',
     rug: '#9a3a32', rugD: '#702822', ink: '#140f12', snow: '#eef3f8', red: '#e0483a',
     mug: '#d9e0e6', mugD: '#9ea8b2', cocoa: '#6a3a22', cold: '#8fb4d6', pants: '#3a3440'
   };
