@@ -367,6 +367,11 @@ var STYLE = { bg: ['#fbe3ee', '#e2f4ec', '#f8f2d8'], main: ['#7cc9a6', '#f49bbb'
     game.draw.sprite(spr, PAL_WHITE, x, y + d, px, o);
     game.draw.sprite(spr, pal, x, y, px, o);
   }
+  // 画面の内側だけを横帯で塗る(液晶の淡いグラデの代わり)
+  function bands(x, y, w, h, cols) {
+    var n = cols.length, bh = Math.ceil(h / n);
+    for (var i = 0; i < n; i++) game.draw.rect(x, y + i * bh, w, Math.min(bh, h - i * bh), cols[i]);
+  }
   function leafBall(x, y, r, col) {
     game.draw.circle(x, y, r + 6, '#ffffff');
     game.draw.circle(x, y, r, col);
@@ -387,8 +392,7 @@ var STYLE = { bg: ['#fbe3ee', '#e2f4ec', '#f8f2d8'], main: ['#7cc9a6', '#f49bbb'
     var t = game.time.elapsed;
     rrect(28, TOP_Y - 12, W - 56, TOP_H + 24, 40, '#ffffff');
     rrect(40, TOP_Y, W - 80, TOP_H, 30, '#eaf8f1');
-    game.draw.gradient(TOP_Y + 30, TOP_Y + TOP_H - 30, ['#fff4e2', '#e3f6ec']);
-    game.draw.rect(40, TOP_Y + 30, W - 80, TOP_H - 60, '#f2fbf6', 0.35);
+    bands(40, TOP_Y + 30, W - 80, TOP_H - 60, ['#fff4e2', '#f6f8e6', '#ecf7ea', '#e3f6ec']);
     // 遠景の樹冠(丸い葉のかたまり)
     for (var i = 0; i < 9; i++) {
       var lx = 70 + i * 120, ly = TOP_Y + 110 + (i % 3) * 30 + Math.sin(t * 0.8 + i) * 4;
@@ -474,7 +478,7 @@ var STYLE = { bg: ['#fbe3ee', '#e2f4ec', '#f8f2d8'], main: ['#7cc9a6', '#f49bbb'
     var t = game.time.elapsed;
     rrect(28, BOT_Y - 12, W - 56, BOT_H + 24, 40, '#ffffff');
     rrect(40, BOT_Y, W - 80, BOT_H, 30, '#fdeef3');
-    game.draw.gradient(BOT_Y + 30, BOT_Y + BOT_H - 30, ['#fff6ea', '#fde3ec']);
+    bands(40, BOT_Y + 30, W - 80, BOT_H - 60, ['#fff6ea', '#fef0eb', '#fde9ec', '#fde3ec']);
     // 下草の葉
     for (var i = 0; i < 8; i++) leafBall(80 + i * 135, BOT_Y + BOT_H - 70 + (i % 2) * 18, 54, LEAF[(i + 1) % 3]);
     drawLane(RESP_Y, 'resp');
