@@ -35,7 +35,7 @@
   var HYST = 36, REST = 10;
 
   var BOW_X = 760, STR_Y = 1612, BOW_MIN = Math.round(H * 0.77), BOW_MAX = Math.round(H * 0.965);
-  var TRACK_Y = 430, TRACK_X = 100, CELL = 220;
+  var TRACK_Y = 476, TRACK_X = 100, CELL = 220;
   var METER_Y = 300;
 
   // フィドルの旋律(オリジナル): 返し1回につき1音。下げ(拍頭)と上げ(跳ねた裏)の交互で2小節16音
@@ -354,7 +354,7 @@
       var px = TRACK_X + pos * CELL;
       vl(px, TRACK_Y - 56, px, TRACK_Y + 56, C.white, 3);
     }
-    if (judgeT > 0) label(judgeW, W / 2, TRACK_Y + 120, 58, judgeW === 'MISS' ? C.pink : (judgeW === 'PERFECT' ? C.gold : C.cyan));
+    if (judgeT > 0) label(judgeW, W / 2, TRACK_Y + 112, 58, judgeW === 'MISS' ? C.pink : (judgeW === 'PERFECT' ? C.gold : C.cyan));
   }
 
   function drawFiddle() {
