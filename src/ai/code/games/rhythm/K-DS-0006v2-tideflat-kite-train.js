@@ -246,7 +246,7 @@ var STYLE = { bg: ['#2a1c4a', '#c8506a', '#ff9a4a'], main: ['#f4efe2', '#d8402e'
   function tailPos(j) {
     var idx = hist.length - 2 - j * 14;
     if (idx < 0) idx = 0;
-    return { x: hist[idx], y: hist[idx + 1] + j * 10 };
+    return { x: hist[idx] - j * 34, y: hist[idx + 1] + j * 22 };   // 浜風の風下へ斜めに連なる
   }
 
   function hitRing(i, kind) {
@@ -487,7 +487,7 @@ var STYLE = { bg: ['#2a1c4a', '#c8506a', '#ff9a4a'], main: ['#f4efe2', '#d8402e'
       if (q === 1 && hitStop > 0) big = 1.25;
       var pal = palFor(c, pt.y);
       if (q === 1 && hitStop > 0) game.draw.circle(pt.x, pt.y, 80 * sc, C.white, 0.6 * hitStop / HIT_STOP);
-      game.draw.sprite(KFR[kiteFrame(phase - c * 0.35)], pal, pt.x, pt.y, 7 * sc * big, { anchor: 'center' });
+      game.draw.sprite(KFR[kiteFrame(phase - c * 0.35)], pal, pt.x, pt.y, (q === 1 ? 8.5 : 7.5) * sc * big, { anchor: 'center' });
       if (q === 1 && finger.on && state === S.PLAYING) game.draw.circle(pt.x, pt.y - 44 * sc, 8, C.white, 0.8);
     }
     // ちぎれて飛んでいく凧
