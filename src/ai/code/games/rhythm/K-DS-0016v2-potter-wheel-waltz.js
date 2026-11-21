@@ -38,7 +38,8 @@ var STYLE = { bg: ['#22160f', '#3e2a1f', '#5c4030'], main: ['#c9825a', '#e8c49a'
   var TIME_LIMIT = 14;
   var TAU = Math.PI * 2;
   var STEP_A = TAU / 3;              // 1拍 = 1/3周
-  var CX = W / 2, CY = 1290, RX = 360, RY = 150;
+  var CX = W / 2, CY = Math.round(H * 0.672), RX = 360, RY = 150;   // プレイフィールド下寄り(親指が届く)
+  var HUD_H = Math.round(H * 0.12);
   var GUIDE_A = Math.PI / 2;         // 手前(画面下)が目印
 
   // オリジナルのワルツ(イ短調)。1小節ずつ拍クロックから鳴らす
@@ -350,7 +351,7 @@ var STYLE = { bg: ['#22160f', '#3e2a1f', '#5c4030'], main: ['#c9825a', '#e8c49a'
     }
   }
 
-  function potTopY() { return CY - 30 - tiers * 34; }
+  function potTopY() { return CY - 64 - tiers * 30; }
 
   function drawWheel(t) {
     var stop = flashT > 0;
@@ -452,7 +453,7 @@ var STYLE = { bg: ['#22160f', '#3e2a1f', '#5c4030'], main: ['#c9825a', '#e8c49a'
   }
 
   function drawHud() {
-    game.draw.rect(0, 0, W, 230, '#120b08', 0.82);
+    game.draw.rect(0, 0, W, HUD_H, '#120b08', 0.82);
     label('SCORE ' + score, 50, 100, 52, C.white, 'left');
     label('BEST ' + prevBest, 50, 168, 30, C.light, 'left');
     var bar = Math.max(0, Math.min(BARS, Math.floor(songT / BAR_LEN)));
@@ -512,7 +513,7 @@ var STYLE = { bg: ['#22160f', '#3e2a1f', '#5c4030'], main: ['#c9825a', '#e8c49a'
       if (hitStop <= 0) dispTheta = theta;
       drawScene(t);
       game.draw.hand(demo.hx, demo.hy, { press: true, scale: 14 });
-      game.draw.rect(0, 0, W, 230, '#120b08', 0.82);
+      game.draw.rect(0, 0, W, HUD_H, '#120b08', 0.82);
       label(GAME_TITLE, W / 2, 112, 84 + Math.sin(t * 3) * 3, C.light);
       label('HI-SCORE ' + (game.best > 0 ? game.best : 0), W / 2, 190, 36, C.mint);
       if (Math.floor(t * 2) % 2 === 0) label('► 100円 投入 ◄', W / 2, H * 0.955, 48, C.light);
