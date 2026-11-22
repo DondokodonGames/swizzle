@@ -269,8 +269,10 @@ var STYLE = { bg: ['#f2efe6', '#e6e2d6'], main: ['#151515', '#151515', '#f2efe6'
     game.draw.line(cr.x, cr.gy, cr2.x, cr2.gy, INK, 7);
     var fc = proj(-0.5, 7, 0), fc2 = proj(0.5, 7, 0);
     game.draw.line(fc.x, fc.gy, fc2.x, fc2.gy, INK, 2);
-    var sw = Math.sin(t * 0.3) * 0;
-    return sw;
+    // 朝霧の中を飛ぶ鳥(遠景の動き)
+    var bx = (t * 40) % (W + 200) - 100;
+    game.draw.line(bx - 14, HZ - 160, bx, HZ - 150, INK, 3);
+    game.draw.line(bx, HZ - 150, bx + 14, HZ - 160, INK, 3);
   }
 
   var BOWLER = [
@@ -289,12 +291,10 @@ var STYLE = { bg: ['#f2efe6', '#e6e2d6'], main: ['#151515', '#151515', '#f2efe6'
     var bx = running && cur < N && d.wide ? d.side * 0.5 : 0.1;
     var p = proj(bx, 7.2, 0);
     var px = 0.09 * p.s;
-    var b = beatN % 3;
     var release = running && cur < N && songT >= d.t1 * SPB - SPB * 0.5 && songT < d.t1 * SPB + SPB * 0.6;
     var bob = release ? 0 : Math.sin(game.time.elapsed * 8) * 2;
     dotShadow(p.x, p.gy + 4, 0.5 * p.s);
     game.draw.sprite(BOWLER[release ? 1 : 0], IPAL, p.x, p.gy - 5 * px + bob, px, { anchor: 'center' });
-    return b;
   }
 
   function drawStumps() {
@@ -477,12 +477,12 @@ var STYLE = { bg: ['#f2efe6', '#e6e2d6'], main: ['#151515', '#151515', '#f2efe6'
     if (state === S.ATTRACT) {
       stepDemo(dt);
       drawScene();
-      game.draw.hand(W * 0.72, H * 0.86, { press: demo.press > 0, scale: 15 });
+      game.draw.hand(W * 0.74, H * 0.83, { press: demo.press > 0, scale: 15 });
       game.draw.rect(0, 0, W, 230, INK);
       label(GAME_TITLE, W / 2, 110, 84 + Math.sin(t * 3) * 3, PAPER);
       label('HI-SCORE ' + (game.best > 0 ? game.best : 0), W / 2, 190, 36, PAPER);
-      if (Math.floor(t * 2) % 2 === 0) label('► 100円 投入 ◄', W / 2, H * 0.79, 56, INK);
-      else label('TAP TO START', W / 2, H * 0.79, 48, INK);
+      if (Math.floor(t * 2) % 2 === 0) label('► 100円 投入 ◄', W / 2, H * 0.955, 56, INK);
+      else label('TAP TO START', W / 2, H * 0.955, 48, INK);
       return;
     }
 
