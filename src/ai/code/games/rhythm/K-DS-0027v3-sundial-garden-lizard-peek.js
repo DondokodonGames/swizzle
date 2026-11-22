@@ -34,7 +34,7 @@
   var DEMO_CUES = [6, 8, 12, 14];
   var DEMO_FIDGET = 10;                              // デモはこの拍で印の無い石像を押してMISSを見せる
 
-  var CX = 536, CY = 960, DIAL_R = 304, NEEDLE_R = 272, STATUE_R = 384, MARK_R = 330;
+  var CX = 536, CY = 960, DIAL_R = 304, NEEDLE_R = 272, STATUE_R = 384, MARK_R = 296;
   var LAMP_Y = 296;
 
   // ---- スプライト ----
@@ -385,7 +385,10 @@
     label('PERFECT ' + perfects + '  GOOD ' + goods + '  MISS ' + misses, W / 2, H * 0.415, 34, C.lizard);
     label(maxCombo + ' COMBO', W / 2, H * 0.455, 40, C.gold);
     game.draw.sprite(LZ_A, PAL_LZ, W / 2 - 150, H * 0.497, 9, { anchor: 'center' });
-    label(peeks + ' / ' + cues.length + '   ☁ ' + breakPeeks, W / 2 + 40, H * 0.505, 40, C.white);
+    label(peeks + ' / ' + cues.length, W / 2 - 20, H * 0.505, 40, C.white);
+    pixDisc(W / 2 + 150, H * 0.497, 32, C.white, 8);
+    pixDisc(W / 2 + 120, H * 0.5, 24, C.white, 8);
+    label('' + breakPeeks, W / 2 + 230, H * 0.505, 40, C.gold);
     if (won && score > prevBest) label('NEW RECORD', W / 2, H * 0.55, 50, C.gold);
     else label('BEST ' + Math.max(prevBest, won ? score : 0), W / 2, H * 0.55, 40, C.gold);
     if (!won) label('あと' + Math.max(1, cues.length - peeks) + '回', W / 2, H * 0.22, 60, C.red);
@@ -403,7 +406,6 @@
     tickWorld(dt);
     var tx = CX + 160, ty = 1640;
     if (running && hitStop <= 0) {
-      var nb = Math.floor(songT / SPB) + 1;
       var targets = DEMO_CUES.concat([DEMO_FIDGET]);
       for (var k = 0; k < 2; k++) {
         var b = Math.round(songT / SPB) + k;
@@ -414,7 +416,6 @@
           break;
         }
       }
-      if (nb < 0) tx = CX;
     }
     demo.x += (tx - demo.x) * Math.min(1, dt * 10);
     demo.y += (ty - demo.y) * Math.min(1, dt * 10);
