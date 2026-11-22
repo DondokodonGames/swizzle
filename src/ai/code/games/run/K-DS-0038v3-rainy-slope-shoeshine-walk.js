@@ -170,7 +170,7 @@ var STYLE = { bg: ['#080a1c', '#1a2246', '#2a2a50'], main: ['#9a9ab8', '#62627e'
       return 'whiff';
     }
     if (bd > GOOD_W) { missMove(best, 'off'); return 'miss'; }
-    if (best.kind !== kind) { missMove(best, kind === 'tap' ? 'trip' : 'over'); return 'miss'; }
+    if ((best.kind === 'jump' ? 'flick' : 'tap') !== kind) { missMove(best, kind === 'tap' ? 'trip' : 'over'); return 'miss'; }
     var w = bd <= PERFECT_W ? 'PERFECT' : 'GOOD';
     best.res = w;
     done++; combo++; if (combo > maxCombo) maxCombo = combo;
