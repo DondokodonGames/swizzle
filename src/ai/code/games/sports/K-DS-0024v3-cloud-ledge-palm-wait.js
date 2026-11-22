@@ -299,7 +299,7 @@ var STYLE = { bg: ['#2e2a26', '#6e6152'], main: ['#b8a68a', '#5a5048', '#d8c8a8'
       }
     }
     // 岩棚(奥へ収束するひび)
-    game.draw.gradient(860, H - 860, [[0, '#6a5e50'], [0.4, '#4a4036'], [1, '#221c18']]);
+    game.draw.gradient(860, H, [[0, '#6a5e50'], [0.4, '#4a4036'], [1, '#221c18']]);
     game.draw.rect(0, 856, W, 10, '#8a7a64', 0.6);
     for (var k = -4; k <= 4; k++) game.draw.line(MX + k * 40, 866, MX + k * 260, H, '#1c1612', 3);
     for (var r = 0; r < 6; r++) game.draw.line(0, 920 + r * r * 32, W, 920 + r * r * 32, '#1c1612', 2);

@@ -281,7 +281,7 @@ var STYLE = { bg: ['#120d0a', '#3a2a1c'], main: ['#8a7356', '#c8a46a', '#4a3a2a'
   function drawTomb(cam) {
     var t = game.time.elapsed;
     // 遠景(動かない描き込みの1枚絵): 奥へ続く暗い回廊と天窓の光
-    game.draw.gradient(230, 1210, [[0, '#0c0806'], [0.4, C.bg1], [0.75, '#2a1e14'], [1, '#160f0a']]);
+    game.draw.gradient(230, 1440, [[0, '#0c0806'], [0.4, C.bg1], [0.75, '#2a1e14'], [1, '#160f0a']]);
     glow(760, 560, 60, '#e8c070', 0.18 + flare * 0.2);
     for (var r = 0; r < 5; r++) game.draw.rect(700 + r * 20, CEIL, 14, 520, '#f4dca0', 0.03 + flare * 0.02);
     // 壁(0.5倍速の視差): 面取りした石積み + 浮き彫りの帯
@@ -332,6 +332,9 @@ var STYLE = { bg: ['#120d0a', '#3a2a1c'], main: ['#8a7356', '#c8a46a', '#4a3a2a'
       if (k === nextTile && k < beats.length && clock >= 0) game.draw.rect(sx + 3, FLOOR, TILE - 6, 40, C.gold, 0.2 + beatPulse * 0.3);
     }
     game.draw.rect(0, FLOOR + 40, W, 220, '#1a120c');
+    // 親指ゾーンの床下(石の台座)
+    game.draw.gradient(1440, H, [[0, '#1a120c'], [1, '#080504']]);
+    for (var fl = 0; fl < 4; fl++) game.draw.rect(0, 1452 + fl * 120, W, 3, '#3a2a1c', 0.6);
     // 奥の玄室の扉(ゴール)
     var gx = PX + (beats.length - cam) * TILE;
     if (gx < W + 300) {
@@ -408,7 +411,7 @@ var STYLE = { bg: ['#120d0a', '#3a2a1c'], main: ['#8a7356', '#c8a46a', '#4a3a2a'
       var n = beatIndex(clock);
       spr = HERO_WALK[(n + 100) % 2]; h = 16;
     }
-    var px = 12;
+    var px = 14;
     var cy = FLOOR - h * px / 2 + yOff;
     game.draw.circle(x, FLOOR + 6, 60 - Math.min(40, -yOff * 0.2), '#000000', 0.35);
     // ヘッドランプの光(前方)
