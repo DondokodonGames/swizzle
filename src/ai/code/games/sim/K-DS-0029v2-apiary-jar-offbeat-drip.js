@@ -90,7 +90,7 @@ var STYLE = { bg: ['#fff4dc', '#ffeccb'], main: ['#ffb400', '#3b4a6b', '#ffffff'
     return {
       demo: isDemo, pat: pat, slots: slots, need: need, nBeats: pat.length * BEATS,
       ready: isDemo ? 0 : 0.8, running: isDemo, beatN: 0, beatT: 0, songT: 0, melBar: 0,
-      score: 0, combo: 0, maxCombo: 0, perfect: 0, good: 0, miss: 0, filled: 0, barMiss: [],
+      score: 0, combo: 0, maxCombo: 0, perfect: 0, good: 0, miss: 0, filled: 0, barMissCount: [], barDone: 0,
       hitStop: 0, hitSlot: null, pendingBad: null, judge: 0, judgeCol: C.teal, drop: 0, squeeze: 0, beatPulse: 0, offPulse: 0,
       dispAng: 0, hopper: 1, over: false, ok: false, endWait: 0, prevBest: game.best, milestone: false,
     };
@@ -145,9 +145,13 @@ var STYLE = { bg: ['#fff4dc', '#ffeccb'], main: ['#ffb400', '#3b4a6b', '#ffffff'
       }
     }
     // 小節の締め(MISSなしで NICE)
-    var bar = Math.floor((t - GOOD_W - 0.02) / (BEATS * SPB));
-    if (!R.demo && bar >= 1 && bar < R.pat.length && R.barMiss[bar] === undefined) {
-      R.barMiss[bar] = R.barMissCount ? R.barMissCount[bar] || 0 : 0;
+    while (R.barDone < R.pat.length && t >= (R.barDone + 1) * BEATS * SPB + GOOD_W + 0.02) {
+      var bd = R.barDone;
+      if (!R.demo && bd >= 1 && !R.barMissCount[bd]) {
+        game.fx.popup('NICE', W / 2, NOZ_Y + 170, { color: C.teal, size: 80 });
+        game.audio.tone('G6', 0.12, { wave: 'triangle', volume: 0.06, slide: 200 });
+      }
+      R.barDone++;
     }
     if (R.demo) return;
     var last = R.slots[R.slots.length - 1];
@@ -186,7 +190,7 @@ var STYLE = { bg: ['#fff4dc', '#ffeccb'], main: ['#ffb400', '#3b4a6b', '#ffffff'
       if (!R.demo && !R.milestone && R.filled === 10) {
         R.milestone = true;
         game.audio.play('se_milestone', 0.5);
-        game.fx.popup('10', 230, 900, { color: C.honey, size: 110 });
+        game.fx.popup('10', 214, 560, { color: C.honey, size: 110 });
       }
       return perfect ? 'perfect' : 'good';
     }
@@ -200,7 +204,6 @@ var STYLE = { bg: ['#fff4dc', '#ffeccb'], main: ['#ffb400', '#3b4a6b', '#ffffff'
     R.miss++; R.combo = 0;
     R.hitStop = HIT_STOP; R.hitSlot = sl;
     R.judge = 0.45; R.judgeCol = C.red;
-    if (!R.barMissCount) R.barMissCount = [];
     var bar = Math.floor(R.songT / (BEATS * SPB));
     R.barMissCount[bar] = (R.barMissCount[bar] || 0) + 1;
     R.pendingBad = { t: 0.3 };
@@ -210,7 +213,7 @@ var STYLE = { bg: ['#fff4dc', '#ffeccb'], main: ['#ffb400', '#3b4a6b', '#ffffff'
 
   function finish(ok) {
     if (R.over) return;
-    R.over = true; R.ok = ok; R.endWait = 1.5;
+    R.over = true; R.ok = ok; R.endWait = 1.3;
     game.audio.stopBgm();
     if (ok) {
       R.score += R.filled * 20 + (R.miss === 0 ? 500 : 0);
@@ -306,10 +309,10 @@ var STYLE = { bg: ['#fff4dc', '#ffeccb'], main: ['#ffb400', '#3b4a6b', '#ffffff'
 
   function drawShelf() {
     // 詰めた瓶が並ぶ棚
-    rrect(40, 790, 330, 120, 24, C.white);
+    rrect(64, 404, 300, 118, 24, C.white);
     var n = Math.min(R.filled, 20);
     for (var i = 0; i < n; i++) {
-      var x = 76 + (i % 10) * 30, y = 826 + Math.floor(i / 10) * 50;
+      var x = 92 + (i % 10) * 27, y = 442 + Math.floor(i / 10) * 50;
       game.draw.circle(x, y, 13, C.honey);
       game.draw.rect(x - 11, y - 18, 22, 8, C.lid);
     }
