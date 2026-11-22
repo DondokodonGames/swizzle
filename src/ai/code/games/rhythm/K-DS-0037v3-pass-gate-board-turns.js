@@ -294,6 +294,7 @@ var STYLE = { bg: ['#000000', '#24188c'], main: ['#a85c18', '#fcfcfc', '#f8b800'
     if (state === S.ATTRACT) prog = 0.3;
     var top = prog < 0.5 ? NIGHT : '#3c1878';
     var low = prog < 0.35 ? '#2838a8' : (prog < 0.7 ? '#a83858' : DAWN);
+    game.draw.gradient(0, H, [[0, BLACK], [0.6, '#1c1408'], [1, BLACK]]);
     game.draw.gradient(230, 760, [[0, top], [1, low]]);
     for (var i = 0; i < stars.length; i++) {
       var s = stars[i];
@@ -357,7 +358,8 @@ var STYLE = { bg: ['#000000', '#24188c'], main: ['#a85c18', '#fcfcfc', '#f8b800'
     game.draw.rect(x + 40, y - 152, 8, 64, WHITE, 0.6);
     var sh = lit ? 8 : 0;
     var big = flash ? 16 : 0;
-    game.draw.rect(x - 80 - big, y - 88 + sh - big, 160 + big * 2, 96 + big * 2, flash ? WHITE : (lit ? GOLD : WOOD));
+    game.draw.rect(x - 96 - big, y - 104 + sh - big, 192 + big * 2, 128 + big * 2, BLACK);
+    game.draw.rect(x - 80 - big, y - 88 + sh - big, 160 + big * 2, 96 + big * 2, flash ? WHITE : (lit ? GOLD : '#e8b878'));
     if (!flash) {
       game.draw.rect(x - 80, y - 88 + sh, 160, 8, who === 'P' ? BLUE : RED);
       game.draw.rect(x - 64, y - 56 + sh, 128, 8, DARKWOOD);

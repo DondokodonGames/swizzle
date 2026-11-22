@@ -99,7 +99,7 @@
     var bs = [];
     for (var i = 0; i < cues.length; i++) bs.push({ cue: cues[i][0], tc: cues[i][0] * SPB, n: cues[i][1], press: cues[i][2], res: '', frz: 0, fin: false, x: PAD_X, y: PAD_Y - 40, ty: 0, band: 0, t0: 0, sway: i * 1.7 });
     return {
-      demo: demo, bs: bs, meters: meters, starts: buildBars(meters), t: 0, lastK: -1, k: -1, bar: 0, q: 0, beatF: 0, annT: 0, annMeter: 0,
+      demo: demo, bs: bs, meters: meters, starts: buildBars(meters), t: 0, lastK: -1, melK: 0, k: -1, bar: 0, q: 0, beatF: 0, annT: 0, annMeter: 0,
       hold: null, lift: false, flag: 0, flagT: 0, student: 0, studentT: 0, cupA: 0, padF: 0, clickF: 0,
       launched: 0, perf: 0, good: 0, miss: 0, combo: 0, maxCombo: 0, score: 0, mile: false
     };
@@ -126,7 +126,6 @@
       game.audio.tone(r.q === 0 ? 1046 : 784, 0.03, { wave: 'square', volume: r.q === 0 ? 0.05 : 0.03 });
       if (bar === 0) game.audio.tone(r.q === 3 ? 'G4' : 'C4', 0.08, { wave: 'square', volume: 0.06 });
     }
-    if (r.q === 0 && bar >= 1 && bar < r.meters.length - 1 && loud) playBar(r, bar);
     // 拍型の切り替えの予告(1小節前): 上がる音型、帯の明滅、次の拍数のランプ
     if (r.q === 0 && bar + 1 < r.meters.length && r.meters[bar + 1] !== r.meters[bar] && bar >= 1) {
       r.annT = r.meters[bar] * SPB; r.annMeter = r.meters[bar + 1];
@@ -212,6 +211,13 @@
     r.t += dt;
     var k = Math.floor(r.t / SPB);
     if (k > r.lastK) { r.lastK = k; onBeat(r, k, loud); }
+    // 伴奏は発音の遅れ(約0.06秒)を見込んで小節頭の少し前に出す
+    var mk = Math.floor((r.t + 0.06) / SPB);
+    if (mk > r.melK) {
+      r.melK = mk;
+      var mb = r.starts.indexOf(mk);
+      if (loud && mb >= 1 && mb < r.meters.length - 1) playBar(r, mb);
+    }
     var b = curB(r);
     if (b && r.t > b.tc + EDGE) {
       if (r.hold) { r.hold = null; if (!r.demo) r.lift = true; }
