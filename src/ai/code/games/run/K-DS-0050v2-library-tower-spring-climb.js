@@ -332,16 +332,24 @@
     game.draw.text(str, x - 2, y - 2, { size: sz, color: C.white, bold: true, align: a });
     game.draw.text(str, x, y, { size: sz, color: col, bold: true, align: a });
   }
-  function rrect(x, y, w, h, r, col, a) {
-    game.draw.rect(x + r, y, w - 2 * r, h, col, a);
-    game.draw.rect(x, y + r, r, h - 2 * r, col, a);
-    game.draw.rect(x + w - r, y + r, r, h - 2 * r, col, a);
-    game.draw.circle(x + r, y + r, r, col, a);
-    game.draw.circle(x + w - r, y + r, r, col, a);
-    game.draw.circle(x + r, y + h - r, r, col, a);
-    game.draw.circle(x + w - r, y + h - r, r, col, a);
+  // 白縁の丸角(重なりで濃淡が出ないよう常にベタ塗り)
+  function rrect(x, y, w, h, r, col) {
+    game.draw.rect(x + r, y, w - 2 * r, h, col);
+    game.draw.rect(x, y + r, r, h - 2 * r, col);
+    game.draw.rect(x + w - r, y + r, r, h - 2 * r, col);
+    game.draw.circle(x + r, y + r, r, col);
+    game.draw.circle(x + w - r, y + r, r, col);
+    game.draw.circle(x + r, y + h - r, r, col);
+    game.draw.circle(x + w - r, y + h - r, r, col);
   }
   function pill(x, y, w, h, col) {
+    if (h > w) {
+      var rv = w / 2;
+      game.draw.rect(x, y + rv, w, h - 2 * rv, col);
+      game.draw.circle(x + rv, y + rv, rv, col);
+      game.draw.circle(x + rv, y + h - rv, rv, col);
+      return;
+    }
     var r = h / 2;
     game.draw.rect(x + r, y, w - 2 * r, h, col);
     game.draw.circle(x + r, y + r, r, col);
@@ -478,8 +486,8 @@
   }
 
   function drawTopHud(showPlay) {
-    rrect(24, 20, W - 48, 176, 40, C.white, 0.92);
-    rrect(36, 32, W - 72, 152, 32, C.lav, 0.55);
+    rrect(24, 20, W - 48, 176, 40, C.white);
+    rrect(36, 32, W - 72, 152, 32, '#f1ebff');
     if (!showPlay) return;
     txt('SCORE ' + score, 70, 82, 48, C.ink, 'left');
     txt('BEST ' + prevBest, 70, 142, 30, C.inkSoft, 'left');
@@ -496,7 +504,6 @@
     rrect(70, TOP_Y1 + 22, 120, 34, 17, C.lav);
     rrect(W - 190, TOP_Y1 + 22, 120, 34, 17, C.lav);
     game.draw.gradient(BOT_Y0, H, [[0, '#eef6ff'], [1, '#ffeef6']]);
-    rrect(16, BOT_Y0 + 8, W - 32, H - BOT_Y0 - 24, 36, C.white, 0.35);
     // メトロノーム(振り子は拍の頭で端に来る)
     var mx = 190, my = INFO_Y + 70;
     for (var r = 0; r < 6; r++) game.draw.rect(mx - 40 - r * 12, my - 150 + r * 26, 80 + r * 24, 26, r % 2 ? C.pink : '#ffc8dc');
@@ -541,7 +548,7 @@
       var down = padT[c] > 0;
       var lit = c === nextCol && running && (beatPulse > 0.4 || Math.floor(t * 6) % 2 === 0);
       var px = PAD_X[c] - PAD_W / 2, py = PAD_Y - PAD_H / 2 + (down ? 8 : 0);
-      rrect(px - 8, py - 8 + (down ? 0 : 6), PAD_W + 16, PAD_H + 16, 48, C.inkSoft, 0.35);
+      rrect(px - 8, py - 8 + (down ? 0 : 6), PAD_W + 16, PAD_H + 16, 48, '#dcd2ee');
       rrect(px - 8, py - 8, PAD_W + 16, PAD_H + 16, 48, C.white);
       rrect(px, py, PAD_W, PAD_H, 40, lit ? C.yel : c === nextCol ? '#fff6d0' : (down ? C.lav : '#f4eefc'));
       // 棚のアイコン + 上向き矢印
@@ -610,7 +617,7 @@
     if (state === S.RESULT) {
       drawScene(false);
       drawTopHud(false);
-      rrect(100, 280, W - 200, 520, 50, C.white, 0.95);
+      rrect(100, 280, W - 200, 520, 50, C.white);
       rrect(116, 296, W - 232, 488, 40, won ? '#fff6d0' : '#eef0ff');
       txt(won ? 'CLEAR' : 'GAME OVER', W / 2, 390, 104, won ? C.pinkD : C.blueD);
       txt('SCORE ' + score, W / 2, 500, 64, C.ink);
@@ -618,7 +625,7 @@
       if (won && score > prevBest) txt('NEW RECORD', W / 2, 690, 56, C.yelD);
       else txt('BEST ' + Math.max(prevBest, won ? score : 0), W / 2, 690, 44, C.inkSoft);
       if (!won) txt('あと' + Math.max(1, N - cur) + '段', W / 2, 760, 46, C.pinkD);
-      rrect(60, BOT_Y0 + 300, W - 120, 330, 44, C.white, 0.95);
+      rrect(60, BOT_Y0 + 300, W - 120, 330, 44, C.white);
       txt('PERFECT ' + perfects + '   GOOD ' + goods, W / 2, BOT_Y0 + 380, 44, C.ink);
       txt('MISS ' + (falls + trips), W / 2, BOT_Y0 + 450, 44, C.blueD);
       txt(maxCombo + ' COMBO', W / 2, BOT_Y0 + 520, 44, C.pinkD);

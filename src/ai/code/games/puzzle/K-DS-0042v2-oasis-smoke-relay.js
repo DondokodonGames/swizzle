@@ -17,7 +17,7 @@ var STYLE = { bg: ['#4f8fd0', '#ffe2b0'], main: ['#e8b56e', '#9c7a58', '#3a2418'
   var C = {
     sky0: STYLE.bg[0], sky1: STYLE.bg[1], sand: STYLE.main[0], stone: STYLE.main[1], ink: STYLE.main[2],
     fire: STYLE.accent[0], teal: STYLE.accent[1], haze: '#f6dcb4', white: '#ffffff', gold: '#ffd040',
-    smoke: '#efe9e0', dune: '#e3aa60', duneDk: '#c98a46', palm: '#3f8a4a', palmDk: '#2a5e34',
+    smoke: '#6e655c', dune: '#e3aa60', duneDk: '#c98a46', palm: '#3f8a4a', palmDk: '#2a5e34',
     water: '#46b8cf', bad: '#ff4a3a', panel: '#fff4e0'
   };
 
@@ -164,8 +164,8 @@ var STYLE = { bg: ['#4f8fd0', '#ffe2b0'], main: ['#e8b56e', '#9c7a58', '#3a2418'
     var tw = TOWERS[ti];
     var hz = (1 - tw.s) * 0.85;
     tw.pal = { o: mix('#6a4a2a', C.haze, hz), O: mix('#b07a3a', C.haze, hz), s: mix(C.stone, C.haze, hz), S: mix('#d8b890', C.haze, hz) };
-    tw.px = 14 * tw.s;
-    tw.hx = tw.x; tw.hy = tw.y - 150 * tw.s;
+    tw.px = 17 * tw.s;
+    tw.hx = tw.x; tw.hy = tw.y - 180 * tw.s;
   }
   // まっすぐなぞって他の台を通らない組だけを隣り合わせにする
   function segDist(px, py, ax, ay, bx, by) {
@@ -528,7 +528,7 @@ var STYLE = { bg: ['#4f8fd0', '#ffe2b0'], main: ['#e8b56e', '#9c7a58', '#3a2418'
     var tw = TOWERS[i];
     var flash = run.hitStop > 0 && run.hitTower === i;
     // 接地影
-    oval(tw.x, tw.y + 4, 90 * tw.s, 20 * tw.s, C.ink, 0.22);
+    oval(tw.x, tw.y + 4, 105 * tw.s, 22 * tw.s, C.ink, 0.22);
     var scale = flash ? tw.px * 1.18 : tw.px;
     var pal = flash ? { o: C.white, O: C.white, s: C.white, S: C.white } : tw.pal;
     game.draw.sprite(TOWER_ART, pal, tw.x, tw.y - 6 * scale, scale, { anchor: 'center' });
