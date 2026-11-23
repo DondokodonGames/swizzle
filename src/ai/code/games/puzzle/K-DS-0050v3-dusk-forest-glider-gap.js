@@ -157,7 +157,6 @@
 
   function say(word, col) {
     judgeW = word; judgeT = 0.45;
-    if (demoMode) game.fx.popup(word, SQ_X + 160, sqY - 170, { color: col, size: 56 });
   }
 
   function missWall(w, why) {

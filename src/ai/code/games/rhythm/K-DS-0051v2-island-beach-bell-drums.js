@@ -128,7 +128,6 @@
 
   function say(word, x, y) {
     judgeW = word; judgeT = 0.42; judgeX = x; judgeY = y;
-    if (demoMode) game.fx.popup(word, x, y, { color: word === 'MISS' ? C.bad : C.lit, size: 52 });
   }
 
   function addHit(perfect, isDrum, x, y) {

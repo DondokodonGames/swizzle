@@ -221,7 +221,6 @@
 
   function say(word) {
     judgeW = word; judgeT = 0.45;
-    if (demoMode) game.fx.popup(word, W / 2, JUDGE_Y, { color: word === 'MISS' ? C.blueD : C.pinkD, size: 60 });
   }
 
   function startStop(kind, x, y) {
