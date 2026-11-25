@@ -89,7 +89,7 @@ npm run ai:upload:games
 
 `/admin/local-games` という管理者用の画面があり、`src/ai/code/games/` のゲームを **Supabase を使わずに**そのまま遊べる。
 
-- **手元で:** `npm run dev` → ブラウザで `http://localhost:5173/admin/local-games`
+- **手元で:** `npm run dev` → ブラウザで `http://localhost:3000/admin/local-games`
 - **Vercel のプレビューで:** そのブランチのプレビュー URL の末尾に `/admin/local-games` を付けて開く
 - どちらも **`profiles.is_admin = true` のアカウントでログイン**している必要がある(違うと「🔒 Admin only」と出る)。
 - 系統(撃つ・音に乗る…)ごとに並ぶので、気になるゲームを選んで遊ぶ。
