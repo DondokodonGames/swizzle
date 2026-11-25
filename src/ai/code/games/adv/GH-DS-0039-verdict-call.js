@@ -112,7 +112,7 @@
 
   game.onTap(function(x, y) {
     if (state === S.ATTRACT) { game.audio.play('se_coin'); state = S.PLAYING; initGame(); return; }
-    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (state === S.RESULT) { state = S.ATTRACT; initGame(); return; }
     if (shown < EVIDENCE.length || done) return;
     if (y > H * 0.78) { decide(x < W / 2); }
   });
@@ -122,7 +122,7 @@
   function stepDemo(dt) {
     demo.t += dt;
     var cyc = demo.t % 5.0;
-    if (cyc < dt) { shown = 0; guiltScore = 0; }
+    if (cyc < dt || demo.t <= dt) { shown = 0; guiltScore = 0; }
     var revAt = [0.6, 1.4, 2.2, 3.0];
     for (var i = 0; i < revAt.length; i++) if (cyc > revAt[i] && shown === i) reveal();
     if (cyc > 3.6) {

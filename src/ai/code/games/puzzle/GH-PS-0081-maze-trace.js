@@ -123,7 +123,7 @@
 
   game.onTap(function(x, y) {
     if (state === S.ATTRACT) { game.audio.play('se_coin'); state = S.PLAYING; initGame(); return; }
-    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (state === S.RESULT) { state = S.ATTRACT; initGame(); return; }
   });
   game.onPress(function(x, y) { if (state === S.PLAYING) { game.audio.play('se_tap', 0.05); onDrag(x, y); } });
   game.onMove(function(x, y) {
@@ -143,7 +143,7 @@
   function stepDemo(dt) {
     demo.t += dt;
     var cyc = demo.t % 3.6;
-    if (cyc < dt) { progress = 0; }
+    if (cyc < dt || demo.t <= dt) { progress = 0; }
     var target = Math.min(TOTAL_LEN, (cyc / 3.2) * TOTAL_LEN);
     var acc = 0, px = PTS[0].x, py = PTS[0].y;
     for (var i = 1; i < PTS.length; i++) {

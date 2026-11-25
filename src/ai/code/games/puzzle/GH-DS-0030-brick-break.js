@@ -84,7 +84,7 @@
 
   game.onTap(function() {
     if (state === S.ATTRACT) { game.audio.play('se_coin'); state = S.PLAYING; initGame(); return; }
-    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (state === S.RESULT) { state = S.ATTRACT; initGame(); return; }
   });
   game.onPress(function(x) { if (state === S.PLAYING) { paddleX = x; game.audio.play('se_tap', 0.06); } });
   game.onMove(function(x) {

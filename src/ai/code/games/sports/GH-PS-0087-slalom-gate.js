@@ -70,7 +70,7 @@
 
   game.onTap(function() {
     if (state === S.ATTRACT) { game.audio.play('se_coin'); state = S.PLAYING; initGame(); return; }
-    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (state === S.RESULT) { state = S.ATTRACT; initGame(); return; }
   });
   game.onPress(function(x) { if (state === S.PLAYING) { skiX = x; game.audio.play('se_tap', 0.05); } });
   game.onMove(function(x) {
@@ -92,7 +92,7 @@
   function stepDemo(dt) {
     demo.t += dt;
     var cyc = demo.t % 1.6;
-    if (cyc < dt) newGate();
+    if (cyc < dt || demo.t <= dt) newGate();
     var target = W * 0.5;
     skiX += (target - skiX) * Math.min(1, dt * 3);
     demo.gx = skiX;

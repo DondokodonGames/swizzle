@@ -94,7 +94,7 @@
 
   game.onTap(function(x, y) {
     if (state === S.ATTRACT) { game.audio.play('se_coin'); state = S.PLAYING; initGame(); return; }
-    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (state === S.RESULT) { state = S.ATTRACT; initGame(); return; }
     var idx = -1, best = 999;
     for (var i = 0; i < 4; i++) { var d = Math.hypot(x - BTN_POS[i].x, y - BTN_POS[i].y); if (d < best) { best = d; idx = i; } }
     if (best < 90) pressBtn(idx);

@@ -173,7 +173,7 @@
 
   game.onTap(function(x, y) {
     if (state === S.ATTRACT) { game.audio.play('se_coin'); state = S.PLAYING; initGame(); return; }
-    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (state === S.RESULT) { state = S.ATTRACT; initGame(); return; }
     if (done || ready > 0) return;
     var c = Math.floor((x - GX) / CELL), r = Math.floor((y - GY) / CELL);
     if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return;

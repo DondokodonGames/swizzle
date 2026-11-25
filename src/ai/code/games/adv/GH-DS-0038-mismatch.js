@@ -124,7 +124,7 @@
 
   game.onTap(function(x, y) {
     if (state === S.ATTRACT) { game.audio.play('se_coin'); state = S.PLAYING; initGame(); return; }
-    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (state === S.RESULT) { state = S.ATTRACT; initGame(); return; }
     if (done || ready > 0 || phase !== 'decide') return;
     var idx = -1, best = 999;
     for (var i = 0; i < 3; i++) { var d = Math.abs(x - SX[i]); if (d < best) { best = d; idx = i; } }

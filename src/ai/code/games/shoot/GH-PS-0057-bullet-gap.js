@@ -88,7 +88,7 @@
 
   game.onTap(function() {
     if (state === S.ATTRACT) { game.audio.play('se_coin'); state = S.PLAYING; initGame(); return; }
-    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (state === S.RESULT) { state = S.ATTRACT; initGame(); return; }
   });
   game.onPress(function(x) { if (state === S.PLAYING) { game.audio.play('se_tap', 0.04); onDrag(x); } });
   game.onMove(function(x) {
@@ -110,7 +110,7 @@
     demo.t += dt;
     if (shipX === undefined) initGame();
     var cyc = demo.t % 3.0;
-    if (cyc < dt) { rows = []; spawnT = 0.4; }
+    if (cyc < dt || demo.t <= dt) { rows = []; spawnT = 0.4; }
     spawnT -= dt;
     if (spawnT <= 0) { newRow(); spawnT = ROW_INTERVAL * 0.7; }
     for (var i = rows.length - 1; i >= 0; i--) {

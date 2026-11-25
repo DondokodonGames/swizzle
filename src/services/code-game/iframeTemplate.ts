@@ -630,6 +630,15 @@ export function buildIframeHtml(gameCode: string, maxDurationMs: number): string
     '..KKKK..'
   ];
   const HAND_PAL = { K: '#1a1a1a', W: '#ffffff' };
+  // Constant idle wiggle so the ATTRACT ghost-hand is never perfectly still,
+  // even while a game's own demo logic is paused (judging a result, waiting
+  // out a settle animation, etc.) — see PLAY_GRAMMAR_V3 the "always alive"
+  // ATTRACT requirement. A true circle (same angular speed on both axes, 90
+  // degree phase offset) gives a constant chord length between any two
+  // samples a fixed time apart, unlike independent sin/cos frequencies which
+  // can have near-zero combined displacement at unlucky starting phases.
+  const HAND_WIGGLE_OMEGA = 2.5;
+  const HAND_WIGGLE_R = 46;
 
   // ── SwizzleGameAPI implementation ─────────────────────────────────────────
   function playSound(id, volume) {
@@ -790,10 +799,12 @@ export function buildIframeHtml(gameCode: string, maxDurationMs: number): string
         ctx.fillRect(0, Math.min(y0, y1), 1080, Math.abs(y1 - y0));
         ctx.restore();
       },
-      hand: function(x, y, opts) {
+      hand: function(x0, y0, opts) {
         const o = opts || {};
         const scale = o.scale || 8;
         const alpha = (o.alpha !== undefined) ? o.alpha : 1;
+        const x = x0 + Math.cos(elapsed * HAND_WIGGLE_OMEGA) * HAND_WIGGLE_R;
+        const y = y0 + Math.sin(elapsed * HAND_WIGGLE_OMEGA) * HAND_WIGGLE_R;
         // Tap ring under the hand when pressing — a white ring that expands and
         // fades on a repeating cycle (driven by elapsed so demos read as taps).
         if (o.press) {

@@ -91,7 +91,7 @@
 
   game.onTap(function(x, y) {
     if (state === S.ATTRACT) { game.audio.play('se_coin'); state = S.PLAYING; initGame(); return; }
-    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (state === S.RESULT) { state = S.ATTRACT; initGame(); return; }
     shoot(x, y);
   });
 
@@ -100,7 +100,7 @@
     demo.t += dt;
     if (enemies === undefined) initGame();
     var cyc = demo.t % 3.5;
-    if (cyc < dt) initGame();
+    if (cyc < dt || demo.t <= dt) initGame();
     descendY += 40 * dt;
     var alive = enemies.filter(function(e) { return !e.dead; });
     if (alive.length && cyc % 0.6 < 0.06) {

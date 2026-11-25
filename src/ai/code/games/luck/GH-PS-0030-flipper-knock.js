@@ -98,7 +98,7 @@
 
   game.onTap(function() {
     if (state === S.ATTRACT) { game.audio.play('se_coin'); state = S.PLAYING; initGame(); return; }
-    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (state === S.RESULT) { state = S.ATTRACT; initGame(); return; }
   });
   game.onPress(function() {
     if (state !== S.PLAYING || done || flying || shotIdx >= TARGETS.length) return;
@@ -117,7 +117,7 @@
   function stepDemo(dt) {
     demo.t += dt;
     var cyc = demo.t % 2.6;
-    if (cyc < dt) { for (var i = 0; i < TARGETS.length; i++) TARGETS[i].down = false; shotIdx = 0; }
+    if (cyc < dt || demo.t <= dt) { for (var i = 0; i < TARGETS.length; i++) TARGETS[i].down = false; shotIdx = 0; }
     demo.press = cyc < 1.0;
     if (demo.press) { power = Math.min(1, cyc / 0.9); ballY = LAUNCH_Y; }
     else if (cyc < 1.6) {

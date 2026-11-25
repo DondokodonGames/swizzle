@@ -331,6 +331,9 @@ async function smokeOne(
   if (/game\.on(Press|Move|Release)/.test(code)) inputKinds.push('drag');
   if (/game\.touches/.test(code)) inputKinds.push('multi');
 
+  // The engine arms its maxDuration watchdog on the first user input, so the
+  // harness deadline is measured from this tap, not from page load.
+  const playStart = Date.now();
   await tap(0.5, 0.5);
   await page.waitForTimeout(250);
   const after = await canvasFingerprint(page);
@@ -345,7 +348,7 @@ async function smokeOne(
 
   // GAME_END までタップ連打(quick モードでは打ち切りのみ)
   let playMs: number | null = null;
-  const deadline = started + capMs + 6000;
+  const deadline = playStart + capMs + 6000;
   let tick = 0;
   while (Date.now() < deadline) {
     const events = await readEvents();
